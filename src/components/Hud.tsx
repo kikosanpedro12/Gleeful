@@ -24,6 +24,11 @@ export default function Hud() {
   const live = status === "connected";
 
   useEffect(() => { if (typing) inputRef.current?.focus(); }, [typing]);
+  useEffect(() => {
+    if (banner?.kind !== "info") return;
+    const t = setTimeout(() => useSession.setState((s) => (s.banner === banner ? { banner: null } : {})), 7000);
+    return () => clearTimeout(t);
+  }, [banner]);
   useEffect(() => { if (banner?.text.includes("access code")) setNeedCode(true); }, [banner]);
   useEffect(() => { if (live && !micAvailable) setTyping(true); }, [live, micAvailable]);
 
@@ -66,7 +71,7 @@ export default function Hud() {
           <button className="primary" data-testid="start" disabled={status === "connecting"} onClick={() => session.start(code || undefined)}>
             {status === "connecting" ? "Connecting…" : "Start"}
           </button>
-          <small>Uses your microphone. Audio is not saved by this app.</small>
+          <small>Uses your microphone. In live mode your voice is sent to OpenAI to create the answers. This app does not save audio.</small>
         </div>
       )}
 

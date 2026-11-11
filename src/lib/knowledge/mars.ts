@@ -1,6 +1,6 @@
 /**
  * Small Mars fact set for the first slice. Status: drafted from the NASA
- * Space Place page below; NOT yet human-reviewed (see docs/CHECKPOINT.md).
+ * Space Place page below; NOT yet human-reviewed (see CHECKPOINT.md).
  */
 export const MARS_SOURCE = {
   title: "All About Mars — NASA Space Place",

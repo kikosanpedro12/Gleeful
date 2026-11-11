@@ -1,4 +1,5 @@
 import { rms, type VoiceEvents, type VoiceProvider } from "./provider";
+import { ResponseGate } from "./responseGate";
 
 /**
  * OpenAI Realtime over WebRTC (GA interface, checked against the official
@@ -18,6 +19,7 @@ interface ActiveResponse {
   id: string;
   audioStarted: boolean;
   bufferStartedAt?: number;
+  transcriptAt?: number;
   done: boolean;
   quietSince?: number;
   toolCalls: Set<string>;
@@ -42,6 +44,8 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
   private active?: ActiveResponse;
   private pendingToolOutputs = 0;
   private closed = false;
+  private gate = new ResponseGate();
+  private dropTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private ev: VoiceEvents,
@@ -88,8 +92,13 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
     dc.onopen = () => this.ev.onStatus("connected");
     dc.onclose = () => this.handleClosed("The connection to the teacher closed.");
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected")
-        this.handleClosed("The connection to the teacher dropped.");
+      if (this.dropTimer) clearTimeout(this.dropTimer);
+      if (pc.connectionState === "failed") this.handleClosed("The connection to the teacher dropped.");
+      // "disconnected" is often a short network blip on phones: give it a few seconds.
+      else if (pc.connectionState === "disconnected")
+        this.dropTimer = setTimeout(() => {
+          if (pc.connectionState !== "connected") this.handleClosed("The connection to the teacher dropped.");
+        }, 5000);
     };
 
     const offer = await pc.createOffer();
@@ -121,6 +130,7 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
 
   private cleanup() {
     if (this.poll) clearInterval(this.poll);
+    if (this.dropTimer) clearTimeout(this.dropTimer);
     this.mic?.getTracks().forEach((t) => t.stop());
     try { this.dc?.close(); } catch {}
     try { this.pc?.close(); } catch {}
@@ -147,9 +157,12 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
     if (!a.audioStarted) {
       // Prefer real audible energy; fall back to the server's buffer event if
       // the analyser gives nothing (some browsers) 300 ms after it.
-      if (level > AUDIBLE || (a.bufferStartedAt && now - a.bufferStartedAt > 300)) {
+      // Last resort: the spoken transcript has started, so audio must be playing.
+      const fallbackAt = a.bufferStartedAt && now - a.bufferStartedAt > 300 ? a.bufferStartedAt
+        : a.transcriptAt && now - a.transcriptAt > 500 ? a.transcriptAt : undefined;
+      if (level > AUDIBLE || fallbackAt !== undefined) {
         a.audioStarted = true;
-        this.ev.onAudioStart(a.id, level > AUDIBLE ? now : a.bufferStartedAt!);
+        this.ev.onAudioStart(a.id, level > AUDIBLE ? now : fallbackAt!);
       }
     } else if (a.done) {
       if (level > AUDIBLE) a.quietSince = undefined;
@@ -173,9 +186,11 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
         // nothing stale can be heard, and drop the active response.
         if (this.audioEl) this.audioEl.muted = true;
         this.active = undefined;
+        this.dropPending();
         this.ev.onUserSpeechStart(now);
         break;
       case "input_audio_buffer.speech_stopped": {
+        this.gate.expect(now); // the turn detector will now create a response
         const recent = this.lastMicVoiceAt && now - this.lastMicVoiceAt < 3000;
         this.ev.onUserSpeechStop(now, recent ? this.lastMicVoiceAt : undefined);
         break;
@@ -185,6 +200,13 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
         break;
       case "response.created": {
         const id = e.response?.id ?? `r_${now}`;
+        if (this.gate.onCreated(now) === "discard") {
+          // A reply to a turn the child already cancelled (Stop pressed or new
+          // input before it was created). Kill it; never map it or un-mute.
+          this.send({ type: "response.cancel" });
+          this.send({ type: "output_audio_buffer.clear" });
+          break;
+        }
         this.active = { id, audioStarted: false, done: false, toolCalls: new Set(), hadSpeech: false };
         if (this.audioEl) this.audioEl.muted = false;
         this.ev.onResponseCreated(id);
@@ -197,7 +219,10 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
         if (this.active?.audioStarted) this.finish(this.active);
         break;
       case "response.output_audio_transcript.delta":
-        if (this.active) this.active.hadSpeech = true;
+        if (this.active) {
+          this.active.hadSpeech = true;
+          if (this.active.transcriptAt === undefined) this.active.transcriptAt = now;
+        }
         if (e.response_id && typeof e.delta === "string") this.ev.onAssistantTranscript(e.response_id, e.delta);
         break;
       case "response.done": {
@@ -217,7 +242,7 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
           if (item?.type === "function_call" && item.call_id)
             calls.push({ call_id: item.call_id, name: String(item.name), arguments: String(item.arguments ?? "{}") });
         }
-        const failed = r.status === "failed" || r.status === "incomplete";
+        const failed = r.status === "failed"; // "incomplete" still has audio to play out
         if (failed) {
           this.ev.onResponseFailed(r.id, r.status_details?.error?.message ?? r.status);
           if (a) this.active = undefined;
@@ -235,9 +260,13 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
         for (const c of calls) this.ev.onToolCall(r.id, c.call_id, c.name, c.arguments);
         break;
       }
-      case "error":
-        this.ev.onError(e.error?.message ?? "Realtime error");
+      case "error": {
+        const msg = String(e.error?.message ?? "Realtime error");
+        // Cancelling when nothing is active is expected and harmless.
+        if (/cancel|no active response/i.test(msg) || /cancel/i.test(String(e.error?.code ?? ""))) break;
+        this.ev.onError(msg);
         break;
+      }
     }
   }
 
@@ -250,8 +279,15 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
     // otherwise it would talk twice.
     if (this.pendingToolOutputs === 0 && this.continueAfterTools) {
       this.continueAfterTools = false;
+      this.gate.expect(performance.now());
       this.send({ type: "response.create" });
     }
+  }
+
+  /** Anything requested but not yet created is now unwanted. */
+  private dropPending() {
+    this.gate.dropPending(performance.now());
+    this.continueAfterTools = false;
   }
 
   sendText(text: string) {
@@ -260,6 +296,7 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
       type: "conversation.item.create",
       item: { type: "message", role: "user", content: [{ type: "input_text", text }] },
     });
+    this.gate.expect(performance.now());
     this.send({ type: "response.create" });
   }
 
@@ -269,15 +306,18 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
       this.send({ type: "output_audio_buffer.clear" });
       this.active = undefined;
     }
-    if (this.audioEl) this.audioEl.muted = true; // un-muted on the next response.created
-    this.continueAfterTools = false;
+    this.dropPending(); // covers Stop pressed while still "thinking"
+    if (this.audioEl) this.audioEl.muted = true; // un-muted on the next accepted response.created
   }
 
   greet() {
+    // Added as a conversation item so the session instructions (incl. safety rules) still apply.
     this.send({
-      type: "response.create",
-      response: { instructions: "Greet the child in one short friendly sentence, say you are their AI teacher, wave, and ask what they would like to learn about today." },
+      type: "conversation.item.create",
+      item: { type: "message", role: "system", content: [{ type: "input_text", text: "The session has just started. Greet the child in one short friendly sentence, say you are their AI teacher, wave, and ask what they would like to learn about today." }] },
     });
+    this.gate.expect(performance.now());
+    this.send({ type: "response.create" });
   }
 
   setMicEnabled(enabled: boolean) {

@@ -33,7 +33,7 @@ export default function DevPanel({ quality }: { quality: string }) {
     a.click();
   };
   const verdict = all.meetsTarget === null
-    ? mode === "demo" ? "n/a — demo timings are simulated" : `not enough data (${all.samples}/${MIN_SAMPLES_FOR_VERDICT})`
+    ? mode === "demo" ? "n/a — demo timings are simulated" : `not enough spoken turns (${all.voiceSamples}/${MIN_SAMPLES_FOR_VERDICT})`
     : all.meetsTarget ? "MEETS target" : "MISSES target";
 
   return (

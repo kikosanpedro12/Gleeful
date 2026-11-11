@@ -11,6 +11,7 @@ import { SCENE_TOOLS } from "@/lib/scene/commands";
 export const dynamic = "force-dynamic";
 
 const minted: number[] = [];
+const badCodes = new Map<string, number[]>(); // per client address
 
 function safeEqual(a: string, b: string) {
   const ha = createHash("sha256").update(a).digest();
@@ -22,13 +23,26 @@ export async function POST(req: Request) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ code: "NO_KEY", message: "No API key configured; demo mode." }, { status: 503 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = ((await req.json().catch(() => null)) ?? {}) as { accessCode?: unknown };
   const required = process.env.APP_ACCESS_CODE;
-  if (required && !(typeof body.accessCode === "string" && safeEqual(body.accessCode, required)))
-    return NextResponse.json({ code: "BAD_CODE", message: "That access code is not right." }, { status: 401 });
+  const now = Date.now();
+  // Never run as an open key faucet on a deployed server.
+  if (!required && process.env.NODE_ENV === "production" && process.env.ALLOW_NO_ACCESS_CODE !== "1")
+    return NextResponse.json({ code: "NO_ACCESS_CODE", message: "This server needs APP_ACCESS_CODE set before live sessions are allowed." }, { status: 503 });
+  if (required) {
+    const who = (req.headers.get("x-forwarded-for") ?? "local").split(",")[0].trim().slice(0, 64);
+    const bad = (badCodes.get(who) ?? []).filter((t) => now - t < 3_600_000);
+    if (badCodes.size > 5000) badCodes.clear();
+    badCodes.set(who, bad);
+    if (bad.length >= 10)
+      return NextResponse.json({ code: "RATE_LIMIT", message: "Too many wrong access codes. Try again later." }, { status: 429 });
+    if (!(typeof body.accessCode === "string" && safeEqual(body.accessCode, required))) {
+      bad.push(now);
+      return NextResponse.json({ code: "BAD_CODE", message: "That access code is not right." }, { status: 401 });
+    }
+  }
 
   const cap = Number(process.env.MAX_SESSIONS_PER_HOUR || 12);
-  const now = Date.now();
   while (minted.length && now - minted[0] > 3_600_000) minted.shift();
   if (minted.length >= cap)
     return NextResponse.json({ code: "RATE_LIMIT", message: "Session limit reached for this hour. Try again later." }, { status: 429 });
@@ -44,6 +58,7 @@ export async function POST(req: Request) {
     },
   };
   const minimal = { ...base, audio: { output: { voice } } };
+  const bare = base; // provider default voice
 
   const mint = (session: object) =>
     fetch("https://api.openai.com/v1/realtime/client_secrets", {
@@ -66,6 +81,10 @@ export async function POST(req: Request) {
       console.warn("[token] full session config rejected, retrying minimal:", detail.slice(0, 500));
       res = await mint(minimal);
       degraded = true;
+      if (res.status === 400) {
+        console.warn("[token] minimal config rejected too (voice name?), retrying without voice");
+        res = await mint(bare);
+      }
     }
     if (!res.ok) {
       const detail = await res.text();

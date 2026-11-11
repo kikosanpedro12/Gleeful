@@ -158,11 +158,11 @@ export class TeacherAnimator {
         const toT = Math.atan2(pointWorld.x - rig.root.position.x, pointWorld.z - rig.root.position.z);
         const rel = wrap(toT - desiredYaw);
         // Turn the body part-way to the object, keep the face available to the child.
-        desiredYaw = desiredYaw + THREE.MathUtils.clamp(rel, -2.2, 2.2) * 0.55;
+        desiredYaw = desiredYaw + THREE.MathUtils.clamp(rel, -2.2, 2.2) * 0.4;
         pointArm = rel > 0 ? "L" : "R"; // +yaw is toward +X, the character's left
         this.pointed = this.active.t > 0.35 ? this.active.target : null;
         // Look at the object first, then back to the child.
-        this.lookObject = this.active.t < 1.5 ? this.active.target : null;
+        this.lookObject = this.active.t < 1.1 ? this.active.target : null;
       }
     } else if (this.active?.kind !== "gesture") this.lookObject = null;
 

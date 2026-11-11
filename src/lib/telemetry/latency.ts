@@ -43,7 +43,7 @@ const diff = (a?: number, b?: number) => (a !== undefined && b !== undefined ? M
 
 export function toResult(t: TurnTiming): TurnResult {
   const start = t.input === "voice" ? (t.utteranceEnd ?? t.vadEnd) : t.textSubmit;
-  const outcome = t.firstAudio !== undefined ? "ok" : t.interrupted ? "interrupted" : "failed";
+  const outcome = t.failed ? "failed" : t.firstAudio !== undefined ? "ok" : t.interrupted ? "interrupted" : "failed";
   return {
     turnId: t.turnId,
     mode: t.mode,
@@ -78,6 +78,8 @@ export interface LatencySummary {
   medianVadDelayMs?: number;
   medianAnimationMs?: number;
   overTarget: number;
+  /** Spoken turns that count toward the verdict (failures included as misses). */
+  voiceSamples: number;
   /** null = not enough evidence to say. */
   meetsTarget: boolean | null;
 }
@@ -91,7 +93,11 @@ export function summarize(results: TurnResult[], mode: "live" | "demo", opts: { 
   const nums = (k: "vadDelayMs" | "endToAnimationMs") => ok.map((r) => r[k]).filter((v): v is number => v !== undefined);
   const medianMs = percentile(lat, 50);
   const p95Ms = percentile(lat, 95);
-  const enough = lat.length >= MIN_SAMPLES_FOR_VERDICT;
+  // The verdict is stricter than the display numbers: spoken turns only, and a
+  // turn that never produced audio counts as an (infinitely slow) miss.
+  const voice = rs.filter((r) => r.input === "voice" && r.outcome !== "interrupted");
+  const vLat = voice.map((r) => (r.outcome === "ok" && r.endToAudioMs !== undefined ? r.endToAudioMs : Infinity));
+  const enough = vLat.length >= MIN_SAMPLES_FOR_VERDICT;
   return {
     mode,
     samples: lat.length,
@@ -103,6 +109,7 @@ export function summarize(results: TurnResult[], mode: "live" | "demo", opts: { 
     medianAnimationMs: percentile(nums("endToAnimationMs"), 50),
     overTarget: lat.filter((v) => v > TARGET_P95_MS).length,
     // Demo-mode numbers never count as evidence for the live target.
-    meetsTarget: mode === "live" && enough ? medianMs! <= TARGET_MEDIAN_MS && p95Ms! <= TARGET_P95_MS : null,
+    voiceSamples: vLat.length,
+    meetsTarget: mode === "live" && enough ? percentile(vLat, 50)! <= TARGET_MEDIAN_MS && percentile(vLat, 95)! <= TARGET_P95_MS : null,
   };
 }

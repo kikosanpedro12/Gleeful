@@ -51,3 +51,16 @@ describe("frame meter", () => {
     expect(s.worstFrameMs).toBe(400);
   });
 });
+
+describe("verdict strictness", () => {
+  const ok = (ms: number, input: "voice" | "text" = "voice"): TurnResult => ({ turnId: 0, mode: "live", input, cold: false, endToAudioMs: ms, outcome: "ok" });
+  const fail: TurnResult = { turnId: 0, mode: "live", input: "voice", cold: false, outcome: "failed" };
+  it("typed turns do not count toward the spoken-latency verdict", () => {
+    expect(summarize(Array.from({ length: 30 }, () => ok(500, "text")), "live").meetsTarget).toBeNull();
+  });
+  it("failed turns count as misses", () => {
+    const rs = [...Array.from({ length: 18 }, () => ok(1000)), fail, fail];
+    expect(summarize(rs, "live").meetsTarget).toBe(false);
+    expect(summarize(Array.from({ length: 20 }, () => ok(1000)), "live").meetsTarget).toBe(true);
+  });
+});

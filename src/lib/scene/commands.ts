@@ -48,7 +48,9 @@ export function parseSceneCommand(name: unknown, args: unknown): ParseResult {
     case "writeOnBoard": {
       if (typeof args.text !== "string") return { ok: false, error: "text must be a string" };
       // Plain text only, short, no control chars. Rendered to a canvas, never as HTML.
-      const text = args.text.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 60);
+      // Control + invisible/bidi characters removed; cut by code point so emoji are not split.
+      const cleaned = args.text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, " ").trim();
+      const text = Array.from(cleaned).slice(0, 60).join("").trim();
       if (!text) return { ok: false, error: "text is empty" };
       return { ok: true, command: { name, text } };
     }

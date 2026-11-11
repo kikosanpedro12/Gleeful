@@ -6,7 +6,7 @@
 - 3D classroom + jointed teacher renders in Chrome, landscape and portrait.
 - State changes are visible in the body: idle, listening, thinking, speaking; wave/nod/shrug/etc.; walks to the board; points at real object positions with a highlight ring.
 - Interruption in demo mode: Stop button and typed barge-in stop speech state, mouth and pointing; a new turn replaces the old one.
-- Scene-command validation, stale-turn dropping, state machine, latency maths: unit tests (27) pass. Browser smoke test: 12/12.
+- Scene-command validation, stale-turn dropping, state machine, latency maths: unit tests pass (68, plus 1 skipped that documents a known limit). Browser smoke test 12/12; tester's break script 14/14.
 - Mic-denied path falls back to typing automatically. No-key path falls back to labelled DEMO mode.
 
 ## Simulated or placeholder — do not mistake for the product
@@ -29,8 +29,19 @@ Master prompt (full), teacher duo image, storyboard image, and the actual MP4: p
 - Supabase deferred to Phase 3; access code + hourly cap guard the token route for now.
 - Default model `gpt-realtime-2.1`; A/B `-mini` for cost (docs/COSTS.md).
 
-## Agent sign-off
-Tester: pending · Reviewer: pending
+## Agent sign-off (2026-11-12)
+- **Tester — PASS WITH NOTES (demo mode only).** Added 3 test files. Found: late reply adopted by a new turn (high), latency verdict ignoring failures, typed-turn timing overwritten, board-text edge cases. All fixed; its regression tests now pass.
+- **Reviewer round 1 — PASS WITH NOTES.** 2 high (Stop while "thinking" did not stop the reply; token route open by default) + 8 medium. All fixed.
+- **Reviewer round 2 — BLOCK** on my first fix (two counters could double-count and silence the teacher). Reworked into one tested `ResponseGate` in the provider plus a state check in the controller. **Round 3 review of that rework has not been run yet.**
+- Neither agent could test anything live.
+
+## Known issues (not fixed)
+- Phone portrait: long board text is clipped at the right edge. Phone landscape: banner/caption cover the teacher.
+- While pointing, the teacher turns side-on to the child (reduced, not solved).
+- Typing while the mic is mid-utterance can produce two replies in live mode (edge case, unverified).
+- Demo mode on loud speakers may hear its own voice and trigger "I heard a sound".
+- Session time cap and hourly cap are per browser / per server process, not real enforcement. Proper limits come with accounts in Phase 3.
+- After End → Start the teacher stays where he was standing.
 
 ## Blockers for the founder
 1. **OpenAI API key** (with a monthly budget limit, suggest $20) in `.env.local` — unblocks the whole live milestone.

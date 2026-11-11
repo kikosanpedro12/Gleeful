@@ -23,6 +23,7 @@ class SessionController {
   private sessionCap?: ReturnType<typeof setTimeout>;
   private firstTurnDone = false;
   private seq = 0;
+  private greetingPending = false;
 
   get set() { return useSession.setState; }
   get s() { return useSession.getState(); }
@@ -34,6 +35,7 @@ class SessionController {
     const patch: Partial<ReturnType<typeof useSession.getState>> = { conv };
     if (conv.turnId !== before.turnId) {
       // New turn: anything queued for the old one is obsolete.
+      this.greetingPending = false;
       const dropped = this.s.directives.length;
       patch.directives = [];
       if (dropped) patch.staleDropped = this.s.staleDropped + dropped;
@@ -64,6 +66,7 @@ class SessionController {
       const t = this.timings.get(turnId);
       if (t) t.failed = true;
       this.finalize(turnId);
+      this.provider?.interrupt(); // a late reply must not start talking after we gave up
       this.dispatch({ type: "RESPONSE_FAILED", turnId });
       this.set({ banner: { kind: "error", text: "The teacher took too long to answer. Please try again." } });
     }, RESPONSE_TIMEOUT_MS);
@@ -87,15 +90,20 @@ class SessionController {
         this.set({ micAvailable: this.provider?.micAvailable ?? false });
         if (!this.provider?.micAvailable)
           this.set({ banner: { kind: "info", text: "Microphone is off or blocked. You can type to your teacher instead." } });
+        this.greetingPending = true;
         this.provider?.greet();
       }
       if (status === "disconnected") {
+        if (this.sessionCap) clearTimeout(this.sessionCap);
+        if (this.timeout) clearTimeout(this.timeout);
         this.dispatch({ type: "DISCONNECTED" });
         if (detail) this.set({ banner: { kind: "error", text: `${detail} Tap Start to reconnect.` } });
       }
     },
     onUserSpeechStart: () => this.dispatch({ type: "USER_SPEECH_START" }),
     onUserSpeechStop: (t, utteranceEnd) => {
+      // Only a turn we are actually listening to; a late event must not clobber a typed turn.
+      if (this.s.conv.state !== "listening") return;
       this.dispatch({ type: "USER_SPEECH_STOP" });
       const turnId = this.s.conv.turnId;
       this.timings.set(turnId, { turnId, mode: this.provider!.mode, input: "voice", cold: !this.firstTurnDone, vadEnd: t, utteranceEnd });
@@ -103,7 +111,20 @@ class SessionController {
       this.armTimeout(turnId);
     },
     onUserTranscript: (text) => this.line("child", text, this.s.conv.turnId),
-    onResponseCreated: (id) => this.responseTurn.set(id, this.s.conv.turnId),
+    onResponseCreated: (id) => {
+      // Second safety net (the provider's ResponseGate is the first): a reply may
+      // only attach to a turn that is waiting for one — after input ("thinking"),
+      // mid-reply ("speaking", tool follow-up) or the opening greeting. A reply
+      // arriving at any other time belongs to a cancelled turn: stop it.
+      const st = this.s.conv.state;
+      if (st === "thinking" || st === "speaking" || this.greetingPending) {
+        this.greetingPending = false;
+        this.responseTurn.set(id, this.s.conv.turnId);
+        return;
+      }
+      this.set({ staleDropped: this.s.staleDropped + 1 });
+      this.provider?.interrupt();
+    },
     onAudioStart: (id, t) => {
       const turnId = this.responseTurn.get(id);
       if (turnId === undefined || turnId !== this.s.conv.turnId) return;
@@ -167,10 +188,11 @@ class SessionController {
 
   async start(accessCode?: string) {
     if (this.s.status !== "disconnected") return;
-    this.set({ banner: null, status: "connecting", transcript: [], usage: { ...emptyUsage }, directives: [] });
+    this.set({ banner: null, status: "connecting", transcript: [], usage: { ...emptyUsage }, directives: [], boardText: "Ask me anything!" });
     this.firstTurnDone = false;
+    this.greetingPending = false;
     this.responseTurn.clear();
-    let token: { value: string; model?: string } | null = null;
+    let token: { value: string; model?: string; degraded?: boolean } | null = null;
     let demoReason: string | null = null;
     try {
       const res = await fetch("/api/realtime/token", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accessCode }) });
@@ -189,7 +211,7 @@ class SessionController {
       if (token) {
         const t = token;
         this.provider = new OpenAIRealtimeProvider(this.events, async () => t);
-        this.set({ mode: "live", demoReason: null, model: t.model ?? null });
+        this.set({ mode: "live", demoReason: null, model: t.model ? `${t.model}${t.degraded ? " (fallback session config)" : ""}` : null });
       } else {
         this.provider = new DemoProvider(this.events);
         this.set({ mode: "demo", demoReason, model: null });
