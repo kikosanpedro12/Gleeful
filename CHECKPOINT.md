@@ -32,7 +32,7 @@ Master prompt (full), teacher duo image, storyboard image, and the actual MP4: p
 ## Agent sign-off (2026-11-12)
 - **Tester — PASS WITH NOTES (demo mode only).** Added 3 test files. Found: late reply adopted by a new turn (high), latency verdict ignoring failures, typed-turn timing overwritten, board-text edge cases. All fixed; its regression tests now pass.
 - **Reviewer round 1 — PASS WITH NOTES.** 2 high (Stop while "thinking" did not stop the reply; token route open by default) + 8 medium. All fixed.
-- **Reviewer round 2 — BLOCK** on my first fix (two counters could double-count and silence the teacher). Reworked into one tested `ResponseGate` in the provider plus a state check in the controller. **Round 3 review of that rework has not been run yet.**
+- **Reviewer round 2 — BLOCK** on my first fix (two counters could double-count and silence the teacher). Reworked into one tested `ResponseGate` in the provider plus a state check in the controller. **Round 3 — PASS WITH NOTES**: no stuck or silent states found by tracing; two medium notes (cancel unconditionally on interrupt; cancel by response id) applied. Remaining low notes: a child re-speaking within ~2.5 s of a turn the server ignored can lose that turn until the 12 s timeout; a very late reply can be attributed to the next turn. Both need the live API to confirm.
 - Neither agent could test anything live.
 
 ## Known issues (not fixed)

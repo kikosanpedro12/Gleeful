@@ -203,7 +203,8 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
         if (this.gate.onCreated(now) === "discard") {
           // A reply to a turn the child already cancelled (Stop pressed or new
           // input before it was created). Kill it; never map it or un-mute.
-          this.send({ type: "response.cancel" });
+          // Cancel exactly this reply, so a newer one cannot be hit by mistake.
+          this.send(e.response?.id ? { type: "response.cancel", response_id: e.response.id } : { type: "response.cancel" });
           this.send({ type: "output_audio_buffer.clear" });
           break;
         }
@@ -301,8 +302,10 @@ export class OpenAIRealtimeProvider implements VoiceProvider {
   }
 
   interrupt() {
+    // Always cancel: a reply may be in progress on the server before we have
+    // seen its response.created. ("Nothing to cancel" errors are ignored.)
+    this.send({ type: "response.cancel" });
     if (this.active) {
-      this.send({ type: "response.cancel" });
       this.send({ type: "output_audio_buffer.clear" });
       this.active = undefined;
     }
