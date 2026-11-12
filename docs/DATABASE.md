@@ -1,4 +1,4 @@
-# Database (Supabase) — project `gleeful` created 13 Nov 2026, linked to GitHub; the migration deploys from `main`
+# Database (Supabase) — project `gleeful` (ref ptuglrngmovoryqqmtsw) created 13 Nov 2026; migration applied by hand in the SQL Editor (GitHub auto-deploy needs Pro)
 
 Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local config: `supabase/config.toml`.
 
