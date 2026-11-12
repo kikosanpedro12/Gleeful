@@ -22,7 +22,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       # TODO when the repo exists: pin these actions to full commit SHAs.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: actions/setup-node@v4
