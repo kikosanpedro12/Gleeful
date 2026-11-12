@@ -1,0 +1,59 @@
+# Runs on every push and pull request. Nothing merges to main red.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: CI only needs to read the code.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      # TODO when the repo exists: pin these actions to full commit SHAs.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install (exact lockfile, no install scripts)
+        run: npm ci --ignore-scripts
+      - name: Secret scan
+        run: npm run check:secrets
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit + database security tests (real Postgres via PGlite)
+        run: npm test
+      - name: RLS mutation test (the security tests must catch planted holes)
+        run: node scripts/mutate-rls.mjs
+      - name: Build
+        run: npm run build
+      - name: Browser journey (desktop, phone, reduced motion)
+        run: |
+          npx next start -p 3111 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3111/ >/dev/null && break; sleep 1; done
+          CHROME=$(which google-chrome || which chromium) npm run smoke
+          CHROME=$(which google-chrome || which chromium) W=390 H=844 TAG=p npm run smoke
+          CHROME=$(which google-chrome || which chromium) RM=1 TAG=rm npm run smoke
+      - name: Keep screenshots when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-screenshots
+          path: scripts/out/*.png
+          retention-days: 7

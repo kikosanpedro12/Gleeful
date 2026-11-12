@@ -1,6 +1,5 @@
 /**
- * Learner evidence. LOCAL DEMO STORAGE (this browser only) — not the
- * production store, which will be Supabase with parent accounts and RLS.
+ * Learner evidence: types and the honest status rule. Storage is in store.ts.
  * We record observations (what happened), never fixed labels.
  */
 import type { TeacherId } from "@/lib/teacher/rig";
@@ -30,31 +29,7 @@ export interface LearnerProfile {
   attempts: Attempt[];
 }
 
-const KEY = "aiteacher.learner.v1";
 export const emptyProfile = (): LearnerProfile => ({ version: 1, learnerId: "demo-child", teacher: null, sessions: 0, attempts: [] });
-
-export function loadProfile(): LearnerProfile {
-  try {
-    const p = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (p && p.version === 1 && Array.isArray(p.attempts)) return p;
-  } catch {}
-  return emptyProfile();
-}
-
-export function saveProfile(p: LearnerProfile) {
-  try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {}
-}
-
-export function updateProfile(fn: (p: LearnerProfile) => void): LearnerProfile {
-  const p = loadProfile();
-  fn(p);
-  saveProfile(p);
-  return p;
-}
-
-export function deleteProfile() {
-  try { localStorage.removeItem(KEY); } catch {}
-}
 
 export type SkillStatus =
   | { kind: "not_seen" }

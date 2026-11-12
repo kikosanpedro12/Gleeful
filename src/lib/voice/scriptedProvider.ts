@@ -2,7 +2,8 @@ import type { VoiceEvents, VoiceProvider, SessionInfo } from "./provider";
 import type { Brain, BrainInput, Segment } from "@/lib/brain/types";
 import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
 import { LOOKS } from "@/lib/teacher/rig";
-import { loadProfile, updateProfile } from "@/lib/learner/profile";
+import { learnerStore, type LearnerStore } from "@/lib/learner/store";
+import { emptyProfile, type LearnerProfile } from "@/lib/learner/profile";
 import { listenOnce, recognitionAvailable, ttsAvailable, voiceFor, loadVoices } from "./speech";
 
 /**
@@ -29,12 +30,18 @@ export class ScriptedProvider implements VoiceProvider {
   private speakingNow = false;
 
   /** The brain is injected: ScriptedBrain today, a model-backed brain later. */
-  constructor(private ev: VoiceEvents, private info: SessionInfo, private brain: Brain = new ScriptedBrain()) {}
+  private profile: LearnerProfile = emptyProfile();
+  constructor(
+    private ev: VoiceEvents,
+    private info: SessionInfo,
+    private brain: Brain = new ScriptedBrain(),
+    private store: LearnerStore = learnerStore,
+  ) {}
 
   async connect() {
     this.ev.onStatus("connecting");
     await loadVoices();
-    updateProfile((p) => { p.sessions += 1; p.teacher = this.info.teacher; });
+    this.profile = await this.store.startSession(this.info.teacher).catch(() => emptyProfile());
     this.envTimer = setInterval(() => this.tickEnvelope(), 16);
     this.ev.onStatus("connected");
   }
@@ -81,9 +88,13 @@ export class ScriptedProvider implements VoiceProvider {
         world: this.info.world(),
         teacher: this.info.teacher,
         teacherName: name,
-        profile: loadProfile(),
-        session: loadProfile().sessions,
-        record: (a) => updateProfile((p) => { p.attempts.push({ ...a, session: p.sessions, at: new Date().toISOString() }); }),
+        profile: this.profile,
+        session: this.profile.sessions,
+        record: (a) => {
+          // Update the in-memory copy at once; persist in the background (never blocks the lesson).
+          this.profile.attempts.push({ ...a, session: this.profile.sessions, at: new Date().toISOString() });
+          void this.store.recordAttempt(a).catch(() => {});
+        },
       }))
       .then((reply) => {
         if (run.cancelled || this.run !== run) return;

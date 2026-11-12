@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { deleteProfile, loadProfile, skillStatus, SKILL_LABELS, type LearnerProfile } from "@/lib/learner/profile";
+import { skillStatus, SKILL_LABELS, type LearnerProfile } from "@/lib/learner/profile";
+import { learnerStore } from "@/lib/learner/store";
 import { LOOKS } from "@/lib/teacher/rig";
 
 const KIND: Record<string, string> = { not_seen: "Not started", learning: "Still learning", needs_check: "Needs a check on another day", independent: "Did it on their own in a later session" };
@@ -9,14 +10,14 @@ const CONTEXT: Record<string, string> = { taught: "during the lesson", recheck: 
 /** Minimal parent view. Honest summary from recorded evidence only. */
 export default function ParentPage() {
   const [p, setP] = useState<LearnerProfile | null>(null);
-  useEffect(() => setP(loadProfile()), []);
+  useEffect(() => { void learnerStore.load().then(setP); }, []);
   if (!p) return null;
   const skills = Array.from(new Set(p.attempts.map((a) => a.skill)));
   return (
     <main className="parent">
       <a href="/">← Back to the classroom</a>
       <h1>Parent view</h1>
-      <p className="warn">Test version. This history is stored only in this browser on this device (no account yet). Lessons are scripted, not live AI.</p>
+      <p className="warn">Test version. Where this history is stored: <b>{learnerStore.label}</b>. Lessons are scripted, not live AI.</p>
       <p>Sessions started: <b>{p.sessions}</b>{p.teacher ? <> · Teacher: <b>{LOOKS[p.teacher].name}</b></> : null}</p>
       <h2>What we have seen</h2>
       {!skills.length && <p>No answers recorded yet.</p>}
@@ -35,7 +36,7 @@ export default function ParentPage() {
         );
       })}
       <p className="fine">We record answers and hints, not audio. One correct answer with help is not counted as mastery. Only a no-hint check in a later session counts as doing it on their own.</p>
-      <button className="danger" onClick={() => { if (confirm("Delete all learning history on this device?")) { deleteProfile(); setP(loadProfile()); } }}>Delete history</button>
+      <button className="danger" onClick={() => { if (confirm("Delete all learning history on this device?")) { void learnerStore.deleteAll().then(() => learnerStore.load()).then(setP); } }}>Delete history</button>
     </main>
   );
 }

@@ -1,0 +1,17 @@
+-- Minimal stand-in for what Supabase provides, so the REAL migration can be
+-- tested locally against real Postgres: the three API roles, auth.users, and
+-- auth.uid() reading the JWT subject the same way Supabase does.
+create role anon nologin;
+create role authenticated nologin;
+create role service_role nologin bypassrls;
+create schema auth;
+create table auth.users (id uuid primary key, email text);
+create function auth.uid() returns uuid language sql stable as $$
+  select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+$$;
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+grant usage on schema public to anon, authenticated, service_role;
+-- Supabase grants broad default privileges on public tables to the API roles.
+-- Mirror that so the test proves the migration's own REVOKEs/RLS are what protect the data.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
