@@ -136,7 +136,9 @@ export default function Hud() {
       <span id="tap-tag" className="tag" style={{ display: "none" }} aria-hidden>👆 Tap to investigate</span>
       <header className="top">
         {live && <span className="chip wide-only">{name} · AI teacher</span>}
-        {live && <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>}
+        {live && (process.env.NEXT_PUBLIC_BRAIN === "model"
+          ? <span className="chip demo" data-testid="demo-badge" title="Powered by Claude, an AI. If it cannot be reached, a built-in script answers instead. Test build."><span className="wide-only">AI teacher · test build</span><span className="narrow-only">AI · test</span></span>
+          : <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>)}
         {live && notice && <span className="chip sim" data-testid="sim-badge" title={notice}><span className="wide-only">{notice}</span><span className="narrow-only">Simulation</span></span>}
         <span className="grow" />
         {live && (

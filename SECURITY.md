@@ -56,13 +56,21 @@ Today (before Stage E), attempts live only in the browser's localStorage. The pa
 - The session time limit is enforced in the browser only. Server enforcement comes with the Claude brain.
 - GitHub Actions are pinned to major versions. Pin them to commit SHAs once the repo exists.
 
-## Before Stage B (Claude brain)
-- [ ] `/api/brain` route: key server-side (`import "server-only"`), signed-in parent required, learner ownership checked server-side
-- [ ] The server writes attempts, deciding `later_check` itself, so evidence is no longer client-asserted
-- [ ] Supabase calls from the route use the **parent's** access token, so RLS applies. Use the secret key only for `brain_usage`; it bypasses RLS.
-- [ ] Per-learner daily turn cap + per-lesson time cap **enforced on the server** via `brain_usage`; monthly spend limit in the Claude Console
-- [ ] System prompt: child-safety rules, no personal data collection, uncertainty allowed, untrusted-content rule
-- [ ] Rate limit per IP and per account
+## Stage B (Claude brain): status, 13 Nov
+Built and tested against a **mocked** API (tests/brainServer.test.ts, tests/claudeBrain.test.ts). Never run against the real API yet.
+- [x] `/api/brain`: key read server-side only (`import "server-only"`; the client bundle has no Anthropic URL), kill switch `BRAIN_DISABLED`, missing key → 503 → the script answers
+- [x] Same-origin only (Origin and Sec-Fetch-Site), JSON only, 16 KB body cap, request fields validated, nothing echoed back
+- [x] Model output untrusted: text stripped of tags, links and markdown; tool calls pass `parseSceneCommand` for the current world; simulation notice enforced in code
+- [x] System prompt: AI identity, no personal data, no medical/legal advice, hand off to a grown-up, off-topic redirect, child text only inside `<child_said>` with angle brackets removed; prompt-injection tests
+- [x] Limits: 400 output tokens, per-IP 30/min, per-session 20/min and 200 total, 400 turns per learner per day in the family's time zone (zone pinned on first sight), 20 Sonnet turns per learner per day, 5000 turns per day overall
+- [x] Child speech and model replies are never logged (a test spies on the console)
+- [ ] **Signed-in parent required and learner ownership checked server-side.** NOT done: there is no sign-in yet. Until then `learnerId` and `sessionId` are chosen by the client, so per-learner and per-session limits bind honest clients only; per-IP, the global cap and the Console spend limit bind everyone. **Do not give the deployed build a real key and public traffic until sign-in exists; for a phone test use a low Console limit and share the link with nobody.**
+- [ ] The server writes attempts and decides `later_check` (evidence is still recorded in the browser)
+- [ ] Limits in `brain_usage` (shared across instances) instead of per-instance memory; use the secret key only for that table
+- [ ] Per-lesson time cap enforced on the server
+- [ ] Per-IP limit trusts the first `x-forwarded-for` value: correct on Vercel (it sets the header), spoofable elsewhere
+- [ ] Concurrent requests can overshoot a daily cap by a few turns (in-memory counters)
+- [ ] Anthropic API data handling and retention reviewed for child-directed use (before real children)
 
 ## Before any real child uses it (not started)
 - [ ] Verifiable parental consent flow and privacy notice (COPPA, GDPR-K, and the Philippine Data Privacy Act).

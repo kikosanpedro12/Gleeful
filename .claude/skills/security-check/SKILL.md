@@ -22,5 +22,6 @@ Run these in order from the repo root and stop at the first failure. Fix it, the
    - Every new table has RLS with `TO authenticated` plus an ownership check, and UPDATE has both USING and WITH CHECK.
    - Every value read from storage or the network is validated before use. Look up ids with `Map` or `Object.hasOwn`, never a plain object.
    - No `dangerouslySetInnerHTML`, `eval` or inline handlers.
+   - Brain route: `grep -rl "api.anthropic.com" .next/static` finds nothing; `src/lib/brain/server/*` and `src/app/api/**` start with `import "server-only"`; `curl -s -X POST localhost:3199/api/brain` without a key answers 503; nothing logs child text (`tests/brainServer.test.ts`).
 
 Report: one line per step (PASS / FAIL + why), then the overall verdict. For risky changes (auth, RLS, payments) also ask the reviewer agent (`.claude/agents/reviewer.md`) for an independent pass.

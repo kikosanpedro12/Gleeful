@@ -1,6 +1,6 @@
 import type { VoiceEvents, VoiceProvider, SessionInfo } from "./provider";
 import type { Brain, BrainInput, Segment } from "@/lib/brain/types";
-import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
+import { createBrain } from "@/lib/brain";
 import { LOOKS } from "@/lib/teacher/rig";
 import { learnerStore, type LearnerStore } from "@/lib/learner/store";
 import { emptyProfile, type LearnerProfile } from "@/lib/learner/profile";
@@ -34,7 +34,7 @@ export class ScriptedProvider implements VoiceProvider {
   constructor(
     private ev: VoiceEvents,
     private info: SessionInfo,
-    private brain: Brain = new ScriptedBrain(),
+    private brain: Brain = createBrain(),
     private store: LearnerStore = learnerStore,
   ) {}
 

@@ -3,7 +3,7 @@
  * request these prepared operations, with ids that the CURRENT world declares.
  * Nothing model-written is executed as code; no remote URLs are accepted.
  */
-import { isWorldId, type CommandContext, type WorldId } from "@/lib/worlds/registry";
+import { isWorldId, WORLD_IDS, type CommandContext, type WorldId } from "@/lib/worlds/registry";
 
 export const GESTURES = ["wave", "nod", "thumbs_up", "shrug", "think", "open_hands"] as const;
 export type Gesture = (typeof GESTURES)[number];
@@ -111,6 +111,6 @@ export function toolsFor(ctx: CommandContext) {
   if (ctx.interactive.length) tools.push(tool("inviteTap", "Highlight an object and invite the child to tap and inspect it.", { target: { type: "string", enum: ctx.interactive } }, ["target"]));
   if (ctx.questions.length) tools.push(tool("askQuestion", "Ask a prepared, checkable question.", { questionId: { type: "string", enum: ctx.questions } }, ["questionId"]));
   if (ctx.world === "classroom") tools.push(tool("writeOnBoard", "Write a short phrase (max 60 chars) on the board.", { text: { type: "string" } }, ["text"]));
-  if (ctx.world !== "transit") tools.push(tool("openWorld", "Travel to a prepared world.", { world: { type: "string" } }, ["world"]));
+  if (ctx.world !== "transit") tools.push(tool("openWorld", "Travel to a prepared world.", { world: { type: "string", enum: WORLD_IDS.filter((w) => w !== ctx.world) } }, ["world"]));
   return tools;
 }

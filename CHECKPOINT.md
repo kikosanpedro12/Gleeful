@@ -1,6 +1,6 @@
 # Checkpoint — updated 2026-11-13
 
-**Product name: Gleeful** (decided 13 Nov 2026). **Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
+**Product name: Gleeful** (decided 13 Nov 2026). **Stage A (the scripted "wow" slice) is built and browser-tested.** **Stage B (Claude brain) is built and tested against a mocked API only** (13 Nov); Stage E (Supabase wiring) is not built. See BUILD_PLAN.md.
 
 ## Verified by running it
 - **Onboarding:** pick Leo or Mia. Each waves and says hello in a male or female browser voice.
@@ -22,9 +22,10 @@
   - A strict per-request CSP nonce and security headers. The journey runs with zero CSP violations.
   - The Supabase schema's row-level security was attacked on real Postgres: 49 database tests, and 15 of 15 planted holes were caught. Reviewer pre-production pass on the migration (13 Nov): PASS WITH NOTES; the database now also sets `lesson_sessions.started_at`.
   - Secret scan, pinned dependencies, 0 known vulnerabilities.
-- **Tests:** 158 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
+- **Tests:** 211 unit/database tests (53 are the Claude brain: route, limits, injection, sanitizer, client, fallback). A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
 
 ## Simulated or placeholder — do not mistake for the product
+- **The Claude brain has never talked to the real API.** `/api/brain` + `ClaudeBrain` are tested with a mocked Anthropic. Default build is still the script; `NEXT_PUBLIC_BRAIN=model` opts in (falls back to the script on any failure; the badge then reads "AI teacher · test build"). A model-mode build with no key passed 31/32 journey checks (the one flag is Chrome logging the expected 503).
 - **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
 - **Leo and Mia are procedural placeholders (founder is considering a mascot instead of human teachers)** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
 - **The mouth follows a synthetic rhythm, not lip sync.** Voices are the device's built-in browser voices.
@@ -67,7 +68,7 @@
 ## Exact next actions
 1. Done 13 Nov: GitHub repo `kikosanpedro12/Gleeful` created and `main` pushed; Supabase project `gleeful` (ref `ptuglrngmovoryqqmtsw`, ap-southeast-1, Postgres 17, Data API on, auto-expose off, auto-RLS on) created. The GitHub auto-deploy needs Supabase Pro (Branching), so it is NOT used: the migration was applied by hand in the SQL Editor on 13 Nov and verified through the connector (4 tables, RLS on, security advisor shows only Supabase's own `public.rls_auto_enable()` helper, performance advisor only INFO notes). Process for every future schema change: tests + mutate + tester/reviewer PASS, then Claude sends the new migration file and Kiko pastes it into the SQL Editor. Only ever touch project ref `ptuglrngmovoryqqmtsw` for Gleeful (the Supabase connector holds one organization at a time; 1Autism is a different org). Before launch: set Site URL, redirect URLs, SMTP and rate limits in the dashboard (config.toml is not applied to production). Open: revoke public EXECUTE on `rls_auto_enable()` (confirm it does not break auto-RLS first); add covering indexes for the four composite foreign keys once there is real data.
 2. Founder: Vercel project (or tunnel), then the phone test.
-3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits. The server sets `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
+3. Builder + founder: Stage B is built (see SECURITY.md "Stage B"). Remaining: put the key in Vercel only with a LOW Console limit for a private phone test, run the Haiku 5.5 vs Sonnet 5.5 teaching comparison on the real API, then parent sign-in + server-side ownership check before any public traffic. The server must set `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
 5. Builder: launch cost cuts (pre-recorded voice cache, STT only while the child talks, own relay before LiveKit) — the pricing depends on them.
 6. Founder + builder: Stage E remaining: dashboard Auth settings, `SupabaseLearnerStore`, parent sign-in (project, schema and advisors are done).

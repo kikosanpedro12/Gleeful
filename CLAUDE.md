@@ -9,7 +9,7 @@ Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHI
 - Never claim live voice, latency targets, lip sync or memory work unless measured. Label simulated/unverified things in UI and docs.
 - Brain output (scripted or model) may only trigger validated commands in `src/lib/scene/commands.ts`, with ids the current world declares. No model-written code, HTML or remote URLs.
 - Mars is one sample world. New subjects should be data in `src/lib/worlds/registry.ts` wherever possible.
-- Secrets stay server-side: route handlers under `src/app/api/` (none exist yet; Stage B) with `import "server-only"`. Nothing sensitive in `NEXT_PUBLIC_*`.
+- Secrets stay server-side: route handlers under `src/app/api/` (`/api/brain` exists) and `src/lib/brain/server/` with `import "server-only"`. Nothing sensitive in `NEXT_PUBLIC_*`.
 - Every database change: RLS on, explicit grants, tests in `tests/db`, a planted-hole mutant in `scripts/mutate-rls.mjs`. Create migrations with `npx supabase migration new <name>`.
 - Never weaken the CSP in `src/proxy.ts` to make something work; add the specific origin instead.
 - No purchases, subscriptions or uncapped API spend without the founder's OK.

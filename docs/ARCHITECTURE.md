@@ -1,6 +1,6 @@
 # Architecture (updated 2026-11-12)
 
-Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. Database: Supabase schema written and tested (supabase/, docs/DATABASE.md), **not deployed or wired yet**; the app saves through `LearnerStore` (this browser only today). No AI calls yet: the brain is scripted, and a Claude API brain plugs in at Stage B.
+Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. Database: Supabase schema written and tested (supabase/, docs/DATABASE.md), **not deployed or wired yet**; the app saves through `LearnerStore` (this browser only today). The brain is scripted by default. A Claude brain (Stage B, built 13 Nov, tested only against a mocked API, never against the real one) sits behind `/api/brain` and is off until a build sets `NEXT_PUBLIC_BRAIN=model` and the server has `ANTHROPIC_API_KEY`.
 
 ## One turn, end to end
 ```
@@ -47,8 +47,21 @@ The engine (Director, CameraRig, Lights, TeacherActor) reads framing, background
 ## Security layers (see SECURITY.md)
 `src/proxy.ts` (per-request CSP nonce) · `next.config.mjs` (headers) · `src/lib/scene/commands.ts` (only validated actions) · `src/lib/learner/store.ts` (validated storage) · `supabase/migrations` (RLS, grants, composite keys) · `tests/db` + `scripts/mutate-rls.mjs` (proof).
 
-## Stage B plug-in point
-Write a `ClaudeBrain` behind `/api/brain`, with the key kept on the server:
-- Input: the world's facts and sources, `toolsFor(contextFor(world))`, a short learner summary and the recent turns.
-- Output: the same `{ segments }` shape the scripted brain returns.
-- The scripted provider's speech layer stays as it is.
+## Stage B: the Claude brain (built, mocked-API tested, not yet run against the real API)
+```
+browser  ClaudeBrain ──POST /api/brain──▶  route.ts → handler.ts                       (src/lib/brain/claudeBrain.ts, src/lib/brain/server/)
+         FallbackBrain(Claude, Scripted)    1 kill switch / key present?   → 503 → script
+                                            2 same-origin, JSON, size      → 403/415/413
+                                            3 per-IP rate limit            → 429
+                                            4 validate request (request.ts) → 400
+                                            5 per-session limits, daily turns per learner (family time zone), global cap → 429/503
+                                            6 prompt.ts: safety rules + world facts FROM THE REGISTRY + child text as data
+                                            7 anthropic.ts: one fetch, 12 s timeout, key only here
+                                            8 sanitize.ts: text blocks → plain speech; tool calls → parseSceneCommand per world
+```
+- **Models** (`config.ts`): `claude-haiku-5-5` by default; `claude-sonnet-5-5` only on a "hard turn" (long or deep question, or a child who just missed the same question again), capped at 20 per learner per day. One constant turns escalation off.
+- **The model can only:** say short plain sentences, and call the same validated tools as the script (ids from the current world). Links, HTML, markdown, unknown tools and unknown ids are dropped. Arriving somewhere simulated always says "simulation": enforced in code.
+- **The model never judges answers or writes evidence.** The server tells it correct / not correct from the registry; `ClaudeBrain` records the attempt in the browser from the question data (a first miss is a hint and a retry, not evidence).
+- **Fallback:** any failure (no key, limit, timeout, bad output) → the scripted lesson answers that turn. A missing key, kill switch or daily cap pauses model calls for 5 minutes.
+- **Env:** `ANTHROPIC_API_KEY` (server only), `BRAIN_DISABLED=1` (kill switch), `NEXT_PUBLIC_BRAIN=model` (build-time opt-in, not a secret). See `.env.example`.
+- **Limits live in memory per server instance** (`limits.ts`, behind a `UsageStore` interface so `brain_usage` can replace it). They are an abuse brake. The hard ceiling is the Console spend limit.

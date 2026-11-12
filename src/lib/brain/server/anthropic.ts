@@ -1,0 +1,54 @@
+import "server-only";
+/** The only file that talks to Anthropic. The key is passed in, used for one header, and never logged. */
+import { LIMITS } from "./config";
+
+export const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+export const ANTHROPIC_VERSION = "2023-06-01";
+
+export interface UpstreamResult { content: unknown; usage: { input: number; output: number } }
+export class UpstreamError extends Error {
+  constructor(public kind: "timeout" | "busy" | "failed", public status?: number) { super(kind); }
+}
+
+export async function callAnthropic(args: {
+  fetchImpl: typeof fetch;
+  apiKey: string;
+  model: string;
+  system: string;
+  user: string;
+  tools: unknown[];
+}): Promise<UpstreamResult> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), LIMITS.upstreamTimeoutMs);
+  let res: Response;
+  try {
+    res = await args.fetchImpl(ANTHROPIC_URL, {
+      method: "POST",
+      signal: ctl.signal,
+      headers: { "content-type": "application/json", "x-api-key": args.apiKey, "anthropic-version": ANTHROPIC_VERSION },
+      body: JSON.stringify({
+        model: args.model,
+        max_tokens: LIMITS.maxOutputTokens,
+        system: [{ type: "text", text: args.system, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: args.user }],
+        tools: args.tools,
+        tool_choice: { type: "auto" },
+      }),
+    });
+  } catch (e) {
+    throw new UpstreamError(e instanceof Error && e.name === "AbortError" ? "timeout" : "failed");
+  } finally {
+    clearTimeout(timer);
+  }
+  if (res.status === 429 || res.status === 529) throw new UpstreamError("busy", res.status);
+  if (!res.ok) throw new UpstreamError("failed", res.status);
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new UpstreamError("failed", res.status);
+  }
+  const o = json as { content?: unknown; usage?: { input_tokens?: unknown; output_tokens?: unknown } };
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
+  return { content: o?.content, usage: { input: n(o?.usage?.input_tokens), output: n(o?.usage?.output_tokens) } };
+}
