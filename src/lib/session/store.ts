@@ -46,7 +46,7 @@ export interface SessionStore {
   model: string | null;
 }
 
-export const emptyUsage = { inputTokens: 0, outputTokens: 0, inputAudioTokens: 0, outputAudioTokens: 0, cachedTokens: 0, responses: 0 };
+export const emptyUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, responses: 0 };
 
 export const initialStore = (): SessionStore => ({
   mode: null,

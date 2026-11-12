@@ -11,8 +11,14 @@ export interface Attempt {
   answerId: string;
   correct: boolean;
   hintsUsed: number;
-  /** "taught" = right after an explanation; "later_check" = a later, unassisted check. */
-  context: "taught" | "later_check";
+  /**
+   * "taught" = during the lesson, right after an explanation.
+   * "recheck" = no-hint check in the SAME session (minutes later). Not retention.
+   * "later_check" = no-hint check in a LATER session. The only evidence of independence.
+   */
+  context: "taught" | "recheck" | "later_check";
+  /** Session number when it happened. */
+  session?: number;
   at: string;
 }
 
@@ -62,8 +68,12 @@ export function skillStatus(attempts: Attempt[], skill: string): SkillStatus {
   if (!a.length) return { kind: "not_seen" };
   const later = a.filter((x) => x.context === "later_check");
   const lastLater = later[later.length - 1];
-  if (lastLater?.correct) return { kind: "independent", detail: "Answered correctly on a later check with no hints." };
-  if (lastLater && !lastLater.correct) return { kind: "learning", detail: "Missed the later no-hint check; worth revisiting." };
+  if (lastLater?.correct) return { kind: "independent", detail: "Answered correctly in a later session, with no hints." };
+  if (lastLater && !lastLater.correct) return { kind: "learning", detail: "Missed the no-hint check in a later session; worth revisiting." };
+  const re = a.filter((x) => x.context === "recheck");
+  const lastRe = re[re.length - 1];
+  if (lastRe?.correct) return { kind: "needs_check", detail: "Right again a few minutes later with no hints. Not yet checked on another day." };
+  if (lastRe && !lastRe.correct) return { kind: "learning", detail: "Missed the no-hint check a few minutes later; worth revisiting." };
   const taught = a.filter((x) => x.context === "taught");
   const last = taught[taught.length - 1];
   if (last.correct)

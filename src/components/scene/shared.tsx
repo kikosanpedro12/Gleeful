@@ -2,6 +2,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import type { WorldId } from "@/lib/worlds/registry";
 
 /**
  * Named scene objects the teacher can point at or the child can tap.
@@ -26,6 +27,9 @@ export function useRegister<T extends THREE.Object3D = THREE.Group>(name: string
   }, [name, enabled]);
   return ref;
 }
+
+/** Browser-test hooks (window.__teacher etc). Only with ?test=1 or ?dev=1, never in a normal session. */
+export const TEST_HOOKS = typeof window !== "undefined" && /[?&](test|dev)=1(&|$)/.test(window.location.search);
 
 /** Soft pulsing ring on whatever the teacher is pointing at, or what we invite the child to tap. */
 export function Highlight({ name, radius, extra, flat }: { name: string; radius: number; extra?: () => boolean; flat?: boolean }) {
@@ -73,6 +77,11 @@ export function rng(seed: number) {
   return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 }
 
+/** Planet textures for space flights, keyed by WorldDef.planet. */
+export const PLANET_TEXTURES: Record<"mars", (ctx: CanvasRenderingContext2D, w: number, h: number) => void> = {
+  mars: (ctx, w, h) => drawMarsTexture(ctx, w, h),
+};
+
 /** Our own illustrative Mars texture (not a real map). */
 export function drawMarsTexture(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = "#b5532c";
@@ -105,7 +114,7 @@ export const fx = {
   /** Star travel offset (speed feel). */
   travel: 0,
   /** Which world's geometry is visible right now. */
-  shown: "classroom" as "classroom" | "mars",
+  shown: "classroom" as WorldId,
   /** Camera mode. */
-  shot: "classroom" as "classroom" | "space" | "mars",
+  shot: "indoor" as "indoor" | "outdoor" | "space",
 };

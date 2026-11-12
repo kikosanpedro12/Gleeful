@@ -26,10 +26,20 @@ const INTENTS: [string, RegExp][] = [
 ];
 const SKILL = "science.mars.red_color";
 
+/** Options whose keywords start a WORD in the text ("rusty" matches rust; "photo" does not match hot). */
+export function matchOptions(text: string, q: Question) {
+  const words = text.toLowerCase().match(/[a-z']+/g) ?? [];
+  return q.options.filter((o) => o.keywords.some((k) => words.some((w) => w.startsWith(k))));
+}
+
 export class ScriptedBrain implements Brain {
   readonly kind = "scripted" as const;
   private pending: { q: Question; hints: number } | null = null;
   private sawRock = false;
+  /** How the recall question was asked this session: on the way back (same session) or at the start of a later one. */
+  private recallContext: "recheck" | "later_check" = "recheck";
+  /** Hints given per question this session: re-tapping the rock must not wipe them. */
+  private hintsGiven: Record<string, number> = {};
 
   respond(input: BrainInput, ctx: BrainContext): BrainReply {
     switch (input.kind) {
@@ -42,8 +52,12 @@ export class ScriptedBrain implements Brain {
       case "choice": return this.intent(input.id, input.label, ctx);
       case "text": {
         if (this.pending) {
-          const opt = this.pending.q.options.find((o) => o.keywords.some((k) => input.text.toLowerCase().includes(k)));
-          if (opt) return this.answer(this.pending.q.id, opt.id, ctx);
+          const hits = matchOptions(input.text, this.pending.q);
+          if (hits.length === 1) return this.answer(this.pending.q.id, hits[0].id, ctx);
+          if (hits.length > 1) // e.g. "not hot, rust": don't guess, and don't record anything
+            return { segments: [S("I heard more than one answer there. Which one do you pick?", A("askQuestion", { questionId: this.pending.q.id }))] };
+          // Anything else closes the open question (the card is cleared too).
+          this.pending = null;
         }
         const hit = INTENTS.find(([, re]) => re.test(input.text));
         return this.intent(hit ? hit[0] : "unknown", input.text, ctx);
@@ -57,6 +71,8 @@ export class ScriptedBrain implements Brain {
     if (ctx.profile.sessions > 1 && status.kind === "needs_check") {
       // Uses stored evidence, not a canned "I remember you".
       const hinted = status.detail.includes("hint");
+      this.recallContext = "later_check";
+      this.pending = { q: WORLDS.classroom.questions.q_red_recall, hints: 0 };
       return { segments: [
         S(`Welcome back! Last time on Mars you worked out why it looks red${hinted ? ", with a little hint" : ""}.`, A("gesture", { gesture: "wave" })),
         S("Let's see if it stuck. No hints this time.", A("askQuestion", { questionId: "q_red_recall" })),
@@ -102,11 +118,14 @@ export class ScriptedBrain implements Brain {
       case "air":
         return { segments: [
           S("No people live on Mars. Only robots called rovers have been there.", A("gesture", { gesture: "open_hands" })),
-          S("The air is very thin, so people would need spacesuits. That's why we're wearing helmets on this pretend trip."),
+          S(onMars
+            ? "The air is very thin, so people would need spacesuits. That's why we're wearing helmets on this pretend trip."
+            : "The air there is very thin, so people would need spacesuits."),
           this.nudge(ctx),
         ] };
       case "crater":
         if (!onMars) break;
+        this.pending = null;
         return { segments: [
           S("Let's walk to the crater.", A("moveTeacherTo", { spot: "crater_edge" })),
           S("This big bowl was made long ago, when a space rock crashed into Mars.", A("pointAt", { target: "crater" })),
@@ -114,13 +133,16 @@ export class ScriptedBrain implements Brain {
         ] };
       case "mountain":
         if (!onMars) break;
+        this.pending = null;
         return { segments: [
           S("Come over here and look far away.", A("moveTeacherTo", { spot: "mountain_view" })),
           S("That's Olympus Mons, the biggest volcano in our whole solar system. It isn't erupting now.", A("pointAt", { target: "mountain" })),
           S("Where next?", choices(["crater", "The crater"], ["back", "Back to class"])),
         ] };
       case "back":
+        if (ctx.world === "transit") return { segments: [S("We're still flying. Hold on, we'll be there soon!")] };
         if (!onMars) return { segments: [S("We're already in the classroom."), this.nudge(ctx)] };
+        this.pending = null;
         return { segments: [S("Time to head back to class. Hold on!", A("gesture", { gesture: "wave" }), A("openWorld", { world: "classroom" }))] };
     }
     // Honest fallback: say what this demo can do instead of bluffing.
@@ -154,6 +176,10 @@ export class ScriptedBrain implements Brain {
       ] };
     // Back in the classroom after a trip: unassisted check on a different question.
     const asked = this.sawRock && skillStatus(ctx.profile.attempts, SKILL).kind === "needs_check";
+    if (asked) {
+      this.recallContext = "recheck";
+      this.pending = { q: WORLDS.classroom.questions.q_red_recall, hints: 0 };
+    }
     if (asked) return { segments: [S("Welcome back to class!", A("gesture", { gesture: "wave" })), S("Quick check, no hints this time.", A("askQuestion", { questionId: "q_red_recall" }))] };
     return { segments: [S("Welcome back to class!", A("gesture", { gesture: "wave" })), S("Want to go again?", choices(["mars", "Go to Mars again"]))] };
   }
@@ -161,7 +187,7 @@ export class ScriptedBrain implements Brain {
   private tap(target: string, ctx: BrainContext): BrainReply {
     if (target !== "rock_1" || ctx.world !== "mars") return { segments: [S("Hmm, let's look at something else.")] };
     this.sawRock = true;
-    this.pending = { q: WORLDS.mars.questions.q_red, hints: 0 };
+    this.pending = { q: WORLDS.mars.questions.q_red, hints: this.hintsGiven.q_red ?? 0 };
     return { segments: [
       S("Nice! You can spin it with your finger. See the orange dust on it?", A("gesture", { gesture: "nod" })),
       S("Rocks and dust on Mars have iron in them. Over a very, very long time, the iron rusted."),
@@ -173,12 +199,16 @@ export class ScriptedBrain implements Brain {
     const q = WORLDS.mars.questions[questionId] ?? WORLDS.classroom.questions[questionId];
     const opt = q?.options.find((o) => o.id === optionId);
     if (!q || !opt) return { segments: [S("Hmm, I didn't catch that answer.")] };
+    // Only the open question can be answered (no double-recording from a stale card).
+    if (!this.pending || this.pending.q.id !== questionId)
+      return { segments: [S("That question is finished. Let's keep going!"), this.nudge(ctx)] };
     const later = questionId === "q_red_recall";
     if (later) {
       this.pending = null;
-      ctx.record({ skill: q.skill, questionId, answerId: optionId, correct: opt.correct, hintsUsed: 0, context: "later_check" });
+      ctx.record({ skill: q.skill, questionId, answerId: optionId, correct: opt.correct, hintsUsed: 0, context: this.recallContext });
+      const praise = this.recallContext === "later_check" ? "And you remembered it from last time, all by yourself." : "No hints needed. We'll check again another day.";
       return opt.correct
-        ? { segments: [S("Yes! Iron that rusted. And you remembered it all by yourself.", A("gesture", { gesture: "thumbs_up" })), S("Want to go back to Mars?", choices(["mars", "Go to Mars"]))] }
+        ? { segments: [S(`Yes! Iron that rusted. ${praise}`, A("gesture", { gesture: "thumbs_up" })), S("Want to go back to Mars?", choices(["mars", "Go to Mars"]))] }
         : { segments: [S(`Not quite. ${q.explain}`, A("gesture", { gesture: "open_hands" })), S("We'll check it again another day. Want to see the rocks again?", choices(["mars", "Go to Mars"]))] };
     }
     const p = this.pending && this.pending.q.id === questionId ? this.pending : { q, hints: 0 };
@@ -192,6 +222,7 @@ export class ScriptedBrain implements Brain {
     }
     if (p.hints === 0) {
       this.pending = { q, hints: 1 };
+      this.hintsGiven[questionId] = 1;
       return { segments: [S(`Good guess, but not quite. ${q.hint}`, A("gesture", { gesture: "think" })), S("Try again.", A("askQuestion", { questionId }))] };
     }
     this.pending = null;

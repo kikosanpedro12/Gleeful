@@ -1,36 +1,38 @@
-# Manual device + performance checklist
+# Manual device checklist (scripted build)
 
-Test matrix (first pass): Windows laptop (Huawei MateBook D 16) on Chrome; Android phone (Honor X9b) on Chrome. Phone must reach the app over HTTPS (mic needs it) — use the private deployment or a tunnel, not plain http://LAN-IP.
+Devices: Windows laptop (Huawei MateBook D 16) in Chrome; Android phone (Honor X9b) in Chrome.
+- The microphone needs HTTPS. On the laptop, http://localhost is fine.
+- The phone needs the private deploy or a tunnel; plain http://LAN-IP will not work.
 
-For each device, open `/?dev=1`:
+Open `/?dev=1` for the measurement panel.
 
-**Setup** — [ ] OpenAI monthly budget limit set · [ ] `.env.local` has key · [ ] note network (Wi-Fi/4G) and whether headphones are used
+**Onboarding**
+- [ ] Both teachers are visible. Tapping each plays a hello with a wave, in a male voice (Leo) and a female voice (Mia). Note the voice names you hear.
+- [ ] "Start with …" begins the lesson.
 
-**Conversation (live mode — badge must say "Live", not DEMO)**
-- [ ] Leo greets by voice and waves
-- [ ] Ask 20+ short spoken questions. Leave the panel open.
-- [ ] For each: was the *first thing heard* a real answer, not filler? Count fillers: ___
-- [ ] Ask "why is Mars red?" → he points at the globe, ring appears on it
-- [ ] Ask him to write a word on the board → text changes, he walks/points
-- [ ] Ask to go to Mars → he says honestly it is not built yet
-- [ ] Ask something off-topic/unsupported → sensible, safe answer
+**The trip**
+- [ ] The greeting offers "I have homework about Mars". Tapping it makes the teacher walk to the rug.
+- [ ] The walls peel away and stars appear, the teacher wears a helmet, and Mars grows. The landing flash is not uncomfortable.
+- [ ] On Mars: a "Simulation" label, and the teacher says people need spacesuits.
+- [ ] "Why is everything red?" makes the teacher walk to the rock and point. "Tap to investigate" appears.
+- [ ] Tap the rock: it floats up and can be spun with a finger. The card shows the NASA source.
+- [ ] Answer wrong once: you get a hint, not praise. Then answer right.
+- [ ] Crater and volcano: the teacher walks there and points at the right thing.
+- [ ] Back to class: a quick check with no hints.
+- [ ] /parent shows "with a hint" for the lesson answer and the later check result.
 
-**Interruption**
-- [ ] Talk over him mid-sentence: audio stops < ~0.5 s, mouth closes, arm drops, he answers the new thing
-- [ ] Press ✋ Stop: same
-- [ ] Type while he talks: same
-- [ ] After 5 interruptions in a row nothing is stuck (state returns to "Your turn")
+**Talking and interrupting**
+- [ ] Tap the mic and ask "why is Mars red?": the right answer comes back.
+- [ ] Ask something off-script: the teacher says honestly that the lesson is scripted.
+- [ ] Tap the mic or ✋ Stop while the teacher talks: speech, mouth and walking stop at once.
+- [ ] Do the same during the space flight: the trip still lands cleanly.
+- [ ] Block the mic permission: you get a message, and tapping answers and typing still work.
 
-**Fallbacks**
-- [ ] Deny mic permission → typing offered, spoken answers still work
-- [ ] Turn off Wi-Fi mid-session → clear message, Start reconnects
-- [ ] Remove API key → DEMO badge appears, nothing pretends to be live
-- [ ] Wrong access code (if set) → clear refusal
+**Comfort and accessibility**
+- [ ] With the OS "reduce motion" setting on, the trip is a short fade.
 
 **Record** (press "Export measurements" and keep the JSON)
-| Device | Net | n | median ms | p95 ms | VAD wait | fails | fps avg | 1% low | stalls | quality |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Laptop | | | | | | | | | | |
-| Phone | | | | | | | | | | |
-
-Echo note: on speakers the mic can hear Leo and trigger false interruptions. Record whether it happens with and without headphones.
+| Device | fps avg | 1% low | stalls | worst frame | quality fell back? | voices OK? |
+|---|---|---|---|---|---|---|
+| Laptop | | | | | | |
+| Phone | | | | | | |

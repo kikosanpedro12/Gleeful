@@ -1,4 +1,4 @@
-import { LOOKS, type TeacherId } from "@/lib/teacher/rig";
+import type { TeacherId } from "@/lib/teacher/rig";
 import { useSession } from "@/lib/session/store";
 import { loadVoices, ttsAvailable, voiceFor } from "./speech";
 
@@ -9,10 +9,13 @@ import { loadVoices, ttsAvailable, voiceFor } from "./speech";
 let level = 0;
 let timer: ReturnType<typeof setInterval> | undefined;
 let t0 = 0;
+/** Each preview gets a token; timers from an older preview do nothing. */
+let previewSeq = 0;
 
 export const previewLevel = () => level;
 
 export function stopPreview() {
+  previewSeq++;
   if (timer) clearInterval(timer);
   timer = undefined;
   level = 0;
@@ -36,7 +39,8 @@ export async function playPreview(id: TeacherId, onGesture: () => void) {
       level = (0.045 + 0.1 * Math.abs(Math.sin(t * Math.PI * 5))) * Math.max(0.35, 1 - t * 0.9);
     }, 16);
   };
-  const end = () => { if (useSession.getState().previewing === id) stopPreview(); };
+  const token = ++previewSeq;
+  const end = () => { if (token === previewSeq && useSession.getState().previewing === id) stopPreview(); };
   const est = Math.max(1500, text.length * 62);
   let started = false;
   if (ttsAvailable()) {
@@ -52,6 +56,6 @@ export async function playPreview(id: TeacherId, onGesture: () => void) {
       window.speechSynthesis.speak(u);
     } catch {}
   }
-  setTimeout(() => { if (!started) { start(); setTimeout(end, est); } }, 700);
-  void LOOKS;
+  // No voice (or it never starts): animate silently for the estimated length.
+  setTimeout(() => { if (token === previewSeq && !started) { start(); setTimeout(end, est); } }, 1500);
 }

@@ -135,6 +135,7 @@ function Dust() {
     return g;
   }, []);
   useFrame((_, dt) => {
+    if (fx.shown !== "mars") return; // hidden: no buffer uploads
     const p = geo.attributes.position as THREE.BufferAttribute;
     const a = p.array as Float32Array;
     for (let i = 0; i < a.length; i += 3) {
@@ -212,6 +213,7 @@ function InspectRock() {
   useEffect(() => () => geo.dispose(), [geo]);
   const rest = useMemo(() => new THREE.Vector3(ROCK_POS.x, groundHeight(ROCK_POS.x, ROCK_POS.z) + 0.12, ROCK_POS.z), []);
   const target = useMemo(() => new THREE.Vector3(), []);
+  const scaleV = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, dt) => {
     const g = ref.current, m = mesh.current;
@@ -226,7 +228,7 @@ function InspectRock() {
     g.position.lerp(target, 1 - Math.exp(-6 * dt));
     m.rotation.set(spin.current.x, spin.current.y, 0);
     const s = inspecting ? 1.05 : 1;
-    m.scale.lerp(new THREE.Vector3(s, s, s), 1 - Math.exp(-6 * dt));
+    m.scale.lerp(scaleV.set(s, s, s), 1 - Math.exp(-6 * dt));
   });
 
   const down = (e: ThreeEvent<PointerEvent>) => {
@@ -266,7 +268,7 @@ export default function Mars() {
   const { scene } = useThree();
   const fog = useMemo(() => new THREE.Fog("#d8a47e", 14, 75), []);
   useFrame(() => {
-    const on = fx.shown === "mars";
+    const on = fx.shown === "mars"; // this component draws the "mars" world (see worlds.ts)
     if (ref.current) ref.current.visible = on;
     scene.fog = on ? fog : null;
   });
@@ -282,9 +284,7 @@ export default function Mars() {
       <mesh position={[0, 0, 0]} visible={false} ref={useRegister<THREE.Mesh>("ground")}>
         <sphereGeometry args={[0.05]} />
       </mesh>
-      <hemisphereLight args={["#f6d2b0", "#6b3420", 0.9]} />
-      <directionalLight position={[8, 10, 4]} intensity={1.9} color="#ffe2c2" castShadow
-        shadow-mapSize={[1024, 1024]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-bias={-0.0004} />
+
     </group>
   );
 }

@@ -2,7 +2,9 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { drawMarsTexture, fx, Highlight, rng, useCanvasTexture, useRegister } from "./shared";
+import { fx, Highlight, PLANET_TEXTURES, rng, useCanvasTexture, useRegister } from "./shared";
+import { useSession } from "@/lib/session/store";
+import { WORLDS } from "@/lib/worlds/registry";
 
 /** Starfield + the destination planet. Only drawn while travelling. */
 export default function Space() {
@@ -10,7 +12,8 @@ export default function Space() {
   const group = useRef<THREE.Group>(null);
   const planet = useRegister("destination");
   const ball = useRef<THREE.Mesh>(null);
-  const tex = useCanvasTexture(drawMarsTexture, 1024, 512, []);
+  const planetKey = useSession((s) => (s.transit ? WORLDS[s.transit.to].planet : undefined)) ?? "mars";
+  const tex = useCanvasTexture(PLANET_TEXTURES[planetKey], 1024, 512, [planetKey]);
   const geo = useMemo(() => {
     const r = rng(7);
     const n = 1400;

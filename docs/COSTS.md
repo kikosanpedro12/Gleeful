@@ -1,26 +1,37 @@
-# Costs
+# Costs (updated 2026-11-12)
 
-## Development (one-off / tooling) — spent so far: $0
-No assets bought, no services subscribed. Existing Claude subscription only.
+## Development — spent so far: $0
+No assets bought, no services subscribed, no API calls made. Existing Claude subscription only.
 
-## Running cost (per live session) — NOT YET MEASURED
-Prices for `gpt-realtime-2.1`, official model page, checked 2026-11-12 (USD per 1M tokens):
-text in $4 · cached in $0.40 · text out $24 · audio in $32 · audio out $64.
-`gpt-realtime-2.1-mini` (third-party listings, verify on the official page): audio in $10 · audio out $20 · text $0.60 / $2.40.
+## Running cost per session, current build: $0
+The scripted brain makes no AI calls. Voice uses the browser's built-in speech (free).
 
-Rough **unverified** estimate for one 15-minute session (child talks ~4 min, teacher ~5 min; assumes ~600 audio tokens/min in and ~1,200/min out, which must be confirmed from real usage):
+## Running cost with a Claude brain (Stage B) — ESTIMATE, NOT MEASURED
+Claude API prices checked on the official pricing page, 2026-11-12 (USD per million tokens):
 
-| | gpt-realtime-2.1 | -mini |
+| Model | Input | Output | Cached input |
+|---|---|---|---|
+| Claude Haiku 5.5 (prompts ≤100k tokens) | $0.10 | $0.50 | $0.01 |
+| Claude Sonnet 5.5 | $2 | $10 | $0.10 |
+
+Assumptions for one 15-minute lesson: 40 teacher turns, each with a ~3,000-token prompt (instructions, world facts, tools, recent history) of which ~2,500 are cached, plus ~120 output tokens. Cache writes are ignored. Recheck these against real usage.
+
+| | Haiku 5.5 | Sonnet 5.5 |
 |---|---|---|
-| Per session | ~$0.50–$1.00 | ~$0.15–$0.35 |
-| Light (8 sessions/mo) | ~$4–$8 | ~$1–$3 |
-| Typical (20/mo) | ~$10–$20 | ~$3–$7 |
-| Heavy (60/mo) | ~$30–$60 | ~$9–$21 |
+| Per lesson | ≈ $0.005 | ≈ $0.10 |
+| Light use (8 lessons a month) | ≈ $0.04 | ≈ $0.80 |
+| Typical use (20 lessons a month) | ≈ $0.10 | ≈ $2 |
+| Heavy use (60 lessons a month) | ≈ $0.30 | ≈ $6 |
 
-Reading: on the flagship model a heavy user could consume the whole $30 subscription in voice cost alone. Session caps and/or the mini model are likely required. Replace this table with measured numbers from the dev panel ("usage" and "est. cost" rows) after the first live sessions.
+What this means:
+- With text-only Claude plus free browser voices, the brain is a small part of a $30 subscription, even on Sonnet. For comparison, the earlier OpenAI Realtime estimate was ≈ $0.50–$1.00 per lesson.
+- The trade-off is voice quality and latency. Browser voices are free but sound robotic on many phones. A paid text-to-speech service would add a per-minute cost; price it before choosing one.
+- Which model teaches well enough for Grade 3 has to be tested side by side. A cheap wrong answer is not cheap.
 
-Not yet included: hosting, storage, retrieval, support, payment fees, acquisition.
+Not yet included: hosting, storage, a TTS service (if needed), support, payment fees, acquisition.
 
-## Spend guards in the build
-- `MAX_SESSIONS_PER_HOUR` (server), `NEXT_PUBLIC_MAX_SESSION_MINUTES` (client disconnect), optional `APP_ACCESS_CODE`.
-- Also set a hard monthly budget limit in the OpenAI dashboard before the first live test.
+## Spend guards to build in Stage B
+- Key only on the server.
+- Per-child daily turn cap and per-lesson time cap, enforced on the server.
+- Monthly spend limit set in the Claude Console.
+- `max_tokens` capped per reply.

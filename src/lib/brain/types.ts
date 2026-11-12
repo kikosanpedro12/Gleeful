@@ -26,10 +26,13 @@ export interface BrainContext {
   teacher: TeacherId;
   teacherName: string;
   profile: LearnerProfile;
-  record(attempt: Omit<LearnerProfile["attempts"][number], "at">): void;
+  /** Session number (1 = first ever). Lets a brain tell "a few minutes later" from "another day". */
+  session: number;
+  record(attempt: Omit<LearnerProfile["attempts"][number], "at" | "session">): void;
 }
 
 export interface Brain {
   readonly kind: "scripted" | "model";
-  respond(input: BrainInput, ctx: BrainContext): BrainReply;
+  /** May be async (a model call). Callers must check the reply is still wanted after awaiting. */
+  respond(input: BrainInput, ctx: BrainContext): BrainReply | Promise<BrainReply>;
 }

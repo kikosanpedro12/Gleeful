@@ -8,11 +8,10 @@ import type { WorldId } from "@/lib/worlds/registry";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
+/** Token usage reported by a model-backed brain (none for the scripted brain). */
 export interface UsageDelta {
   inputTokens: number;
   outputTokens: number;
-  inputAudioTokens: number;
-  outputAudioTokens: number;
   cachedTokens: number;
 }
 
@@ -61,11 +60,4 @@ export interface VoiceProvider {
   submitToolResult(callId: string, output: string): void;
   /** Ask the teacher to open the conversation. */
   greet(): void;
-}
-
-export function rms(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>): number {
-  analyser.getFloatTimeDomainData(buf);
-  let s = 0;
-  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
-  return Math.sqrt(s / buf.length);
 }

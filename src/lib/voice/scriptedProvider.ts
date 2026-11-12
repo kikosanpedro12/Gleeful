@@ -19,7 +19,7 @@ interface Run { id: string; cancelled: boolean; timers: ReturnType<typeof setTim
 export class ScriptedProvider implements VoiceProvider {
   readonly mode = "demo" as const;
   micAvailable = recognitionAvailable();
-  private brain: Brain = new ScriptedBrain();
+
   private seq = 0;
   private run?: Run;
   private level = 0;
@@ -28,7 +28,8 @@ export class ScriptedProvider implements VoiceProvider {
   private cancelListen?: () => void;
   private speakingNow = false;
 
-  constructor(private ev: VoiceEvents, private info: SessionInfo) {}
+  /** The brain is injected: ScriptedBrain today, a model-backed brain later. */
+  constructor(private ev: VoiceEvents, private info: SessionInfo, private brain: Brain = new ScriptedBrain()) {}
 
   async connect() {
     this.ev.onStatus("connecting");
@@ -69,17 +70,31 @@ export class ScriptedProvider implements VoiceProvider {
   private handle(input: BrainInput) {
     this.cancel();
     const name = LOOKS[this.info.teacher].name;
-    const reply = this.brain.respond(input, {
-      world: this.info.world(),
-      teacher: this.info.teacher,
-      teacherName: name,
-      profile: loadProfile(),
-      record: (a) => updateProfile((p) => { p.attempts.push({ ...a, at: new Date().toISOString() }); }),
-    });
     const id = `s_${++this.seq}`;
     const run: Run = (this.run = { id, cancelled: false, timers: [], started: false });
     this.ev.onResponseCreated(id);
-    run.timers.push(setTimeout(() => this.playSegments(run, reply.segments, 0), THINK_MS));
+    const startedAt = performance.now();
+    // The brain may be async (a model). Whatever it returns is used only if this
+    // run is still current: an interrupt during the wait discards the reply.
+    Promise.resolve()
+      .then(() => this.brain.respond(input, {
+        world: this.info.world(),
+        teacher: this.info.teacher,
+        teacherName: name,
+        profile: loadProfile(),
+        session: loadProfile().sessions,
+        record: (a) => updateProfile((p) => { p.attempts.push({ ...a, session: p.sessions, at: new Date().toISOString() }); }),
+      }))
+      .then((reply) => {
+        if (run.cancelled || this.run !== run) return;
+        const wait = Math.max(0, THINK_MS - (performance.now() - startedAt));
+        run.timers.push(setTimeout(() => this.playSegments(run, reply.segments, 0), wait));
+      })
+      .catch(() => {
+        if (run.cancelled || this.run !== run) return;
+        this.run = undefined;
+        this.ev.onResponseFailed(id, "the lesson had a problem");
+      });
   }
 
   // ---------------------------------------------------------------- output
@@ -104,7 +119,8 @@ export class ScriptedProvider implements VoiceProvider {
   }
 
   private speak(run: Run, text: string, onBegin: () => void, onEnd: () => void) {
-    let begun = false, ended = false;
+    let begun = false, ended = false, silent = false;
+    let estTimer: ReturnType<typeof setTimeout> | undefined;
     const b = () => { if (!begun) { begun = true; onBegin(); } };
     const e = () => { if (!ended && begun) { ended = true; onEnd(); } };
     const est = Math.max(1100, text.length * 60);
@@ -116,7 +132,12 @@ export class ScriptedProvider implements VoiceProvider {
         u.pitch = v.pitch;
         u.rate = v.rate;
         u.lang = v.voice?.lang ?? "en-US";
-        u.onstart = b;
+        u.onstart = () => {
+          // A slow network voice that starts after we fell back to the silent
+          // timeline: follow the real voice from here (wait for its onend).
+          if (silent && estTimer) { clearTimeout(estTimer); estTimer = undefined; }
+          b();
+        };
         u.onboundary = () => { this.envT0 = performance.now(); }; // re-sync mouth to each word
         u.onend = e;
         // Voice failed (common on some devices / headless): keep the normal pace silently
@@ -126,7 +147,14 @@ export class ScriptedProvider implements VoiceProvider {
       } catch {}
     }
     // No working TTS (or it never starts): run the same timeline silently so the lesson still works.
-    run.timers.push(setTimeout(() => { if (!begun) { b(); run.timers.push(setTimeout(e, est)); } }, 900));
+    // 2.5 s: Android network voices can take a while to start.
+    run.timers.push(setTimeout(() => {
+      if (begun) return;
+      silent = true;
+      b();
+      estTimer = setTimeout(e, est);
+      run.timers.push(estTimer);
+    }, ttsAvailable() ? 2500 : 0));
     run.timers.push(setTimeout(() => { b(); e(); }, est + 9000)); // never hang
   }
 

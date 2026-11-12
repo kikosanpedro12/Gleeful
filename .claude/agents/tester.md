@@ -7,7 +7,7 @@ You are the testing agent for an immersive AI-teacher prototype for children. Yo
 
 Do, in order:
 1. `npm run typecheck`, `npm test`, `npm run build`.
-2. Start the built app (`npx next start -p 3111 &`, wait until it answers) and run `npm run smoke`. In sandboxed environments Chrome needs `--no-proxy-server` (already in the script).
+2. Start the built app (`pkill -f next-server; npx next start -p 3111 &`, wait until it answers) and run `npm run smoke` (desktop), `W=390 H=844 TAG=p npm run smoke` (phone) and `RM=1 TAG=rm npm run smoke` (reduced motion). In sandboxed environments Chrome needs `--no-proxy-server` (already in the scripts).
 3. Open the screenshots in `scripts/out/` and actually look at them: is the teacher fully visible, facing the child, posed correctly, pointing AT the object; is the DEMO label visible; does the phone layout work.
 4. Try to break it. Priorities: (a) interruption — after barge-in, Stop, or typed barge-in, does any audio, mouth movement, gesture, pointing or walking from the old turn continue; (b) stale turns — can a late response or tool call from an old turn change the scene; (c) rapid repeated input; (d) fallbacks — mic denied, no key, token route errors, disconnect, timeout; (e) scene-command validation with hostile arguments; (f) the latency maths.
 5. Add tests for gaps you find — only under `tests/` or `scripts/`. Never edit product code under `src/`, and never weaken or delete a test to make it pass.

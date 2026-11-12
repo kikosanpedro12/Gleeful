@@ -21,6 +21,9 @@
 - Simulation honesty: e.g. never imply a person can stand unprotected on Mars.
 - Assets: commercially usable only, with a license manifest. The concept video avatar is CC BY-NC — never reuse it.
 
+## Subjects
+Any K–12 subject: math, science, English/reading/writing, geography, history, GMRC (Good Manners and Right Conduct), languages. **Mars is only the first test world.** History needs care: separate evidence from dramatised scenes. GMRC needs care: model good conduct through situations and choices, never shame a child.
+
 ## First slice (what we are building now)
 Browser prototype for private family testing: Leo + Mia, classroom + one Mars world, live voice with interruption + typed fallback, body animation/gaze/basic lip movement, one object interaction that changes the lesson, small reviewed Mars fact set + one recall check, basic learner profile with cross-session memory, minimal parent area, latency/fps/usage instrumentation. Then one image/PDF assignment upload.
 
@@ -30,8 +33,5 @@ Multiplayer, mandatory VR, crypto/NFT, school-district admin, marketplace, origi
 ## Budget
 Solo founder. $200–$400 technical validation first; provisional $1,000–$2,500 reserve. No purchases, subscriptions or unbounded API spend without agreement.
 
-## Phases
-1. Teacher presence + realtime conversation (current)
-2. Scene direction + Mars immersion + rock interaction
-3. Personalisation, memory, second teacher (Supabase)
-4. Private usable prototype: parent area, upload, limits, deployment
+## Build order
+See BUILD_PLAN.md. Founder decision 12 Nov 2026: experience first with a scripted brain, then a Claude API brain; OpenAI dropped.

@@ -13,7 +13,7 @@ import { WORLDS } from "@/lib/worlds/registry";
  * comes from the clock, so a slow frame never skips the arrival or fires it twice.
  *
  * Space flight (≈9 s): walls open → stars appear → cruise toward the planet →
- * warm flash as we "land" → Mars surface. Fade: a soft colour dip (≈1.4 s).
+ * warm flash as we "land" → the destination world. Fade: a soft colour dip (≈1.4 s).
  * Reduced motion: always a short fade.
  */
 const smooth = (a: number, b: number, x: number) => THREE.MathUtils.smoothstep(x, a, b);
@@ -28,11 +28,12 @@ export default function Director({ flash, reducedMotion }: { flash: React.RefObj
     const s = useSession.getState();
     const tr = s.transit;
     let flashO = 0, flashColor = "#ffcfa3";
+    if (tr) flashColor = WORLDS[tr.to].background;
     if (!tr) {
       fired.current = null;
       fx.open = 0; fx.space = 0; fx.approach = 0; fx.travel = 0;
-      fx.shown = s.world === "mars" ? "mars" : "classroom";
-      fx.shot = fx.shown;
+      fx.shown = s.world;
+      fx.shot = WORLDS[s.world].framing;
     } else {
       if (!fired.current || fired.current.t0 !== tr.t0) fired.current = { t0: tr.t0, cruise: false, swapped: false };
       const f = fired.current;
@@ -44,16 +45,16 @@ export default function Director({ flash, reducedMotion }: { flash: React.RefObj
         fx.space = smooth(0.06, 0.24, p);
         fx.approach = smooth(0.22, 0.86, p);
         fx.travel = smooth(0.2, 0.4, p) * (1 - smooth(0.7, 0.86, p));
-        fx.shot = p < 0.84 ? (p < 0.06 ? "classroom" : "space") : "mars";
+        fx.shot = p < 0.84 ? (p < 0.06 ? WORLDS[tr.from].framing : "space") : WORLDS[tr.to].framing;
         flashO = smooth(0.74, 0.84, p) * (1 - smooth(0.86, 0.98, p));
         if (!f.cruise && p > 0.3) { f.cruise = true; session.transitEvent("cruise"); }
         fx.shown = p < 0.84 ? tr.from : tr.to;
         if (p >= 0.84) { fx.open = 0; fx.space = 0; }
       } else {
-        flashColor = tr.to === "classroom" ? "#f6ead6" : "#ffcfa3";
+        flashColor = WORLDS[tr.to].background;
         flashO = smooth(0, 0.45, p) * (1 - smooth(0.55, 1, p));
         fx.shown = p < 0.5 ? tr.from : tr.to;
-        fx.shot = fx.shown;
+        fx.shot = WORLDS[fx.shown].framing;
         fx.open = 0; fx.space = 0;
       }
       // Hidden by the flash: move the teacher to the new world's arrival spot.
@@ -66,7 +67,7 @@ export default function Director({ flash, reducedMotion }: { flash: React.RefObj
       if (p >= 1) { fired.current = null; session.transitEvent("arrived"); }
     }
     // Background colour follows where we are.
-    const want = fx.space > 0.02 ? "#04060f" : fx.shown === "mars" ? "#d8a47e" : "#f3e7d3";
+    const want = fx.space > 0.02 ? "#04060f" : WORLDS[fx.shown].background;
     target.set(want);
     bg.current.lerp(target, fx.space > 0.02 ? Math.min(1, fx.space * 1.2) : 1 - Math.exp(-8 * dt));
     gl.setClearColor(bg.current);

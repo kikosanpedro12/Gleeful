@@ -5,3 +5,10 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 scripts/out
+.env.*
+!.env.example
+*.pem
+coverage
+.vercel
+supabase/.temp
+supabase/.branches

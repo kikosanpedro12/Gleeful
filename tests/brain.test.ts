@@ -7,7 +7,7 @@ import { contextFor, type WorldId } from "@/lib/worlds/registry";
 
 function ctx(world: WorldId | "transit", profile: LearnerProfile = emptyProfile()): BrainContext & { profile: LearnerProfile } {
   return {
-    world, teacher: "leo", teacherName: "Leo", profile,
+    world, teacher: "leo", teacherName: "Leo", profile, session: profile.sessions,
     record: (a) => profile.attempts.push({ ...a, at: new Date().toISOString() }),
   };
 }
@@ -87,7 +87,7 @@ describe("scripted brain (not AI): the Mars field trip", () => {
     const back = b.respond({ kind: "choice", id: "back", label: "Back to class" }, ctx("mars"));
     expect(actions(back).find((a) => a.name === "openWorld")?.args).toEqual({ world: "classroom" });
   });
-  it("back in class after the rock: an unassisted check on a different question", () => {
+  it("back in class: a same-session recheck; a later session: the real later check", () => {
     const b = new ScriptedBrain();
     const c = ctx("mars");
     b.respond({ kind: "tap", target: "rock_1" }, c);
@@ -96,7 +96,16 @@ describe("scripted brain (not AI): the Mars field trip", () => {
     expect(actions(r).find((a) => a.name === "askQuestion")?.args).toEqual({ questionId: "q_red_recall" });
     allValid(r, "classroom");
     b.respond({ kind: "answer", questionId: "q_red_recall", optionId: "rust" }, ctx("classroom", c.profile));
-    expect(c.profile.attempts.at(-1)).toMatchObject({ context: "later_check", hintsUsed: 0, correct: true });
+    // Minutes later in the same session: a recheck, NOT evidence of independence.
+    expect(c.profile.attempts.at(-1)).toMatchObject({ context: "recheck", hintsUsed: 0, correct: true });
+    expect(skillStatus(c.profile.attempts, "science.mars.red_color").kind).toBe("needs_check");
+    // Next session: a later check. Only this counts as doing it on their own.
+    c.profile.sessions = 2;
+    const b2 = new ScriptedBrain();
+    const g = b2.respond({ kind: "session_start" }, ctx("classroom", c.profile));
+    expect(actions(g).find((x) => x.name === "askQuestion")?.args).toEqual({ questionId: "q_red_recall" });
+    b2.respond({ kind: "text", text: "the iron got rusty" }, ctx("classroom", c.profile));
+    expect(c.profile.attempts.at(-1)).toMatchObject({ context: "later_check", correct: true });
     expect(skillStatus(c.profile.attempts, "science.mars.red_color").kind).toBe("independent");
   });
   it("a later session greets from STORED evidence, not a canned 'I remember you'", () => {

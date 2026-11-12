@@ -8,13 +8,15 @@
  */
 export type WorldId = "classroom" | "mars";
 export type Environment = "classroom" | "planet_surface";
+/** How the camera frames a world: indoors (close) or outdoors (higher, wider). */
+export type Framing = "indoor" | "outdoor";
 export type Transit = "space_flight" | "fade";
 
 export interface Source { id: string; title: string; url: string; note?: string }
 export interface Fact { id: string; text: string; sourceId: string }
 export interface QuestionOption { id: string; label: string; correct: boolean; keywords: string[] }
 export interface Question { id: string; skill: string; prompt: string; options: QuestionOption[]; hint: string; explain: string }
-export interface Interactive { label: string; inspect: { title: string; body: string; factIds: string[] } }
+export interface Interactive { label: string; inspect: { title: string; body: string; factIds: string[]; hint?: string } }
 
 export interface WorldDef {
   id: WorldId;
@@ -23,6 +25,11 @@ export interface WorldDef {
   /** Shown on screen while inside the world. Required for anything simulated. */
   simulationNotice?: string;
   environment: Environment;
+  framing: Framing;
+  /** Background colour behind the world (also the travel flash colour). */
+  background: string;
+  /** Texture key for the planet seen while flying here (space_flight only). */
+  planet?: "mars";
   /** How to arrive here from the hub. */
   transit: Transit;
   /** The teacher wears a space helmet here (honesty: no unprotected humans in space). */
@@ -46,6 +53,8 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     title: "Classroom",
     subject: "hub",
     environment: "classroom",
+    framing: "indoor",
+    background: "#f3e7d3",
     transit: "fade",
     helmet: false,
     arrivalSpot: "center",
@@ -75,6 +84,9 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     subject: "science",
     simulationNotice: "Virtual field trip · a simulation, not real Mars",
     environment: "planet_surface",
+    framing: "outdoor",
+    background: "#d8a47e",
+    planet: "mars",
     transit: "space_flight",
     helmet: true,
     arrivalSpot: "landing",
@@ -87,6 +99,7 @@ export const WORLDS: Record<WorldId, WorldDef> = {
           title: "Rusty iron minerals",
           body: "This rock and its dust contain iron. Over a very long time the iron rusted, which gives Mars its reddish colour.",
           factIds: ["red"],
+          hint: "Drag the rock to spin it.",
         },
       },
     },

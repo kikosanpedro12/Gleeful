@@ -38,7 +38,7 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
       // Off to the right so the planet (upper left) and the teacher are both in view.
       pos.set(1.1, 1.55, portrait ? 5.0 : 4.1);
       look.set(-0.9, 1.6, -4);
-    } else if (fx.shot === "mars") {
+    } else if (fx.shot === "outdoor") {
       pos.set(tx * 0.75 + 0.2, ty + 1.65, tz + (portrait ? 4.1 : 3.7));
       look.set(tx * 0.9, ty + 1.05, tz - 1.6);
     } else {
@@ -46,7 +46,7 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
       look.set(tx * (portrait ? 0.85 : 0.6), portrait ? 1.0 : 1.05, tz);
     }
     // Snap on a world swap (hidden by the flash) so the camera never sweeps across a new world.
-    const snap = fx.shot !== lastShot.current && fx.shot === "mars";
+    const snap = fx.shot !== lastShot.current && lastShot.current === "space";
     lastShot.current = fx.shot;
     const k = snap ? 1 : 1 - Math.exp(-(reducedMotion ? 4 : 2.2) * dt);
     cam.position.lerp(pos, k);

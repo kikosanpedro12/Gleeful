@@ -34,7 +34,7 @@ function Onboarding() {
         {status === "connecting" ? "Getting ready…" : teacher ? `Start with ${LOOKS[teacher].name}` : "Pick a teacher"}
       </button>
       <small className="fine">
-        Early test version: lessons are scripted, not live AI yet. Voice uses your browser; in Chrome, speech you say is sent to Google to turn it into text. Nothing is recorded by this app.
+        Early test version: lessons are scripted, not live AI yet. No audio is recorded. Answers are saved in this browser only. When you tap the mic, your browser turns speech into text, and most browsers (Chrome, Edge, Safari) send that speech to their own service (Google, Microsoft or Apple) to do it.
       </small>
       <a className="fine link" href="/parent">For parents →</a>
     </div>
@@ -70,7 +70,7 @@ function InspectCard() {
       <small>LOOK CLOSER</small>
       <b>{item.inspect.title}</b>
       <p>{item.inspect.body}</p>
-      <p className="hint">Drag the rock to spin it.</p>
+      {item.inspect.hint && <p className="hint">{item.inspect.hint}</p>}
       {src && <a href={src.url} target="_blank" rel="noreferrer">Source: {src.title}</a>}
       <button className="ghost small" onClick={() => session.closeInspect()}>Put it back</button>
     </aside>

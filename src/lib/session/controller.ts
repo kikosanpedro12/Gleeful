@@ -36,6 +36,10 @@ class SessionController {
   /** World events that arrived while the teacher was talking; delivered when he stops. */
   private queued: BrainInput[] = [];
   private captionFor = "";
+  private transitWatchdog?: ReturnType<typeof setTimeout>;
+  private flushTimer?: ReturnType<typeof setTimeout>;
+  /** Tap-to-talk asked for the mic and it has not started or failed yet. */
+  private listenRequested = false;
 
   get set() { return useSession.setState; }
   get s(): SessionStore { return useSession.getState(); }
@@ -59,7 +63,11 @@ class SessionController {
       this.finalize(before.turnId, conv.interrupted);
     }
     this.set(patch);
-    if (before.state === "speaking" && conv.state === "idle") this.flushQueued();
+    // Queued teacher lines wait for a turn to end NATURALLY. An interrupt is the
+    // child taking the floor, so it must never release a queued line.
+    const endedNaturally = conv.state === "idle" && before.state !== "idle" && conv.turnId === before.turnId &&
+      (e.type === "RESPONSE_AUDIO_STOP" || e.type === "RESPONSE_FAILED" || e.type === "LISTEN_CANCELLED");
+    if (endedNaturally) this.flushQueued();
   }
 
   private finalize(turnId: number, interrupted = false) {
@@ -116,12 +124,14 @@ class SessionController {
         if (this.sessionCap) clearTimeout(this.sessionCap);
         if (this.timeout) clearTimeout(this.timeout);
         this.queued = [];
+        if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
         this.dispatch({ type: "DISCONNECTED" });
-        this.set({ listening: false, interim: "", choices: [], question: null, invite: null, inspecting: null });
+        this.set({ listening: false, interim: "", choices: [], question: null, invite: null, inspecting: null, transit: null, world: "classroom" });
         if (detail) this.set({ banner: { kind: "error", text: `${detail} Tap Start to reconnect.` } });
       }
     },
     onUserSpeechStart: () => {
+      this.listenRequested = false;
       this.set({ listening: true, interim: "" });
       this.dispatch({ type: "USER_SPEECH_START" });
     },
@@ -136,6 +146,7 @@ class SessionController {
       this.armTimeout(turnId);
     },
     onListenFailed: (reason) => {
+      this.listenRequested = false;
       this.set({ listening: false, interim: "" });
       this.dispatch({ type: "LISTEN_CANCELLED" });
       if (reason === "denied") this.set({ micAvailable: false, banner: { kind: "info", text: "The microphone is blocked. You can tap the answers or type instead." } });
@@ -200,7 +211,7 @@ class SessionController {
       const c = parsed.command;
       switch (c.name) {
         case "writeOnBoard": this.set({ boardText: c.text }); break;
-        case "offerChoices": this.set({ choices: c.choices }); break;
+        case "offerChoices": this.set({ choices: c.choices, question: null }); break;
         case "askQuestion": this.set({ question: { id: c.questionId, world: this.s.world }, choices: [] }); break;
         case "inviteTap": this.set({ invite: c.target }); break;
         case "openWorld": this.beginTransit(c.world); break;
@@ -212,10 +223,7 @@ class SessionController {
     },
     onUsage: (u) => {
       const p = this.s.usage;
-      this.set({ usage: {
-        inputTokens: p.inputTokens + u.inputTokens, outputTokens: p.outputTokens + u.outputTokens,
-        inputAudioTokens: p.inputAudioTokens + u.inputAudioTokens, outputAudioTokens: p.outputAudioTokens + u.outputAudioTokens,
-        cachedTokens: p.cachedTokens + u.cachedTokens, responses: p.responses + 1 } });
+      this.set({ usage: { inputTokens: p.inputTokens + u.inputTokens, outputTokens: p.outputTokens + u.outputTokens, cachedTokens: p.cachedTokens + u.cachedTokens, responses: p.responses + 1 } });
     },
     onError: (message) => this.set({ banner: { kind: "error", text: message } }),
   };
@@ -225,7 +233,14 @@ class SessionController {
     if (this.s.transit) return;
     const from = this.s.world;
     const style = WORLDS[to].transit === "space_flight" && from === "classroom" ? "space_flight" : "fade";
-    this.set({ transit: { from, to, t0: performance.now(), style }, inspecting: null, invite: null, question: null });
+    const t0 = performance.now();
+    this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null });
+    // The 3D director normally lands the trip. If it can't (no WebGL, lost
+    // context, tab hidden), land it anyway so the lesson can't get stuck.
+    if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
+    this.transitWatchdog = setTimeout(() => {
+      if (this.s.transit?.t0 === t0) this.transitEvent("arrived");
+    }, TRANSIT_MS[style] + 1500);
   }
 
   /** Called by the scene's transit director at the cruise point and on arrival. */
@@ -233,6 +248,7 @@ class SessionController {
     const tr = this.s.transit;
     if (!tr) return;
     if (kind === "arrived") {
+      if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
       this.set({ world: tr.to, transit: null });
       this.deliverSystem({ kind: "world_ready", world: tr.to });
     } else if (tr.style === "space_flight") {
@@ -255,8 +271,10 @@ class SessionController {
   }
 
   private flushQueued() {
-    // A cruise line is pointless once we have landed.
+    // A cruise line is pointless once we have landed; an arrival line is
+    // pointless if we are no longer in that world.
     if (!this.s.transit) this.queued = this.queued.filter((q) => q.kind !== "transit_cruise");
+    this.queued = this.queued.filter((q) => q.kind !== "world_ready" || q.world === this.s.world);
     const next = this.queued.shift();
     if (next) this.deliverSystem(next);
   }
@@ -303,6 +321,9 @@ class SessionController {
   }
 
   stop() {
+    if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
+    if (this.flushTimer) clearTimeout(this.flushTimer);
+    this.listenRequested = false;
     if (this.sessionCap) clearTimeout(this.sessionCap);
     if (this.timeout) clearTimeout(this.timeout);
     this.provider?.cancelListening?.();
@@ -316,7 +337,7 @@ class SessionController {
     if (!this.provider || this.s.status !== "connected") return;
     this.provider.cancelListening?.();
     // Moving on (a choice, a new question): put the inspected object back.
-    if (input.kind === "choice" || input.kind === "text") this.set({ inspecting: null });
+    if (input.kind === "choice" || input.kind === "text") this.set({ inspecting: null, question: null });
     this.dispatch({ type: "USER_TEXT" });
     const turnId = this.s.conv.turnId;
     this.line("child", label, turnId);
@@ -360,15 +381,43 @@ class SessionController {
   /** Tap-to-talk. Tapping while the teacher talks interrupts him first. */
   talk() {
     if (!this.provider?.listenOnce || this.s.status !== "connected") return;
-    if (this.s.listening) { this.provider.cancelListening?.(); this.set({ listening: false, interim: "" }); return; }
+    if (this.s.listening) {
+      this.provider.cancelListening?.();
+      this.listenRequested = false;
+      this.set({ listening: false, interim: "" });
+      this.dispatch({ type: "LISTEN_CANCELLED" });
+      return;
+    }
+    // Always silence the teacher, including a line that is about to start
+    // (greeting / arrival) while the state still says idle.
+    this.systemReplyPending = false;
     if (this.s.conv.state === "speaking" || this.s.conv.state === "thinking") this.interrupt();
+    else this.provider.interrupt();
     this.set({ banner: null });
+    this.listenRequested = true;
     this.provider.listenOnce();
   }
 
   interrupt() {
     this.provider?.interrupt();
     this.dispatch({ type: "INTERRUPT" });
+    this.flushSoon();
+  }
+
+  /**
+   * After an interrupt, a queued line (e.g. "We made it to Mars!") must not be
+   * lost, or the child lands in silence with nothing to tap. Deliver it after a
+   * short pause, unless the child has started talking or typing by then.
+   */
+  private flushSoon() {
+    // The mid-flight remark is optional: Stop means quiet. Arrival lines are kept.
+    this.queued = this.queued.filter((q) => q.kind !== "transit_cruise");
+    if (!this.queued.length) return;
+    if (this.flushTimer) clearTimeout(this.flushTimer);
+    const turn = this.s.conv.turnId;
+    this.flushTimer = setTimeout(() => {
+      if (this.s.conv.state === "idle" && this.s.conv.turnId === turn && !this.s.listening && !this.listenRequested) this.flushQueued();
+    }, 1200);
   }
 
   outputLevel() { return this.provider?.getOutputLevel() ?? 0; }

@@ -206,4 +206,56 @@ describe("session controller", () => {
     p.ev.onResponseCreated("late");
     expect(p.calls.filter((c) => c === "interrupt").length).toBeGreaterThanOrEqual(2);
   });
+
+  it("reviewer H1: an interrupt never releases a queued line straight over the child", async () => {
+    const { session, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["openWorld", { world: "mars" }]], false); // still speaking
+    session.transitEvent("arrived"); // queued behind the speech
+    session.talk(); // child taps the mic: interrupt + listen
+    expect(p.events.filter((e) => e.kind === "world_ready")).toHaveLength(0);
+    p.ev.onUserSpeechStart(1);
+    vi.advanceTimersByTime(2000);
+    expect(p.events.filter((e) => e.kind === "world_ready")).toHaveLength(0); // still the child's turn
+  });
+
+  it("reviewer H1: tap-to-talk silences a line that is about to start even when the state says idle", async () => {
+    const { session, p } = await load();
+    const before = p.calls.filter((c) => c === "interrupt").length;
+    session.talk();
+    expect(p.calls.filter((c) => c === "interrupt").length).toBe(before + 1);
+    expect(p.calls.at(-1)).toBe("listen");
+  });
+
+  it("reviewer H2: a queued arrival is delivered when the child's listen ends with silence", async () => {
+    const { session, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["openWorld", { world: "mars" }]]);
+    p.ev.onUserSpeechStart(1); // listening
+    session.transitEvent("arrived");
+    p.ev.onListenFailed?.("no-speech");
+    expect(p.events.at(-1)).toEqual({ kind: "world_ready", world: "mars" });
+  });
+
+  it("reviewer H3: a trip lands even if the 3D scene never reports arrival (no WebGL)", async () => {
+    const { session, s, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["openWorld", { world: "mars" }]]);
+    expect(s().transit).not.toBeNull();
+    vi.advanceTimersByTime(11000);
+    expect(s().transit).toBeNull();
+    expect(s().world).toBe("mars");
+    expect(p.events.at(-1)).toEqual({ kind: "world_ready", world: "mars" });
+  });
+
+  it("reviewer M1: tapping the mic again cancels listening and returns to idle", async () => {
+    const { session, s, p } = await load();
+    session.talk();
+    p.ev.onUserSpeechStart(1);
+    expect(s().conv.state).toBe("listening");
+    session.talk();
+    expect(s().conv.state).toBe("idle");
+    expect(p.calls).toContain("cancelListen");
+  });
 });
+

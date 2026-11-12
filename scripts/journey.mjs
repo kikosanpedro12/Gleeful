@@ -3,7 +3,7 @@
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
 
-const TARGET = process.env.SMOKE_URL || "http://localhost:3111/";
+const TARGET = process.env.SMOKE_URL || "http://localhost:3111/?test=1";
 const OUT = new URL("./out/", import.meta.url).pathname;
 fs.mkdirSync(OUT, { recursive: true });
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 720), TAG = process.env.TAG || "d";
@@ -147,12 +147,32 @@ await click('[data-testid="answer-rust"]');
 await waitFor((d) => d.state === "idle" && !d.question, 25000);
 
 // Parent page shows honest evidence.
-await page.goto(TARGET.replace(/\/?$/, "/parent"), { waitUntil: "domcontentloaded" });
+await page.goto(new URL("/parent", TARGET).href, { waitUntil: "domcontentloaded" });
 await sleep(1500);
 const parent = await page.evaluate(() => document.body.innerText);
-check("parent view shows independent later check", /on their own later/i.test(parent));
+check("parent view: same-session check is NOT called independent", /a few minutes later/i.test(parent) && !/on their own in a later session/i.test(parent));
 check("parent view says it was with a hint during the lesson", /1 hint/.test(parent));
 await page.screenshot({ path: `${OUT}${TAG}-14-parent.png`, fullPage: true });
+
+// Second session: the teacher must use STORED evidence, then the later check counts.
+await page.goto(TARGET, { waitUntil: "domcontentloaded" });
+await page.waitForSelector('[data-testid="pick-mia"]', { timeout: 30000 });
+await sleep(1500);
+await click('[data-testid="pick-mia"]'); // switching teacher keeps history
+await sleep(400);
+await click('[data-testid="start"]');
+const welcome = await waitFor((d) => d.question && d.state === "idle", 30000);
+check("session 2 (Mia): opens with a no-hint check from stored evidence", !!welcome);
+const said2 = await page.evaluate(() => document.body.innerText);
+await click('[data-testid="answer-rust"]');
+await waitFor((d) => d.state === "idle" && !d.question, 25000);
+await page.goto(new URL("/parent", TARGET).href, { waitUntil: "domcontentloaded" });
+await sleep(1500);
+const parent2 = await page.evaluate(() => document.body.innerText);
+check("parent view after session 2: on their own in a later session", /on their own in a later session/i.test(parent2));
+check("parent view shows 2 sessions", /Sessions started:\s*2/.test(parent2));
+await page.screenshot({ path: `${OUT}${TAG}-15-parent-session2.png`, fullPage: true });
+void said2;
 
 const real = errors.filter((e) => !/favicon|404/.test(e));
 check("no page errors", real.length === 0, real.slice(0, 3).join(" | "));

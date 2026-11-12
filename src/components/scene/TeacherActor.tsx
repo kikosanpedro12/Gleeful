@@ -8,8 +8,8 @@ import { session } from "@/lib/session/controller";
 import { frameMeter } from "@/lib/telemetry/frames";
 import { WORLDS } from "@/lib/worlds/registry";
 import { previewLevel } from "@/lib/voice/preview";
-import { fx, pointedRef, resolveTarget } from "./shared";
-import { groundHeight } from "./Mars";
+import { fx, pointedRef, resolveTarget, TEST_HOOKS } from "./shared";
+import { WORLD_GROUND } from "./worlds";
 
 const ONBOARD_POS: Record<TeacherId, [number, number]> = { leo: [-0.75, -0.85], mia: [0.55, -0.85] };
 
@@ -27,8 +27,7 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
     actors[id] = { animator, rig };
     const [x, z] = ONBOARD_POS[id];
     animator.place(x, z);
-    (window as any).__teacher = (window as any).__teacher ?? {};
-    (window as any).__teachers = actors;
+    if (TEST_HOOKS) (window as any).__teachers = actors;
     return () => { delete actors[id]; rig.dispose(); };
   }, [id, rig, animator]);
 
@@ -75,7 +74,7 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
       resolveTarget,
       resolveSpot: (name) => (s.transit ? null : world.spots[name] ?? null),
       helmet: !!s.transit || world.helmet,
-      groundY: fx.shown === "mars" ? groundHeight : undefined,
+      groundY: WORLD_GROUND[fx.shown],
       takeDirectives: () => {
         const d = useSession.getState().directives;
         if (d.length) useSession.setState({ directives: [] });
@@ -84,7 +83,8 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
       onFirstAnimation: (turnId) => session.markAnimation(turnId),
     });
     pointedRef.current = animator.pointed;
-    (window as any).__teacher = { rig, animator };
+    (window as unknown as { __teacherPos?: unknown }).__teacherPos = rig.root.position;
+    if (TEST_HOOKS) (window as any).__teacher = { rig, animator };
   });
   return <primitive object={rig.root} />;
 }
