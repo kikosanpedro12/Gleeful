@@ -1,6 +1,6 @@
 # Architecture (updated 2026-11-12)
 
-Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. Database: Supabase schema written and tested (supabase/, docs/DATABASE.md), **not deployed or wired yet**; the app saves through `LearnerStore` (this browser only today). The brain is scripted by default. A Claude brain (Stage B, built 13 Nov, tested only against a mocked API, never against the real one) sits behind `/api/brain` and is off until a build sets `NEXT_PUBLIC_BRAIN=model` and the server has `ANTHROPIC_API_KEY`.
+Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. Database: Supabase schema live on the Gleeful project since 13 Nov (supabase/, docs/DATABASE.md) but **not wired to the app yet**; the app saves through `LearnerStore` (this browser only today). The brain is scripted by default. A Claude brain (Stage B, built 13 Nov, tested only against a mocked API, never against the real one) sits behind `/api/brain` and is off until a build sets `NEXT_PUBLIC_BRAIN=model` and the server has `ANTHROPIC_API_KEY`.
 
 ## One turn, end to end
 ```
