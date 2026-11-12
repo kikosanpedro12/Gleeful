@@ -38,7 +38,7 @@ Today (before Stage E), attempts live only in the browser's localStorage. The pa
 | Identity sequence has no API-role grants (no `setval` / counting other families' rows) | migration | same |
 | Server-only tables (`brain_usage`): no client write grants | migration | same |
 | No `SECURITY DEFINER` functions; private schema not exposed | migration | same |
-| Security tests must catch 14 planted holes | `scripts/mutate-rls.mjs` | CI |
+| Security tests must catch 15 planted holes | `scripts/mutate-rls.mjs` | CI |
 | Auth settings (email confirmation, password ≥10 with mixed case + digits, secure password change, refresh rotation, anonymous sign-in off, only `public` exposed, Realtime/S3/vector off) | `supabase/config.toml` (**local stack only**). The hosted project must be set to match in the dashboard; see docs/DATABASE.md. | Checklist |
 | No secrets in the repo; no secret behind a `NEXT_PUBLIC_` name | `scripts/check-secrets.mjs` | CI |
 | Pinned dependencies, exact lockfile, `npm ci --ignore-scripts`, audit, Dependabot | `package.json`, `.npmrc`, CI | CI |

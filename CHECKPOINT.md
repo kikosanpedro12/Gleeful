@@ -20,9 +20,9 @@
 - **Fallbacks:** mic blocked or no speech, the browser voice failing (silent timeline keeps the pace), no WebGL (the trip still lands), End or Start mid-trip, tampered local storage.
 - **Security:**
   - A strict per-request CSP nonce and security headers. The journey runs with zero CSP violations.
-  - The Supabase schema's row-level security was attacked on real Postgres: 42 tests, and 14 of 14 planted holes were caught.
+  - The Supabase schema's row-level security was attacked on real Postgres: 49 database tests, and 15 of 15 planted holes were caught. Reviewer pre-production pass on the migration (13 Nov): PASS WITH NOTES; the database now also sets `lesson_sessions.started_at`.
   - Secret scan, pinned dependencies, 0 known vulnerabilities.
-- **Tests:** 157 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
+- **Tests:** 158 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
 
 ## Simulated or placeholder — do not mistake for the product
 - **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
@@ -65,9 +65,9 @@
 5. **Human review** of the Mars fact set.
 
 ## Exact next actions
-1. Founder: create the GitHub repo `gleeful`, then I push `main`.
+1. Done 13 Nov: GitHub repo `kikosanpedro12/Gleeful` created and `main` pushed; Supabase project `gleeful` created (region Auto, Data API on, auto-expose off, auto-RLS on) and linked to the repo, so migrations on `main` deploy to production. Verify in the Supabase dashboard: Table editor shows learners, lesson_sessions, attempts, brain_usage; Security Advisor clean. Before launch, set Site URL, redirect URLs, SMTP and rate limits in the dashboard (config.toml is not applied to production).
 2. Founder: Vercel project (or tunnel), then the phone test.
-3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits.
+3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits. The server sets `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
 5. Builder: launch cost cuts (pre-recorded voice cache, STT only while the child talks, own relay before LiveKit) — the pricing depends on them.
 6. Founder + builder: Stage E, create the Supabase project, `db push`, advisors, `SupabaseLearnerStore`, parent sign-in.

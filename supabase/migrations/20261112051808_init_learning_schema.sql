@@ -52,8 +52,21 @@ begin
 end;
 $$;
 
+create or replace function private.force_started_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  new.started_at := now();
+  return new;
+end;
+$$;
+
 revoke all on function private.touch_updated_at() from public, anon, authenticated;
 revoke all on function private.force_created_at() from public, anon, authenticated;
+revoke all on function private.force_started_at() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------- learners
 create table public.learners (
@@ -93,6 +106,10 @@ create table public.lesson_sessions (
 );
 create index lesson_sessions_parent_id_idx on public.lesson_sessions (parent_id);
 create index lesson_sessions_learner_started_idx on public.lesson_sessions (learner_id, started_at desc);
+
+create trigger lesson_sessions_force_started_at
+  before insert on public.lesson_sessions
+  for each row execute function private.force_started_at();
 
 -- ----------------------------------------------------------------- attempts (learning evidence)
 create table public.attempts (

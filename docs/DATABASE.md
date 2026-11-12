@@ -1,4 +1,4 @@
-# Database (Supabase) — designed and tested, NOT deployed yet
+# Database (Supabase) — project `gleeful` created 13 Nov 2026, linked to GitHub; the migration deploys from `main`
 
 Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local config: `supabase/config.toml`.
 
@@ -20,7 +20,7 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 
 ## Proof
 - `npm test` runs the real migration on real Postgres (PGlite), with stand-ins for Supabase's roles and `auth.uid()` (`tests/db/supabase-stub.sql`). Two parents and an anonymous visitor try to read, write, move and tamper with each other's data.
-- `node scripts/mutate-rls.mjs` plants 14 security holes, one at a time. The tests must fail for every one.
+- `node scripts/mutate-rls.mjs` plants 15 security holes, one at a time. The tests must fail for every one.
 
 ## Going live (Stage E) — steps
 1. Create the Supabase project in a region near the users, and set a strong database password in a password manager.

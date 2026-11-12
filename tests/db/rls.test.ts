@@ -126,6 +126,12 @@ describe("evidence integrity", () => {
        values ($1, $2, 'm.s', 'q', 'a', true, 'later_check', '2001-01-01') returning created_at`, [learnerA, A]);
     expect(new Date(r[0].created_at).getFullYear()).toBeGreaterThan(2020);
   });
+  it("the database sets started_at; a client cannot back-date a lesson session", async () => {
+    const r = await as<{ started_at: string }>("authenticated", A,
+      `insert into public.lesson_sessions (learner_id, parent_id, teacher, brain, started_at)
+       values ($1, $2, 'leo', 'scripted', '2001-01-01') returning started_at`, [learnerA, A]);
+    expect(new Date(r[0].started_at).getFullYear()).toBeGreaterThan(2020);
+  });
   it("constraints reject junk: grade 13, empty nickname, unknown teacher/context, free-text ids", async () => {
     const L = `insert into public.learners (parent_id, nickname, grade, preferred_teacher) values ($1, $2, $3, $4)`;
     await fails(as("authenticated", A, L, [A, "x", 13, "leo"]), /check/);
