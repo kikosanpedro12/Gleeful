@@ -3,9 +3,10 @@ import * as THREE from "three";
 import { buildTeacher } from "@/lib/teacher/rig";
 import { TeacherAnimator, type FrameInput } from "@/lib/teacher/animator";
 import type { SceneCommand } from "@/lib/scene/commands";
+import { LOOKS } from "@/lib/teacher/rig";
 
 function setup() {
-  const rig = buildTeacher();
+  const rig = buildTeacher(LOOKS.leo);
   const anim = new TeacherAnimator(rig);
   const scene = new THREE.Scene();
   scene.add(rig.root);
@@ -16,6 +17,8 @@ function setup() {
     dt: 1 / 60, state: "idle", turnId: 0, interrupted: false, outputLevel: 0, inputLevel: 0,
     camera: new THREE.Vector3(0, 1.45, 3.3), reducedMotion: false,
     resolveTarget: (n) => targets[n]?.clone() ?? null,
+    resolveSpot: (n) => ({ center: [-0.15, -0.7], board_side: [-1.35, -1.75], desk_side: [0.95, -0.9] } as Record<string, [number, number]>)[n] ?? null,
+    helmet: false,
     takeDirectives: () => { const d = pending; pending = []; return d; },
     onFirstAnimation: (t) => animated.push(t),
   };
@@ -100,5 +103,35 @@ describe("teacher animator", () => {
     expect(animated).toEqual([]);
     step({ state: "speaking", turnId: 1 }, 5);
     expect(animated).toEqual([1]);
+  });
+});
+
+describe("teacher animator: worlds", () => {
+  it("helmet follows the frame input", () => {
+    const { rig, step } = setup();
+    step({ helmet: true }, 1);
+    expect(rig.helmet.visible).toBe(true);
+    step({ helmet: false }, 1);
+    expect(rig.helmet.visible).toBe(false);
+  });
+  it("unknown spot: no walk (never invents a position)", () => {
+    const { anim, step, push } = setup();
+    push(1, { name: "moveTeacherTo", spot: "nowhere" });
+    step({ state: "speaking", turnId: 1 }, 10);
+    expect(anim.debug.walking).toBe(false);
+  });
+  it("stands on uneven ground", () => {
+    const { rig, step } = setup();
+    step({ groundY: () => 0.4 }, 30);
+    expect(rig.root.position.y).toBeCloseTo(0.4, 2);
+  });
+  it("place() teleports and cancels queued actions", () => {
+    const { rig, anim, step, push } = setup();
+    push(1, { name: "moveTeacherTo", spot: "board_side" });
+    step({ state: "speaking", turnId: 1 }, 5);
+    anim.place(3, -2);
+    step({ state: "speaking", turnId: 1 }, 5);
+    expect(anim.debug.walking).toBe(false);
+    expect(rig.root.position.x).toBeCloseTo(3, 3);
   });
 });

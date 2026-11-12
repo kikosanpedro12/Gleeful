@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { JointName, TeacherRig } from "./rig";
 import { JOINTS } from "./rig";
 import type { TeacherState } from "./stateMachine";
-import type { Gesture, SceneCommand, Spot } from "@/lib/scene/commands";
+import type { Gesture, SceneCommand } from "@/lib/scene/commands";
 
 /**
  * Drives the rig every frame from conversation state + validated directives.
@@ -37,11 +37,6 @@ const BEATS: Pose[] = [
 
 const GESTURE_SEC: Record<Gesture, number> = { wave: 1.9, nod: 1.2, thumbs_up: 1.6, shrug: 1.5, think: 1.8, open_hands: 1.7 };
 
-export const SPOT_POS: Record<Spot, [number, number]> = {
-  center: [-0.15, -0.7],
-  board_side: [-1.35, -1.75],
-  desk_side: [0.95, -0.9],
-};
 
 type Active =
   | { kind: "walk"; to: THREE.Vector3; turnId: number }
@@ -59,6 +54,12 @@ export interface FrameInput {
   reducedMotion: boolean;
   /** World position of a named, registered scene object. */
   resolveTarget(name: string): THREE.Vector3 | null;
+  /** Floor position of a named spot in the current world. */
+  resolveSpot(name: string): [number, number] | null;
+  /** Space helmet on (field trips / space). */
+  helmet: boolean;
+  /** Height of the ground under a point (uneven terrain). */
+  groundY?(x: number, z: number): number;
   takeDirectives(): { turnId: number; command: SceneCommand }[];
   onFirstAnimation(turnId: number): void;
 }
@@ -85,6 +86,7 @@ export class TeacherAnimator {
   private beat = 4;
   private beatAt = 0;
   private walkPhase = 0;
+  private bob = 0;
   private seed = 1234567;
   private announced = -1;
   private lookObject: string | null = null;
@@ -94,7 +96,23 @@ export class TeacherAnimator {
   debug = { mouthOpen: 0, walking: false, gesture: null as string | null, pointing: null as string | null };
 
   constructor(private rig: TeacherRig) {
-    rig.root.position.set(SPOT_POS.center[0], 0, SPOT_POS.center[1]);
+    rig.root.position.set(-0.15, 0, -0.7);
+  }
+
+  /** Teleport (used during a world change, while the view is hidden). Cancels any action. */
+  place(x: number, z: number, faceYaw = 0) {
+    this.rig.root.position.set(x, 0, z);
+    this.yaw = faceYaw;
+    this.rig.root.rotation.y = faceYaw;
+    this.active = null;
+    this.queue = [];
+    this.pointed = null;
+    this.lookObject = null;
+  }
+
+  /** Play a gesture right now, outside the conversation (onboarding preview). */
+  gestureNow(gesture: Gesture) {
+    this.active = { kind: "gesture", gesture, t: 0, turnId: this.lastTurn };
   }
 
   private rand() {
@@ -137,7 +155,8 @@ export class TeacherAnimator {
       if (dist < 0.04) this.active = null;
       else {
         walking = true;
-        const step = Math.min(dist, 0.95 * dt);
+        // Long walks speed up a little so the child is not kept waiting.
+        const step = Math.min(dist, (1.0 + Math.min(dist, 5) * 0.18) * dt);
         rig.root.position.addScaledVector(v1.normalize(), step);
         desiredYaw = Math.atan2(v1.x, v1.z);
         this.walkPhase += dt * 6.2;
@@ -254,8 +273,10 @@ export class TeacherAnimator {
       pose.kneeL = [Math.max(0, c) * 0.75, 0, 0]; pose.kneeR = [Math.max(0, -c) * 0.75, 0, 0];
       pose.shoulderL = [s * 0.4, 0, 0.08]; pose.shoulderR = [-s * 0.4, 0, -0.08];
       pose.elbowL = [-0.35, 0, 0]; pose.elbowR = [-0.35, 0, 0];
-      rig.root.position.y = Math.abs(Math.sin(this.walkPhase)) * 0.018;
-    } else rig.root.position.y += (0 - rig.root.position.y) * damp(10, dt);
+      this.bob = Math.abs(Math.sin(this.walkPhase)) * 0.018;
+    } else this.bob += (0 - this.bob) * damp(10, dt);
+    const ground = f.groundY ? f.groundY(rig.root.position.x, rig.root.position.z) : 0;
+    rig.root.position.y = ground + this.bob;
 
     // --- head look (after yaw so it is relative to the body) ------------------------
     const lookAt = (this.lookObject && f.resolveTarget(this.lookObject)) || f.camera;
@@ -322,6 +343,8 @@ export class TeacherAnimator {
     rig.browL.position.y += (0.215 + browUp + (f.state === "thinking" ? 0.01 : 0) - rig.browL.position.y) * damp(12, dt);
     rig.browR.position.y += (0.215 + browUp - rig.browR.position.y) * damp(12, dt);
 
+    rig.helmet.visible = f.helmet;
+
     // --- telemetry ---------------------------------------------------------------------
     if (this.announced !== f.turnId && (f.state === "speaking" || this.active)) {
       this.announced = f.turnId;
@@ -337,8 +360,8 @@ export class TeacherAnimator {
     const c = d.command;
     switch (c.name) {
       case "moveTeacherTo": {
-        const [x, z] = SPOT_POS[c.spot];
-        this.active = { kind: "walk", to: new THREE.Vector3(x, 0, z), turnId: d.turnId };
+        const spot = f.resolveSpot(c.spot);
+        if (spot) this.active = { kind: "walk", to: new THREE.Vector3(spot[0], 0, spot[1]), turnId: d.turnId };
         break;
       }
       case "pointAt":
@@ -346,6 +369,10 @@ export class TeacherAnimator {
         break;
       case "gesture":
         this.active = { kind: "gesture", gesture: c.gesture, t: 0, turnId: d.turnId };
+        break;
+      case "inviteTap":
+        // Gesture toward the object the child should tap.
+        if (f.resolveTarget(c.target)) this.active = { kind: "point", target: c.target, t: 0.6, turnId: d.turnId };
         break;
       case "writeOnBoard":
         // Board text itself is updated by the session controller; glance at it.

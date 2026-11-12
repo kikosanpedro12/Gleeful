@@ -8,7 +8,7 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/journey.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.2",

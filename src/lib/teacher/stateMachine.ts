@@ -20,6 +20,8 @@ export type ConvEvent =
   | { type: "USER_SPEECH_STOP" }
   | { type: "USER_TEXT" }
   | { type: "INTERRUPT" }
+  /** Tap-to-talk ended without usable speech (silence, denied, error). */
+  | { type: "LISTEN_CANCELLED" }
   | { type: "RESPONSE_AUDIO_START"; turnId: number }
   | { type: "RESPONSE_AUDIO_STOP"; turnId: number }
   | { type: "RESPONSE_FAILED"; turnId: number };
@@ -52,6 +54,8 @@ export function reduce(s: ConvState, e: ConvEvent): ConvState {
       const busy = s.state === "speaking" || s.state === "thinking";
       return { state: "thinking", turnId: s.turnId + 1, interrupted: busy };
     }
+    case "LISTEN_CANCELLED":
+      return s.state === "listening" ? { ...s, state: "idle" } : s;
     case "INTERRUPT":
       if (s.state === "speaking" || s.state === "thinking")
         return { state: "idle", turnId: s.turnId + 1, interrupted: true };

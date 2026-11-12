@@ -49,4 +49,9 @@ describe("conversation state machine", () => {
     const d = reduce(t, { type: "DISCONNECTED" });
     expect(d).toMatchObject({ state: "offline", turnId: 2 });
   });
+  it("a cancelled listen returns to idle without inventing a turn", () => {
+    const l = run([{ type: "USER_SPEECH_START" }], connected);
+    expect(reduce(l, { type: "LISTEN_CANCELLED" })).toMatchObject({ state: "idle", turnId: l.turnId });
+    expect(reduce(connected, { type: "LISTEN_CANCELLED" })).toBe(connected);
+  });
 });

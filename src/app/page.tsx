@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Hud from "@/components/Hud";
 import DevPanel from "@/components/DevPanel";
 
@@ -10,6 +10,7 @@ export default function Page() {
   const [dev, setDev] = useState(false);
   const [quality, setQuality] = useState<"high" | "low">("high");
   const [webgl, setWebgl] = useState(true);
+  const flash = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setDev(new URLSearchParams(location.search).has("dev"));
     try {
@@ -19,7 +20,8 @@ export default function Page() {
   }, []);
   return (
     <main className="app">
-      {webgl ? <Stage onQuality={setQuality} /> : <div className="loading">This device cannot show the 3D classroom. You can still talk or type to Leo.</div>}
+      {webgl ? <Stage onQuality={setQuality} flash={flash} /> : <div className="loading">This device cannot show the 3D classroom. You can still talk or type to your teacher.</div>}
+      <div ref={flash} className="flash" aria-hidden />
       <Hud />
       {dev && <DevPanel quality={quality} />}
     </main>

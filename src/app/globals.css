@@ -47,3 +47,85 @@ button:focus-visible, input:focus-visible { outline:3px solid var(--coral); outl
 .dev button { background:#2b3550; color:#fff; border-radius:6px; padding:4px 8px; margin-right:6px; font:inherit; }
 @media (max-width:600px) { .dev { top:auto; bottom:210px; right:8px; max-height:38vh; } .primary { padding:14px 36px; } }
 @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+
+/* --- v2: onboarding, field trip, choices, inspect --- */
+.flash { position:absolute; inset:0; pointer-events:none; display:none; opacity:0; z-index:2; }
+.hud { z-index:3; }
+.start { margin-top:auto; margin-bottom:max(10px, env(safe-area-inset-bottom)); max-width:420px; width:100%; padding:20px 22px 16px; gap:10px; }
+.start h1 { font-size:1.6rem; }
+.pick { display:flex; gap:12px; width:100%; }
+.teacher-card { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 8px; border-radius:20px; background:#fff; border:3px solid transparent; box-shadow:0 3px 0 #e4d6bd; font:inherit; color:var(--ink); }
+.teacher-card b { font-size:1.2rem; }
+.teacher-card small { opacity:.75; }
+.teacher-card .swatch { width:34px; height:34px; border-radius:50%; }
+.teacher-card.leo .swatch { background:#1f6b5f; }
+.teacher-card.mia .swatch { background:#e8735a; }
+.teacher-card.on { border-color:var(--teal); box-shadow:0 3px 0 #154f47; }
+.teacher-card.mia.on { border-color:var(--coral); box-shadow:0 3px 0 #b5513b; }
+.fine { font-size:.75rem; opacity:.7; line-height:1.3; }
+.link { color:var(--teal); font-weight:800; text-decoration:none; opacity:.9; }
+.chip.sim { background:#ffe0c9; color:#7a2e12; }
+.ghost.small { padding:7px 14px; font-size:.9rem; }
+.caption.you { background:rgba(31,107,95,.9); }
+.choices { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:640px; }
+.choices button, .question .opts button { background:#fff; color:var(--ink); border-radius:999px; padding:12px 18px; font-weight:800; font-size:1rem; box-shadow:0 4px 0 #d9c9ae, 0 6px 16px rgba(60,40,10,.14); }
+.choices button:first-child { background:var(--teal); color:#fff; box-shadow:0 4px 0 #154f47, 0 6px 16px rgba(60,40,10,.14); }
+.question { background:rgba(255,250,241,.96); border-radius:22px; padding:14px 16px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); text-align:center; }
+.question p { margin:0 0 10px; font-weight:800; font-size:1.08rem; }
+.question .opts { display:flex; flex-direction:column; gap:8px; }
+.mic.listening { background:#d8f3dc; box-shadow:0 0 0 10px rgba(42,157,143,.3), 0 5px 0 #9ccfb0; color:#c0392b; animation:pulse 1s infinite; }
+@keyframes pulse { 50% { box-shadow:0 0 0 16px rgba(42,157,143,.15), 0 5px 0 #9ccfb0; } }
+.tag { position:absolute; left:0; top:0; background:#103a35; color:#fff; padding:6px 12px; border-radius:999px; font-weight:800; font-size:.9rem; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); white-space:nowrap; }
+.inspect { position:absolute; right:14px; top:64px; width:min(320px, calc(100vw - 28px)); background:rgba(16,40,37,.92); color:#fff; border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+.inspect small { color:#8fe3cf; font-weight:900; letter-spacing:.08em; }
+.inspect b { font-size:1.15rem; }
+.inspect p { margin:0; line-height:1.35; }
+.inspect .hint { opacity:.7; font-size:.85rem; }
+.inspect a { color:#ffd166; font-size:.85rem; }
+.sources { position:absolute; right:14px; top:60px; background:var(--paper); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; box-shadow:0 8px 24px rgba(0,0,0,.2); max-width:300px; }
+.sources a { color:var(--teal); font-weight:700; }
+@media (max-width:600px) {
+  .inspect { top:auto; bottom:250px; left:14px; right:14px; width:auto; }
+  .chip { font-size:.78rem; padding:6px 10px; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+  .caption { -webkit-line-clamp:2; font-size:.95rem; }
+  .start { max-width:520px; padding:12px 16px; }
+  .start h1 { font-size:1.2rem; }
+  .bottom { gap:6px; }
+  .mic { width:56px; height:56px; font-size:1.4rem; }
+}
+.parent { max-width:720px; margin:0 auto; padding:24px 18px 60px; overflow:auto; height:100%; }
+.parent .warn { background:#fff3cd; border-radius:10px; padding:10px 12px; }
+.parent .skill { background:#fffaf1; border-radius:14px; padding:4px 14px 8px; margin:10px 0; }
+.parent .danger { background:#c0392b; color:#fff; border-radius:999px; padding:10px 18px; font-weight:800; }
+.parent a { color:var(--teal); font-weight:800; }
+html:has(.parent), body:has(.parent) { overflow:auto; height:auto; }
+/* v2.1 layout fixes: keep the teacher visible */
+.start { margin-top:auto; }
+.start h1 { margin:0; }
+@media (min-width:700px) {
+  .question { max-width:720px; }
+  .question .opts { flex-direction:row; flex-wrap:wrap; justify-content:center; }
+  .question .opts button { flex:1 1 180px; }
+}
+.question { padding:10px 14px; }
+.question p { margin-bottom:8px; }
+/* v2.2 */
+.hud { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+.hud input { -webkit-user-select:text; user-select:text; }
+.narrow-only { display:none; }
+@media (min-aspect-ratio: 1/1) and (min-width: 760px) {
+  .start { position:absolute; right:4vw; top:50%; transform:translateY(-50%); margin:0; width:380px; }
+}
+@media (max-width:600px) {
+  .wide-only { display:none; }
+  .narrow-only { display:inline; }
+  .top { gap:6px; }
+  .top .ghost { padding:7px 12px; font-size:.85rem; }
+  .inspect { top:56px; bottom:auto; left:10px; right:10px; padding:10px 12px; gap:3px; }
+  .inspect b { font-size:1rem; }
+  .inspect p { font-size:.88rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .inspect .hint { display:none; }
+  .question .opts button, .choices button { padding:10px 14px; font-size:.95rem; }
+}

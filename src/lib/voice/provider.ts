@@ -1,7 +1,11 @@
 /**
  * Small provider boundary. The scene/teacher engine only knows this
- * interface, so another voice backend can be evaluated later.
+ * interface, so the brain and voice backends can change without touching it.
  */
+import type { BrainInput } from "@/lib/brain/types";
+import type { TeacherId } from "@/lib/teacher/rig";
+import type { WorldId } from "@/lib/worlds/registry";
+
 export type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
 export interface UsageDelta {
@@ -18,15 +22,23 @@ export interface VoiceEvents {
   /** utteranceEnd = local estimate of when sound actually stopped (may be undefined). */
   onUserSpeechStop(t: number, utteranceEnd?: number): void;
   onUserTranscript(text: string): void;
+  onUserInterim?(text: string): void;
+  onListenFailed?(reason: string): void;
   onResponseCreated(responseId: string): void;
   /** First audible output for this response. */
   onAudioStart(responseId: string, t: number): void;
   onAudioStop(responseId: string): void;
   onResponseFailed(responseId: string, reason: string): void;
-  onAssistantTranscript(responseId: string, delta: string): void;
+  /** newSegment: the delta starts a new sentence/segment (caption replaces instead of appends). */
+  onAssistantTranscript(responseId: string, delta: string, newSegment?: boolean): void;
   onToolCall(responseId: string, callId: string, name: string, args: string): void;
   onUsage(u: UsageDelta): void;
   onError(message: string): void;
+}
+
+export interface SessionInfo {
+  teacher: TeacherId;
+  world(): WorldId | "transit";
 }
 
 export interface VoiceProvider {
@@ -34,10 +46,15 @@ export interface VoiceProvider {
   connect(): Promise<void>;
   disconnect(): void;
   sendText(text: string): void;
+  /** Non-speech input: taps, choices, answers, world arrival. */
+  sendEvent(input: BrainInput): void;
   /** Stop current response + clear unplayed audio. */
   interrupt(): void;
   setMicEnabled(enabled: boolean): void;
   readonly micAvailable: boolean;
+  /** Tap-to-talk providers listen for one utterance. */
+  listenOnce?(): void;
+  cancelListening?(): void;
   /** 0..1 loudness of the teacher's voice right now (drives the mouth). */
   getOutputLevel(): number;
   getInputLevel(): number;

@@ -2,54 +2,148 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/session/store";
 import { session } from "@/lib/session/controller";
+import { LOOKS, type TeacherId } from "@/lib/teacher/rig";
+import { WORLDS } from "@/lib/worlds/registry";
+import { playPreview, stopPreview } from "@/lib/voice/preview";
+import { actors } from "./scene/TeacherActor";
 
-const STATE_LABEL: Record<string, string> = {
-  offline: "", idle: "Your turn — say something", listening: "Listening…", thinking: "Thinking…", speaking: "Leo is talking",
-};
+const TEACHERS: TeacherId[] = ["leo", "mia"];
+
+function Onboarding() {
+  const teacher = useSession((s) => s.teacher);
+  const previewing = useSession((s) => s.previewing);
+  const status = useSession((s) => s.status);
+  const pick = (id: TeacherId) => {
+    session.chooseTeacher(id);
+    void playPreview(id, () => actors[id]?.animator.gestureNow("wave"));
+  };
+  return (
+    <div className="start" data-testid="onboarding">
+      <h1>Choose your teacher</h1>
+      <p>Leo and Mia are AI teachers. Tap one to hear them.</p>
+      <div className="pick">
+        {TEACHERS.map((id) => (
+          <button key={id} className={`teacher-card ${id} ${teacher === id ? "on" : ""}`} data-testid={`pick-${id}`} onClick={() => pick(id)} aria-pressed={teacher === id}>
+            <span className="swatch" aria-hidden />
+            <b>{LOOKS[id].name}</b>
+            <small>{previewing === id ? "🔊 Saying hi…" : "▶ Hear me"}</small>
+          </button>
+        ))}
+      </div>
+      <button className="primary" data-testid="start" disabled={!teacher || status === "connecting"} onClick={() => { stopPreview(); void session.start(); }}>
+        {status === "connecting" ? "Getting ready…" : teacher ? `Start with ${LOOKS[teacher].name}` : "Pick a teacher"}
+      </button>
+      <small className="fine">
+        Early test version: lessons are scripted, not live AI yet. Voice uses your browser; in Chrome, speech you say is sent to Google to turn it into text. Nothing is recorded by this app.
+      </small>
+      <a className="fine link" href="/parent">For parents →</a>
+    </div>
+  );
+}
+
+function QuestionCard() {
+  const q = useSession((s) => s.question);
+  if (!q) return null;
+  const def = WORLDS[q.world].questions[q.id];
+  if (!def) return null;
+  return (
+    <div className="question" data-testid="question" role="group" aria-label={def.prompt}>
+      <p>{def.prompt}</p>
+      <div className="opts">
+        {def.options.map((o) => (
+          <button key={o.id} data-testid={`answer-${o.id}`} onClick={() => session.answer(o.id)}>{o.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InspectCard() {
+  const inspecting = useSession((s) => s.inspecting);
+  const world = useSession((s) => s.world);
+  const w = WORLDS[world];
+  const item = inspecting ? w.interactive[inspecting] : null;
+  if (!item) return null;
+  const src = w.sources.find((x) => item.inspect.factIds.some((f) => w.facts.find((ff) => ff.id === f)?.sourceId === x.id));
+  return (
+    <aside className="inspect" data-testid="inspect">
+      <small>LOOK CLOSER</small>
+      <b>{item.inspect.title}</b>
+      <p>{item.inspect.body}</p>
+      <p className="hint">Drag the rock to spin it.</p>
+      {src && <a href={src.url} target="_blank" rel="noreferrer">Source: {src.title}</a>}
+      <button className="ghost small" onClick={() => session.closeInspect()}>Put it back</button>
+    </aside>
+  );
+}
+
+function SourcesButton() {
+  const world = useSession((s) => s.world);
+  const [open, setOpen] = useState(false);
+  const w = WORLDS[world];
+  if (!w.sources.length) return null;
+  return (
+    <>
+      <button className="ghost" aria-label="Where these facts come from" onClick={() => setOpen((v) => !v)}>ⓘ</button>
+      {open && (
+        <div className="sources" role="dialog" aria-label="Sources">
+          <b>Where these facts come from</b>
+          {w.sources.map((s) => <a key={s.id} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}
+          <small>Fact check status: {w.reviewStatus}.</small>
+          <button className="ghost small" onClick={() => setOpen(false)}>Close</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+const STATE_LABEL: Record<string, string> = { offline: "", idle: "", listening: "Listening…", thinking: "Thinking…", speaking: "" };
 
 export default function Hud() {
   const status = useSession((s) => s.status);
-  const mode = useSession((s) => s.mode);
   const conv = useSession((s) => s.conv);
   const banner = useSession((s) => s.banner);
   const micAvailable = useSession((s) => s.micAvailable);
-  const micEnabled = useSession((s) => s.micEnabled);
+  const listening = useSession((s) => s.listening);
+  const interim = useSession((s) => s.interim);
   const transcript = useSession((s) => s.transcript);
+  const caption = useSession((s) => s.caption);
+  const choices = useSession((s) => s.choices);
+  const world = useSession((s) => s.world);
+  const transit = useSession((s) => s.transit);
+  const teacher = useSession((s) => s.teacher);
   const [typing, setTyping] = useState(false);
   const [showWords, setShowWords] = useState(false);
   const [text, setText] = useState("");
-  const [code, setCode] = useState("");
-  const [needCode, setNeedCode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const live = status === "connected";
+  const name = teacher ? LOOKS[teacher].name : "Teacher";
+  const notice = transit ? WORLDS[transit.to].simulationNotice : WORLDS[world].simulationNotice;
 
   useEffect(() => { if (typing) inputRef.current?.focus(); }, [typing]);
   useEffect(() => {
     if (banner?.kind !== "info") return;
-    const t = setTimeout(() => useSession.setState((s) => (s.banner === banner ? { banner: null } : {})), 7000);
+    const t = setTimeout(() => useSession.setState((s) => (s.banner === banner ? { banner: null } : {})), 6000);
     return () => clearTimeout(t);
   }, [banner]);
-  useEffect(() => { if (banner?.text.includes("access code")) setNeedCode(true); }, [banner]);
-  useEffect(() => { if (live && !micAvailable) setTyping(true); }, [live, micAvailable]);
 
   const lastTeacher = [...transcript].reverse().find((l) => l.role === "teacher");
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    session.sendText(text);
-    setText("");
-  };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); session.sendText(text); setText(""); };
+  const busy = conv.state === "speaking" || conv.state === "thinking";
 
   return (
     <div className="hud">
+      <span id="tap-tag" className="tag" style={{ display: "none" }} aria-hidden>👆 Tap to investigate</span>
       <header className="top">
-        <span className="chip">Leo · AI teacher</span>
-        {mode === "demo" && live && <span className="chip demo" data-testid="demo-badge">DEMO — scripted replies, not live AI</span>}
-        {mode === "live" && live && <span className="chip live">Live</span>}
+        {live && <span className="chip wide-only">{name} · AI teacher</span>}
+        {live && <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>}
+        {live && notice && <span className="chip sim" data-testid="sim-badge" title={notice}><span className="wide-only">{notice}</span><span className="narrow-only">Simulation</span></span>}
         <span className="grow" />
         {live && (
           <>
-            <button className="ghost" onClick={() => setShowWords((v) => !v)} aria-pressed={showWords}>Words</button>
-            <button className="ghost" onClick={() => session.stop()}>End</button>
+            <SourcesButton />
+            <button className="ghost" onClick={() => setShowWords((v) => !v)} aria-pressed={showWords} aria-label="Show words"><span className="wide-only">Words</span><span className="narrow-only">💬</span></button>
+            <button className="ghost" onClick={() => session.stop()} aria-label="End lesson"><span className="wide-only">End</span><span className="narrow-only">✕</span></button>
           </>
         )}
       </header>
@@ -61,50 +155,45 @@ export default function Hud() {
         </div>
       )}
 
-      {!live && (
-        <div className="start">
-          <h1>Meet Leo</h1>
-          <p>Leo is an AI teacher. Talk to him out loud, or type.</p>
-          {needCode && (
-            <input className="code" type="password" placeholder="Family access code" value={code} onChange={(e) => setCode(e.target.value)} />
-          )}
-          <button className="primary" data-testid="start" disabled={status === "connecting"} onClick={() => session.start(code || undefined)}>
-            {status === "connecting" ? "Connecting…" : "Start"}
-          </button>
-          <small>Uses your microphone. In live mode your voice is sent to OpenAI to create the answers. This app does not save audio.</small>
-        </div>
-      )}
+      {!live && <Onboarding />}
+      {live && <InspectCard />}
 
       {live && (
         <footer className="bottom">
           {showWords && (
             <div className="words" aria-live="polite">
               {transcript.slice(-6).map((l) => (
-                <p key={l.id} className={l.role}><b>{l.role === "child" ? "You" : "Leo"}:</b> {l.text}</p>
+                <p key={l.id} className={l.role}><b>{l.role === "child" ? "You" : name}:</b> {l.text}</p>
               ))}
             </div>
           )}
-          {!showWords && lastTeacher && conv.state === "speaking" && lastTeacher.turnId === conv.turnId && (
-            <div className="caption" aria-live="polite">{lastTeacher.text}</div>
+          {!showWords && caption && conv.state === "speaking" && lastTeacher?.turnId === conv.turnId && (
+            <div className="caption" aria-live="polite" data-testid="caption">{caption}</div>
           )}
-          <div className="state" data-testid="state" data-state={conv.state}>{STATE_LABEL[conv.state]}</div>
+          {listening && <div className="caption you" data-testid="interim">{interim || "I'm listening…"}</div>}
+          <QuestionCard />
+          {choices.length > 0 && !busy && (
+            <div className="choices" data-testid="choices">
+              {choices.map((c) => <button key={c.id} data-testid={`choice-${c.id}`} onClick={() => session.choose(c.id)}>{c.label}</button>)}
+            </div>
+          )}
+          <div className="state" data-testid="state" data-state={conv.state} data-world={world} data-transit={transit ? "1" : "0"}>{STATE_LABEL[conv.state]}</div>
           <div className="controls">
+            {busy && <button className="ghost stop" data-testid="interrupt" onClick={() => session.interrupt()}>✋ Stop</button>}
             <button
-              className={`mic ${micEnabled && micAvailable ? "on" : "off"} ${conv.state}`}
+              className={`mic ${listening ? "listening" : ""}`}
+              data-testid="mic"
               disabled={!micAvailable}
-              onClick={() => session.toggleMic()}
-              aria-label={micEnabled ? "Mute microphone" : "Unmute microphone"}
+              onClick={() => session.talk()}
+              aria-label={listening ? "Stop listening" : micAvailable ? `Tap and talk to ${name}` : "Voice input not available"}
             >
-              {micAvailable ? (micEnabled ? "🎤" : "🔇") : "🚫"}
+              {micAvailable ? (listening ? "●" : "🎤") : "🚫"}
             </button>
-            {(conv.state === "speaking" || conv.state === "thinking") && (
-              <button className="ghost stop" data-testid="interrupt" onClick={() => session.interrupt()}>✋ Stop</button>
-            )}
-            <button className="ghost" onClick={() => setTyping((v) => !v)} aria-pressed={typing}>⌨️ Type</button>
+            <button className="ghost" onClick={() => setTyping((v) => !v)} aria-pressed={typing}>⌨️</button>
           </div>
           {typing && (
             <form className="type" onSubmit={submit}>
-              <input ref={inputRef} data-testid="text-input" value={text} maxLength={500} onChange={(e) => setText(e.target.value)} placeholder="Type to Leo…" />
+              <input ref={inputRef} data-testid="text-input" value={text} maxLength={500} onChange={(e) => setText(e.target.value)} placeholder={`Type to ${name}…`} />
               <button className="primary small" type="submit">Send</button>
             </form>
           )}

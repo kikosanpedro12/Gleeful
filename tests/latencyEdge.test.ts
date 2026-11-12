@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { percentile, summarize, toResult, MIN_SAMPLES_FOR_VERDICT, type TurnResult } from "@/lib/telemetry/latency";
-import { parseSceneCommand, parseToolCall } from "@/lib/scene/commands";
+import { parseSceneCommand as psc, parseToolCall as ptc } from "@/lib/scene/commands";
+import { contextFor } from "@/lib/worlds/registry";
+const CTX = contextFor("classroom");
+const parseSceneCommand = (n: unknown, a: unknown) => psc(n, a, CTX);
+const parseToolCall = (n: string, a: string) => ptc(n, a, CTX);
 
 /** Tester-added edge cases. `it.fails` = asserts desired behaviour that the code does not meet yet. */
 const ok = (ms: number, cold = false): TurnResult => ({ turnId: 0, mode: "live", input: "voice", cold, endToAudioMs: ms, outcome: "ok" });
@@ -67,7 +71,9 @@ describe("scene command validation, hostile input", () => {
     rejects(["gesture"], { gesture: "wave" });
     rejects("writeOnBoard", { text: 42 });
     rejects("writeOnBoard", { text: " \n\t " });
-    for (const n of ["openWorld", "showDiagram", "askPracticeQuestion"]) rejects(n, { world: "mars" });
+    // openWorld is a real command since the world system (only for known worlds); the others stay unknown.
+    for (const n of ["showDiagram", "askPracticeQuestion"]) rejects(n, { world: "mars" });
+    rejects("openWorld", { world: "atlantis" });
   });
   it("output carries only whitelisted fields (no smuggled extras)", () => {
     const r = parseSceneCommand("pointAt", { target: "board", url: "https://evil.example", __proto__: { x: 1 }, code: "alert(1)" });
