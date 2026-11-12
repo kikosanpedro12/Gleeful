@@ -41,7 +41,7 @@
 - Experience first with a scripted brain; Claude API brain next (founder has Console credits). OpenAI dropped (git history at `1b1b029`).
 - Mars is one sample. Subjects plug in as data (`src/lib/worlds/registry.ts`) plus a scene registered in `src/components/scene/worlds.ts`.
 - Children never get accounts. Parents own learner profiles. Data is minimal: nickname, grade, language and teacher choice only.
-- Pricing: one price worldwide (Solo $29, Family $79), no regional discounts.
+- Pricing: one price worldwide (Solo $29, Family $79), no regional discounts. No free tier: 7-day free trial (card required, 2 live hrs), clock starts when the parent signs up and taps "Start 7-day free trial".
 - Evidence is honest: a no-hint check in the same session is a "recheck", and only a later-session check counts as independent.
 
 ## Agent sign-off (2026-11-12)
