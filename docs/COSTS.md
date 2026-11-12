@@ -30,6 +30,21 @@ What this means:
 
 Not yet included: hosting, storage, a TTS service (if needed), support, payment fees, acquisition.
 
+## Full live-voice stack, per live minute — ESTIMATE (2026-11-12)
+Run `node scripts/cost-model.mjs` (prices in `config/pricing.json`). Pricing strategy: claude.ai doc "Pricing Strategy — AI Teacher".
+
+| | Unoptimized | Optimized (launch target) |
+|---|---|---|
+| Ears: Deepgram Flux ($0.0065/min promo) | $0.0065 | $0.0016 (only while the child talks) |
+| Mouth: Cartesia Sonic (~775 credits/audio min) | $0.0161 | $0.0080 (half the lines pre-recorded) |
+| Pipe: LiveKit ($0.01 + $0.0004/min) | $0.0104 | $0.0010 (own relay) |
+| Brain: Haiku 5.5 + 10% Sonnet 5.5 | $0.0010 | $0.0010 |
+| **Total** | **$0.034/min ≈ $2.04/hr** | **$0.0117/min ≈ $0.70/hr** |
+
+Plans (US tier): Solo $29 / 10 live hrs (71% margin at cap), Family $79 / 40 live hrs (60%). Unoptimized, Family at its cap loses money, so the cost cuts are launch blockers.
+
+Console: workspace `ai-teacher` has a $20/month dev spend limit (2026-11-12). Raise it at go-live (CHECKPOINT go-live checklist).
+
 ## Spend guards to build in Stage B
 - Key only on the server.
 - Per-child daily turn cap and per-lesson time cap, enforced on the server.
