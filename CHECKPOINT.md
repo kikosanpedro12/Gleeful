@@ -1,6 +1,6 @@
 # Checkpoint — updated 2026-11-13
 
-**Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
+**Product name: Gleeful** (decided 13 Nov 2026). **Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
 
 ## Verified by running it
 - **Onboarding:** pick Leo or Mia. Each waves and says hello in a male or female browser voice.
@@ -59,13 +59,13 @@
 
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
-2. **Name + GitHub repo** (private). USPTO quick check 2026-11-13: Wander, Fieldtrip and Elsewhere all have live conflicting marks in software/education — pick a coined name. Then pin the CI actions to SHAs.
+2. **GitHub repo `gleeful`** (private), Supabase project `gleeful`, and domains (gleeful.ai / getgleeful.com — not yet checked). Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.
 3. **Stage B:** Console workspace `ai-teacher` has a **$20/month dev spend limit**; key `AI-Teacher-Brain` created there (90 days). It goes only into Vercel env as `ANTHROPIC_API_KEY` once the Vercel project exists. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
 4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
 5. **Human review** of the Mars fact set.
 
 ## Exact next actions
-1. Founder: create the GitHub repo, then I push `main`.
+1. Founder: create the GitHub repo `gleeful`, then I push `main`.
 2. Founder: Vercel project (or tunnel), then the phone test.
 3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.

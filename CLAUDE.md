@@ -1,4 +1,6 @@
-# AI Teacher — instructions for Claude sessions
+# Gleeful — instructions for Claude sessions
+
+Product name: **Gleeful** (chosen 13 Nov 2026; quick USPTO + Google screen clean in classes 9 and 41, attorney clearance still needed). Mascot name idea: Glee.
 
 Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHITECTURE.md → SECURITY.md. Workflow: docs/AGENT_WORKFLOW.md. Database: docs/DATABASE.md.
 
@@ -21,4 +23,4 @@ Commands: `npm run dev` · `npm run typecheck` · `npm test` (includes database 
 - `/new-lesson` — add a K1–K12 skill: question, misconception options, hint, recall check, sources.
 - `/security-check` — the full gate before any push to main.
 - `/cost-report` — cost per live minute and plan margins from `config/pricing.json` (`scripts/cost-model.mjs`).
-Pricing strategy: claude.ai doc "Pricing Strategy — AI Teacher" (https://claude.ai/artifact/5jRbinCYteSV4NzZFt7V2B).
+Pricing strategy: claude.ai doc "Pricing Strategy — Gleeful" (https://claude.ai/artifact/5jRbinCYteSV4NzZFt7V2B).

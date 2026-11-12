@@ -3,6 +3,7 @@
 **Guiding question:** can a child talk to a present, animated teacher, influence an interactive learning world, and gradually become more capable with less help?
 
 ## Full vision (roadmap, not a claim)
+- **Name: Gleeful.** One feel-good word that works from K1 to Grade 12 and worldwide (West first, then Asia).
 - A personal AI teacher inside a living, interactive learning world. Grades 1–12, many subjects, global, English first.
 - The lesson is the interface: the teacher moves, speaks, listens, and takes the child into visual worlds (Mars, a cell, a historical place) that are functional teaching material.
 - Child-led: speak, type or show schoolwork. No adult has to author a lesson first.

@@ -19,7 +19,7 @@ export default function DevPanel({ quality }: { quality: string }) {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), ua: navigator.userAgent, frames: fs, quality, turns: session.storedResults() }, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "ai-teacher-measurements.json";
+    a.download = "gleeful-measurements.json";
     a.click();
   };
   return (

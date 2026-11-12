@@ -31,7 +31,7 @@ What this means:
 Not yet included: hosting, storage, a TTS service (if needed), support, payment fees, acquisition.
 
 ## Full live-voice stack, per live minute — ESTIMATE (2026-11-12)
-Run `node scripts/cost-model.mjs` (prices in `config/pricing.json`). Pricing strategy: claude.ai doc "Pricing Strategy — AI Teacher".
+Run `node scripts/cost-model.mjs` (prices in `config/pricing.json`). Pricing strategy: claude.ai doc "Pricing Strategy — Gleeful".
 
 | | Unoptimized | Optimized (launch target) |
 |---|---|---|

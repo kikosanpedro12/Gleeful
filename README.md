@@ -1,4 +1,6 @@
-# AI Teacher — prototype
+# Gleeful — prototype
+
+_Gleeful (founder decision, 13 Nov 2026) is the product name. The repo folder is still `ai-teacher` until the GitHub repo is created._
 
 A child picks Leo or Mia, an animated AI teacher in a 3D classroom, and goes on a virtual field trip to Mars. The lesson is **scripted for now, not live AI**. A Claude brain comes next. See CHECKPOINT.md for what is real and what is not.
 
