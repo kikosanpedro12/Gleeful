@@ -23,9 +23,9 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 - `node scripts/mutate-rls.mjs` plants 15 security holes, one at a time. The tests must fail for every one.
 
 ## Going live (Stage E) — steps
-1. Create the Supabase project in a region near the users, and set a strong database password in a password manager.
-2. Link the project with a **scoped** access token, then run `supabase db push`.
-3. Run the Security Advisor and Performance Advisor (`supabase db advisors`, or the MCP `get_advisors`). Fix everything they flag.
+1. Done 13 Nov: project created (ap-southeast-1).
+2. Done 13 Nov: migration pasted into the SQL Editor and run. (GitHub auto-deploy needs Pro; `supabase db push` with a **scoped** token is the free CLI alternative.)
+3. Done 13 Nov: Security and Performance advisors run. Open: Supabase's own `public.rls_auto_enable()` is executable by anon/authenticated (revoke after confirming auto-RLS still works); INFO notes about unindexed composite foreign keys (add indexes once there is real data).
 4. Dashboard → Auth:
    - turn email confirmation on;
    - set the site URL and redirect URLs to the deployed domain only;

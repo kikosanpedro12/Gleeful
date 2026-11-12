@@ -28,14 +28,14 @@
 - **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
 - **Leo and Mia are procedural placeholders (founder is considering a mascot instead of human teachers)** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
 - **The mouth follows a synthetic rhythm, not lip sync.** Voices are the device's built-in browser voices.
-- **Learning history lives in this browser only.** Supabase is designed and tested but not deployed or wired.
+- **Learning history lives in this browser only.** The Supabase schema is live on the Gleeful project (empty, verified 13 Nov) but the app is not wired to it yet.
 - The Mars terrain, globe and planet are illustrative and generated in code. They are not real maps.
 - Mars facts: drafted from NASA Space Place, **pending human review**.
 
 ## Not verified yet
 - Real Android phone (Honor X9b): fps, voices, speech recognition, touch.
 - How the browser voices sound for Leo (male) and Mia (female) on that phone.
-- Anything on a hosted Supabase project (Security Advisor, dashboard auth settings).
+- Hosted Supabase Auth settings (Site URL, redirects, SMTP, rate limits) and real sign-in. Tables, RLS and advisors are verified.
 
 ## Decisions
 - Experience first with a scripted brain; Claude API brain next (founder has Console credits). OpenAI dropped (git history at `1b1b029`).
@@ -59,7 +59,7 @@
 
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
-2. **GitHub repo `gleeful`** (private), Supabase project `gleeful`, and domains (gleeful.ai / getgleeful.com — not yet checked). Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.
+2. **Domains** (gleeful.ai / getgleeful.com — not yet checked); GitHub repo and Supabase project exist. Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.
 3. **Stage B:** Console workspace `ai-teacher` has a **$20/month dev spend limit**; key `AI-Teacher-Brain` created there (90 days). It goes only into Vercel env as `ANTHROPIC_API_KEY` once the Vercel project exists. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
 4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
 5. **Human review** of the Mars fact set.
@@ -70,7 +70,7 @@
 3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits. The server sets `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
 5. Builder: launch cost cuts (pre-recorded voice cache, STT only while the child talks, own relay before LiveKit) — the pricing depends on them.
-6. Founder + builder: Stage E, create the Supabase project, `db push`, advisors, `SupabaseLearnerStore`, parent sign-in.
+6. Founder + builder: Stage E remaining: dashboard Auth settings, `SupabaseLearnerStore`, parent sign-in (project, schema and advisors are done).
 
 ## Go-live checklist (remind Kiko)
 - [ ] **Raise the `ai-teacher` Console spend limit** from the $20 dev cap to a launch budget (from `/cost-report` × expected users), and add an email alert at 50% and 80%.
