@@ -1,4 +1,4 @@
-# Checkpoint — updated 2026-11-12 (afternoon)
+# Checkpoint — updated 2026-11-12 (evening)
 
 **Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
 
@@ -22,11 +22,11 @@
   - A strict per-request CSP nonce and security headers. The journey runs with zero CSP violations.
   - The Supabase schema's row-level security was attacked on real Postgres: 42 tests, and 14 of 14 planted holes were caught.
   - Secret scan, pinned dependencies, 0 known vulnerabilities.
-- **Tests:** 147 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
+- **Tests:** 157 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
 
 ## Simulated or placeholder — do not mistake for the product
 - **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
-- **Leo and Mia are procedural placeholders** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
+- **Leo and Mia are procedural placeholders (founder is considering a mascot instead of human teachers)** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
 - **The mouth follows a synthetic rhythm, not lip sync.** Voices are the device's built-in browser voices.
 - **Learning history lives in this browser only.** Supabase is designed and tested but not deployed or wired.
 - The Mars terrain, globe and planet are illustrative and generated in code. They are not real maps.
@@ -54,7 +54,7 @@
   - stronger secret scan;
   - test hooks behind a build flag;
   - this file rewritten.
-- Hardened-build tester round: see the latest entry in the founder's project notes.
+- Hardened-build tester round 4: **PASS WITH NOTES**, no security hole. Fixed: `__proto__` skill ids crashing /parent (app + DB check), choices lost after a failed mic tap, child stranded after Stop during arrival (new strand guard). Open low items: keyboard covering the rock at 1280×720, prefetch responses without CSP (Next default), unstyled Next error page under CSP.
 
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
