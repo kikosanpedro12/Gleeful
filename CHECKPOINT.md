@@ -1,4 +1,4 @@
-# Checkpoint — updated 2026-11-12 (evening)
+# Checkpoint — updated 2026-11-13
 
 **Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
 
@@ -41,7 +41,7 @@
 - Experience first with a scripted brain; Claude API brain next (founder has Console credits). OpenAI dropped (git history at `1b1b029`).
 - Mars is one sample. Subjects plug in as data (`src/lib/worlds/registry.ts`) plus a scene registered in `src/components/scene/worlds.ts`.
 - Children never get accounts. Parents own learner profiles. Data is minimal: nickname, grade, language and teacher choice only.
-- Pricing: one price worldwide (Solo $29, Family $79), no regional discounts. No free tier: 7-day free trial (card required, 2 live hrs), clock starts when the parent signs up and taps "Start 7-day free trial".
+- Pricing: one price worldwide (Solo $29, Family $79), no regional discounts. No free tier: 7-day free trial (card required, 2 live hrs), clock starts when the parent signs up and taps "Start 7-day free trial". Before the paywall: 2–3 live turns as a taste (parent-run or tap/typed only, no child voice kept before a parent account; COPPA).
 - Evidence is honest: a no-hint check in the same session is a "recheck", and only a later-session check counts as independent.
 
 ## Agent sign-off (2026-11-12)
@@ -59,8 +59,8 @@
 
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
-2. **GitHub repo** (name + private). Then pin the CI actions to SHAs.
-3. **Stage B:** Console workspace `ai-teacher` exists with a **$20/month dev spend limit** (set 2026-11-12). Create the key INSIDE that workspace (keys in Default are not capped by it) and paste it only into Vercel env as `ANTHROPIC_API_KEY`. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
+2. **Name + GitHub repo** (private). USPTO quick check 2026-11-13: Wander, Fieldtrip and Elsewhere all have live conflicting marks in software/education — pick a coined name. Then pin the CI actions to SHAs.
+3. **Stage B:** Console workspace `ai-teacher` has a **$20/month dev spend limit**; key `AI-Teacher-Brain` created there (90 days). It goes only into Vercel env as `ANTHROPIC_API_KEY` once the Vercel project exists. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
 4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
 5. **Human review** of the Mars fact set.
 
@@ -75,6 +75,7 @@
 ## Go-live checklist (remind Kiko)
 - [ ] **Raise the `ai-teacher` Console spend limit** from the $20 dev cap to a launch budget (from `/cost-report` × expected users), and add an email alert at 50% and 80%.
 - [ ] Separate production workspace + key from dev.
+- [ ] Claude API key `AI-Teacher-Brain` (workspace ai-teacher, created 2026-11-13, 90-day expiry → ~2027-02-11). Scheduled reminder fires 2027-02-04 to rotate it.
 - [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
 - [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo $29 / 10 h, Family $79 / 40 h; one price worldwide).
 
