@@ -100,7 +100,7 @@ create table public.attempts (
   learner_id  uuid not null,
   parent_id   uuid not null,
   session_id  uuid,
-  skill       text not null check (skill ~ '^[a-z0-9_.]{1,80}$'),
+  skill       text not null check (char_length(skill) between 3 and 80 and skill ~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,3}$'),
   question_id text not null check (question_id ~ '^[a-z0-9_]{1,64}$'),
   answer_id   text not null check (answer_id ~ '^[a-z0-9_]{1,64}$'),
   correct     boolean not null,

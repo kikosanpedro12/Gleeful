@@ -257,5 +257,42 @@ describe("session controller", () => {
     expect(s().conv.state).toBe("idle");
     expect(p.calls).toContain("cancelListen");
   });
-});
+  it("tester R4-2: a failed mic tap puts the unanswered choices back", async () => {
+    const { session, s, p } = await load();
+    session.sendText("hi");
+    p.reply("r1", [["offerChoices", { choices: [{ id: "mars", label: "Go to Mars" }, { id: "red", label: "Why red?" }] }]]);
+    expect(s().choices).toHaveLength(2);
+    session.talk();
+    p.ev.onUserSpeechStart(1);
+    p.ev.onListenFailed?.("no-speech");
+    vi.advanceTimersByTime(2000);
+    expect(s().choices.map((c) => c.id)).toEqual(["mars", "red"]);
+    expect(p.events.some((e) => e.kind === "resume")).toBe(false); // silent, no extra speech
+  });
 
+  it("tester R4-3: Stop during the arrival line never strands the child", async () => {
+    const { session, s, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["offerChoices", { choices: [{ id: "x", label: "Old classroom choice" }] }], ["openWorld", { world: "mars" }]]);
+    session.transitEvent("arrived");
+    expect(s().world).toBe("mars");
+    p.ev.onResponseCreated("a1");
+    p.ev.onAudioStart("a1", 0);
+    session.interrupt(); // Stop before the arrival's choices appear
+    vi.advanceTimersByTime(2000);
+    // No Mars prompt yet: ask for a short nudge rather than reviving classroom choices.
+    expect(p.events.at(-1)).toEqual({ kind: "resume" });
+    expect(s().choices.find((c) => c.id === "x")).toBeUndefined();
+  });
+
+  it("the stranded-guard stays quiet when the child is already doing something", async () => {
+    const { session, s, p } = await load();
+    session.sendText("hi");
+    p.reply("r1", [["offerChoices", { choices: [{ id: "mars", label: "Go to Mars" }] }]], false);
+    session.interrupt();
+    session.sendText("what is mars"); // child typed straight away
+    vi.advanceTimersByTime(2000);
+    expect(p.events.some((e) => e.kind === "resume")).toBe(false);
+    expect(s().choices).toHaveLength(0);
+  });
+});

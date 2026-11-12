@@ -133,3 +133,11 @@ describe("learner status is honest", () => {
     expect(skillStatus([], "s").kind).toBe("not_seen");
   });
 });
+
+import { skillLabel } from "@/lib/learner/profile";
+describe("tester R4-1: skill labels are prototype-safe", () => {
+  it("returns plain strings for hostile keys", () => {
+    for (const k of ["__proto__", "constructor", "toString", "hasOwnProperty"]) expect(skillLabel(k)).toBe(k);
+    expect(skillLabel("science.mars.red_color")).toBe("Why Mars looks red");
+  });
+});

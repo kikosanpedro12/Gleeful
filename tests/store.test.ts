@@ -7,7 +7,7 @@ beforeEach(() => {
   vi.stubGlobal("localStorage", { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) });
 });
 const KEY = "aiteacher.learner.v1";
-const ok = { skill: "s", questionId: "q", answerId: "a", correct: true, hintsUsed: 0, context: "taught" as const };
+const ok = { skill: "m.s", questionId: "q", answerId: "a", correct: true, hintsUsed: 0, context: "taught" as const };
 
 describe("local learner store", () => {
   it("counts sessions and stamps attempts with the session number", async () => {
@@ -29,7 +29,7 @@ describe("local learner store", () => {
     }
     mem.set(KEY, JSON.stringify({ version: 1, learnerId: 5, teacher: "<script>", sessions: -3, attempts: [
       ok, { ...ok, context: "mastered" }, { ...ok, hintsUsed: -1 }, { ...ok, correct: "yes" }, null, "x",
-      { ...ok, questionId: "<script>" }, { ...ok, skill: "x".repeat(200) }, { ...ok, at: "not a date" }, { ...ok, sessionId: "../../etc" },
+      { ...ok, questionId: "<script>" }, { ...ok, skill: "x".repeat(200) }, { ...ok, skill: "__proto__" }, { ...ok, skill: "constructor" }, { ...ok, skill: "a.__proto__" }, { ...ok, at: "not a date" }, { ...ok, sessionId: "../../etc" },
     ] }));
     const p = await s.load();
     expect(p.attempts).toEqual([ok]);

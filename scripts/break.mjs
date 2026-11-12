@@ -1,5 +1,5 @@
 // Tester adversarial browser run for the world/scripted-brain flow (DEMO mode only, TTS silent in headless).
-// Needs the built app on :3111. Usage: node scripts/break.mjs   Screenshots: scripts/out/b-*.png
+// Needs the built app (build:test). Usage: SMOKE_URL=http://localhost:3112/?test=1 node scripts/break.mjs   Screenshots: scripts/out/b-*.png
 // Software rendering (~5-10 fps): behaviour only, no performance claims.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
@@ -88,14 +88,17 @@ await toggleWords();
 await shot("02-landed-after-interrupts");
 
 // ---- 2. Rapid taps on rock (before invite) and on answers.
+// Rapid taps on the rock (no need to wait for the invite: a tap goes straight to the question).
 const rp = await page.evaluate(() => window.__project("rock_1"));
+const hit = rp && await page.evaluate((x, y) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName}.${e.className}`.slice(0, 60) : null; }, rp.x, rp.y);
+check("rock is not covered by the HUD while the keyboard is open", !!hit && hit.startsWith("CANVAS"), `(rock at ${rp && (rp.x | 0)},${rp && (rp.y | 0)}; on top: ${hit})`);
+// Close the keyboard so the rest of the run exercises the taps themselves.
+await page.evaluate(() => [...document.querySelectorAll("button")].find((x) => x.textContent?.includes("⌨"))?.click());
+await sleep(400);
 if (rp) { for (let i = 0; i < 6; i++) await page.mouse.click(rp.x, rp.y, { delay: 10 }); }
 const q = await waitFor((d) => d.question && d.state === "idle", 25000);
-check("rock tapped 6x before invite: one question, no crash", !!q);
-await shot("03-rock-rapid");
-// tap rock again while question open
-if (rp) await page.mouse.click(rp.x, rp.y);
-await waitFor((d) => d.question && d.state === "idle", 25000);
+const nQ = await page.$$eval('[data-testid="question"]', (e) => e.length);
+check("rock tapped 6x: exactly one question card, no crash", !!q && nQ === 1, `(cards=${nQ})`);
 const answers = await page.$$('[data-testid^="answer-"]');
 for (let i = 0; i < 4; i++) { const b = await page.$('[data-testid="answer-hot"]'); if (b) await b.click().catch(() => {}); }
 await waitFor((d) => d.question && d.state === "idle", 25000);
@@ -142,7 +145,7 @@ await waitFor((d) => d.state === "idle", 25000);
 await shot("09-odd-text");
 
 // ---- 6. Parent page.
-await page.goto(TARGET.replace(/\/?$/, "/parent"), { waitUntil: "domcontentloaded" });
+await page.goto(new URL("/parent", TARGET).href, { waitUntil: "domcontentloaded" });
 await sleep(1500);
 const parent = await page.evaluate(() => document.body.innerText);
 console.log("---- parent page ----\n" + parent.split("\n").filter(Boolean).join("\n") + "\n--------------------");

@@ -94,12 +94,12 @@ describe("RLS: no writing into someone else's family", () => {
     await fails(as("authenticated", B, `insert into public.lesson_sessions (learner_id, parent_id, teacher, brain) values ($1, $2, 'leo', 'scripted')`, [learnerA, B]), /foreign key/);
   });
   it("B cannot write evidence for A's learner, or point evidence at A's session", async () => {
-    const ins = `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, 's', 'q', 'a', true, 'taught')`;
+    const ins = `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, 'm.s', 'q', 'a', true, 'taught')`;
     await fails(as("authenticated", B, ins, [learnerA, B, null]), /foreign key/);
     await fails(as("authenticated", B, ins, [learnerB, B, sessionA]), /foreign key/);
   });
   it("a parent cannot link one child's attempt to another child's session", async () => {
-    const ins = `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, 's', 'q', 'a', true, 'taught')`;
+    const ins = `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, 'm.s', 'q', 'a', true, 'taught')`;
     await fails(as("authenticated", A, ins, [learnerA, A, sessionA2]), /foreign key/);
   });
 });
@@ -123,7 +123,7 @@ describe("evidence integrity", () => {
   it("the database sets created_at; a client cannot back-date evidence", async () => {
     const r = await as<{ created_at: string }>("authenticated", A,
       `insert into public.attempts (learner_id, parent_id, skill, question_id, answer_id, correct, context, created_at)
-       values ($1, $2, 's', 'q', 'a', true, 'later_check', '2001-01-01') returning created_at`, [learnerA, A]);
+       values ($1, $2, 'm.s', 'q', 'a', true, 'later_check', '2001-01-01') returning created_at`, [learnerA, A]);
     expect(new Date(r[0].created_at).getFullYear()).toBeGreaterThan(2020);
   });
   it("constraints reject junk: grade 13, empty nickname, unknown teacher/context, free-text ids", async () => {
@@ -131,7 +131,7 @@ describe("evidence integrity", () => {
     await fails(as("authenticated", A, L, [A, "x", 13, "leo"]), /check/);
     await fails(as("authenticated", A, L, [A, "   ", 3, "leo"]), /check/);
     await fails(as("authenticated", A, L, [A, "x", 3, "bob"]), /check/);
-    const T = `insert into public.attempts (learner_id, parent_id, skill, question_id, answer_id, correct, context) values ($1, $2, 's', $3, 'a', true, $4)`;
+    const T = `insert into public.attempts (learner_id, parent_id, skill, question_id, answer_id, correct, context) values ($1, $2, 'm.s', $3, 'a', true, $4)`;
     await fails(as("authenticated", A, T, [learnerA, A, "q", "mastered"]), /check/);
     await fails(as("authenticated", A, T, [learnerA, A, "<script>", "taught"]), /check/);
   });

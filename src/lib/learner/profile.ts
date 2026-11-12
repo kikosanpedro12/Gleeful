@@ -58,6 +58,8 @@ export function skillStatus(attempts: Attempt[], skill: string): SkillStatus {
   return { kind: "learning", detail: "Did not get it during the lesson; the answer was explained." };
 }
 
-export const SKILL_LABELS: Record<string, string> = {
-  "science.mars.red_color": "Why Mars looks red",
-};
+export const SKILL_LABELS: ReadonlyMap<string, string> = new Map([
+  ["science.mars.red_color", "Why Mars looks red"],
+]);
+/** Safe for any string, including "__proto__" or "constructor". */
+export const skillLabel = (skill: string): string => SKILL_LABELS.get(skill) ?? skill;

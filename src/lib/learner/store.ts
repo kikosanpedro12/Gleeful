@@ -37,7 +37,8 @@ export interface LearnerStore {
 }
 
 // Same rules as the database CHECK constraints, so local data always imports cleanly.
-const SKILL_RE = /^[a-z0-9_.]{1,80}$/;
+/** subject.topic[.sub]: dotted, letter-led segments. Rejects __proto__, constructor and friends. */
+export const SKILL_RE = /^(?=.{3,80}$)[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,3}$/;
 const ID_RE = /^[a-z0-9_]{1,64}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const newId = () =>

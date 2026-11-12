@@ -15,7 +15,9 @@ export type BrainInput =
   | { kind: "world_ready"; world: WorldId }
   | { kind: "tap"; target: string }
   | { kind: "choice"; id: string; label: string }
-  | { kind: "answer"; questionId: string; optionId: string };
+  | { kind: "answer"; questionId: string; optionId: string }
+  /** The child went quiet (Stop, failed mic) with nothing on screen: give one short nudge. */
+  | { kind: "resume" };
 
 export interface Action { name: string; args: Record<string, unknown> }
 export interface Segment { say: string; actions?: Action[] }

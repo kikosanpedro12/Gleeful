@@ -143,7 +143,7 @@ describe("anon and auth.uid()", () => {
 describe("attempts identity sequence", () => {
   it("clients cannot supply their own id (GENERATED ALWAYS)", async () => {
     await refused(as("authenticated", A,
-      `insert into public.attempts (id, learner_id, parent_id, skill, question_id, answer_id, correct, context) values (1, $1, $2, 's', 'q', 'a', true, 'taught')`, [lA, A]),
+      `insert into public.attempts (id, learner_id, parent_id, skill, question_id, answer_id, correct, context) values (1, $1, $2, 'm.s', 'q', 'a', true, 'taught')`, [lA, A]),
       /generated always|cannot insert/i);
   });
   // FINDING if this fails: with Supabase's default sequence grants, an authenticated
@@ -154,5 +154,13 @@ describe("attempts identity sequence", () => {
   it("authenticated cannot setval/read the shared attempts sequence", async () => {
     await refused(as("authenticated", A, `select setval(pg_get_serial_sequence('public.attempts','id'), 9223372036854775806)`), /permission denied/);
     await refused(as("authenticated", A, `select last_value from public.attempts_id_seq`), /permission denied/);
+  });
+});
+
+describe("tester R4-1: skill ids that could poison JS lookups are refused by the DB", () => {
+  it.each(["__proto__", "constructor", "a.__proto__", "x", "science..mars", "Science.mars"])("rejects %s", async (skill) => {
+    await refused(as("authenticated", A,
+      `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, $4, 'q', 'a', true, 'taught')`, [lA, A, sA, skill]),
+      /check constraint|violates/i);
   });
 });

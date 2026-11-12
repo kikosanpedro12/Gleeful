@@ -47,6 +47,9 @@ export class ScriptedBrain implements Brain {
       case "transit_cruise":
         return { segments: [S("See that little red dot? That's Mars, the fourth planet from the Sun.", A("pointAt", { target: "destination" }))] };
       case "world_ready": return this.arrived(input.world, ctx);
+      case "resume":
+        if (this.pending) return { segments: [S("Take your time. Which one do you pick?", A("askQuestion", { questionId: this.pending.q.id }))] };
+        return { segments: [this.nudge(ctx)] };
       case "tap": return this.tap(input.target, ctx);
       case "answer": return this.answer(input.questionId, input.optionId, ctx);
       case "choice": return this.intent(input.id, input.label, ctx);

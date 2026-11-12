@@ -91,15 +91,17 @@ check("no CSP violations from normal lesson use", csp.length === 0, csp.slice(0,
   if (ok) {
     await page.click('[data-testid="choice-mars"]');
     await waitFor((d) => d.transit, 15000);
-    await waitFor((d) => d.approach > 0.85, 25000);
-    await type("what is that planet");
+    // Reproducible recipe: a short typed question just before landing keeps a turn busy,
+    // so the arrival line is queued / in flight when the child presses Stop on Mars.
+    await page.waitForFunction(() => (window.__fx?.approach ?? 0) > 0.8, { polling: 20, timeout: 40000 }).catch(() => {});
+    await type("why");
     const landedSpeaking = await waitFor((d) => d.world === "mars" && !d.transit, 25000);
     const s = await st();
     if (landedSpeaking && s.state !== "idle") {
       const ib = await page.$('[data-testid="interrupt"]'); if (ib) await ib.click();
       const tStop = Date.now();
       await waitFor((d) => d.state === "idle", 3000);
-      const resumed = await waitFor((d) => d.state !== "idle", 6000);
+      const resumed = await waitFor((d) => d.state !== "idle", 8000);
       const dt = Date.now() - tStop;
       check("queued arrival delivered after Stop (~1.2 s)", !!resumed && dt > 900 && dt < 2600, `(${dt} ms, caption="${(resumed?.caption ?? "").slice(0, 50)}")`);
       const ch = await waitFor((d) => d.state === "idle" && d.choices.length > 0, 25000);

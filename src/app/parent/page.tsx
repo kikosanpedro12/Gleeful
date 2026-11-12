@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { skillStatus, SKILL_LABELS, type LearnerProfile } from "@/lib/learner/profile";
+import { skillStatus, skillLabel, type LearnerProfile } from "@/lib/learner/profile";
 import { learnerStore } from "@/lib/learner/store";
 import { LOOKS } from "@/lib/teacher/rig";
 
@@ -25,7 +25,7 @@ export default function ParentPage() {
         const st = skillStatus(p.attempts, skill);
         return (
           <section key={skill} className="skill">
-            <h3>{SKILL_LABELS[skill] ?? skill}</h3>
+            <h3>{skillLabel(skill)}</h3>
             <p><b>{KIND[st.kind]}</b>{"detail" in st ? ` — ${st.detail}` : ""}</p>
             <ul>
               {p.attempts.filter((a) => a.skill === skill).map((a, i) => (
