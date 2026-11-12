@@ -59,7 +59,7 @@
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
 2. **GitHub repo** (name + private). Then pin the CI actions to SHAs.
-3. **Stage B:** a Claude API key with a monthly spend limit set in the Console. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
+3. **Stage B:** Console workspace `ai-teacher` exists with a **$20/month dev spend limit** (set 2026-11-12). Create the key INSIDE that workspace (keys in Default are not capped by it) and paste it only into Vercel env as `ANTHROPIC_API_KEY`. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
 4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
 5. **Human review** of the Mars fact set.
 
@@ -68,7 +68,14 @@
 2. Founder: Vercel project (or tunnel), then the phone test.
 3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
-5. Founder + builder: Stage E, create the Supabase project, `db push`, advisors, `SupabaseLearnerStore`, parent sign-in.
+5. Builder: launch cost cuts (pre-recorded voice cache, STT only while the child talks, own relay before LiveKit) — the pricing depends on them.
+6. Founder + builder: Stage E, create the Supabase project, `db push`, advisors, `SupabaseLearnerStore`, parent sign-in.
+
+## Go-live checklist (remind Kiko)
+- [ ] **Raise the `ai-teacher` Console spend limit** from the $20 dev cap to a launch budget (from `/cost-report` × expected users), and add an email alert at 50% and 80%.
+- [ ] Separate production workspace + key from dev.
+- [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
+- [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo 10 h, Family 40 h, by region tier).
 
 ## Before real children or payments (not started)
 See the SECURITY.md checklist: consent (COPPA, GDPR-K, Philippine Data Privacy Act), retention, vendor terms for speech, a content-safety test set, incident process, and an independent review.

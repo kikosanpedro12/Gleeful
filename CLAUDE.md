@@ -15,3 +15,10 @@ Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHI
 - Commit straight to `main`. Update CHECKPOINT.md at the end of each working session.
 
 Commands: `npm run dev` · `npm run typecheck` · `npm test` (includes database security tests) · `npm run mutate` · `npm run check:secrets` · `npm run build:test` then `npm start -- -p 3111` then `npm run smoke` (full journey; `W=390 H=844 TAG=p` for phone, `RM=1` for reduced motion). `npm run build` is the deployment build (no test hooks).
+
+## In-house skills (.claude/skills)
+- `/new-world` — add a world as data + scene + tests.
+- `/new-lesson` — add a K1–K12 skill: question, misconception options, hint, recall check, sources.
+- `/security-check` — the full gate before any push to main.
+- `/cost-report` — cost per live minute and plan margins from `config/pricing.json` (`scripts/cost-model.mjs`).
+Pricing strategy: claude.ai doc "Pricing Strategy — AI Teacher" (https://claude.ai/artifact/5jRbinCYteSV4NzZFt7V2B).
