@@ -41,8 +41,12 @@ jobs:
         run: npm test
       - name: RLS mutation test (the security tests must catch planted holes)
         run: node scripts/mutate-rls.mjs
-      - name: Build
+      # The browser journey needs test hooks, so CI builds with them ON.
+      # A deployment build must NOT set NEXT_PUBLIC_TEST_HOOKS.
+      - name: Build (test build)
         run: npm run build
+        env:
+          NEXT_PUBLIC_TEST_HOOKS: "1"
       - name: Browser journey (desktop, phone, reduced motion)
         run: |
           npx next start -p 3111 &

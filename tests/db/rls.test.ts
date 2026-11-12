@@ -73,10 +73,11 @@ describe("RLS: no writing into someone else's family", () => {
     await fails(as("authenticated", B, `insert into public.learners (parent_id, nickname, grade) values ($1, 'evil', 3)`, [A]), /row-level security/);
   });
   it("B cannot move its own learner to A (update WITH CHECK)", async () => {
-    await fails(as("authenticated", B, `update public.learners set parent_id = $1 where id = $2`, [A, learnerB]), /row-level security/);
-    // Without WHERE/RETURNING Postgres does not apply the SELECT policy to the new row,
-    // so ONLY the update policy's WITH CHECK stands between B and A's family. Test that path.
-    await fails(as("authenticated", B, `update public.learners set parent_id = $1`, [A]), /row-level security/);
+    // Two layers refuse this: parent_id is not an updatable column (grant), and the
+    // update policy's WITH CHECK. Without WHERE/RETURNING Postgres skips the SELECT
+    // policy on the new row, so this WHERE-less form is the one that tests the layers.
+    await fails(as("authenticated", B, `update public.learners set parent_id = $1 where id = $2`, [A, learnerB]), /row-level security|permission denied/);
+    await fails(as("authenticated", B, `update public.learners set parent_id = $1`, [A]), /row-level security|permission denied/);
     const sb = await as<{ id: string }>("authenticated", B, `insert into public.lesson_sessions (learner_id, parent_id, teacher, brain) values ($1, $2, 'leo', 'scripted') returning id`, [learnerB, B]);
     await fails(as("authenticated", B, `update public.lesson_sessions set parent_id = $1`, [A]));
     await as("authenticated", B, `delete from public.lesson_sessions where id = $1`, [sb[0].id]);
@@ -100,6 +101,18 @@ describe("RLS: no writing into someone else's family", () => {
   it("a parent cannot link one child's attempt to another child's session", async () => {
     const ins = `insert into public.attempts (learner_id, parent_id, session_id, skill, question_id, answer_id, correct, context) values ($1, $2, $3, 's', 'q', 'a', true, 'taught')`;
     await fails(as("authenticated", A, ins, [learnerA, A, sessionA2]), /foreign key/);
+  });
+});
+
+describe("column-scoped updates", () => {
+  it("parents can rename a child and end a session", async () => {
+    expect(await as("authenticated", B, `update public.learners set nickname = 'Kid B!', grade = 5 where id = $1 returning id`, [learnerB])).toHaveLength(1);
+  });
+  it("parents can never rewrite ids, ownership or timestamps", async () => {
+    for (const col of ["id = gen_random_uuid()", "parent_id = parent_id", "created_at = now()", "updated_at = now()"])
+      await fails(as("authenticated", B, `update public.learners set ${col} where id = $1`, [learnerB]), /permission denied/);
+    for (const col of ["learner_id = learner_id", "parent_id = parent_id", "started_at = now()", "teacher = 'mia'", "brain = 'model'"])
+      await fails(as("authenticated", A, `update public.lesson_sessions set ${col} where id = $1`, [sessionA]), /permission denied/);
   });
 });
 
@@ -161,6 +174,27 @@ describe("schema hygiene", () => {
   it("no SECURITY DEFINER functions anywhere in our schemas", async () => {
     const r = await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'private') and p.prosecdef`);
     expect(r.rows).toEqual([]);
+  });
+  it("API roles hold no privilege on any sequence, and anon none on any table", async () => {
+    const seq = await db.query<{ relname: string }>(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'S'`);
+    expect(seq.rows.length).toBeGreaterThan(0);
+    for (const { relname } of seq.rows) for (const role of ["anon", "authenticated"]) for (const priv of ["USAGE", "SELECT", "UPDATE"]) {
+      const r = await db.query<{ ok: boolean }>(`select has_sequence_privilege($1, $2, $3) as ok`, [role, `public.${relname}`, priv]);
+      expect(r.rows[0].ok, `${role} ${priv} on ${relname}`).toBe(false);
+    }
+    const tabs = await db.query<{ relname: string }>(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'v', 'm')`);
+    for (const { relname } of tabs.rows) for (const priv of ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+      const r = await db.query<{ ok: boolean }>(`select has_table_privilege('anon', $1, $2) as ok`, [`public.${relname}`, priv]);
+      expect(r.rows[0].ok, `anon ${priv} on ${relname}`).toBe(false);
+    }
+  });
+  it("authenticated can never TRUNCATE (truncate bypasses RLS)", async () => {
+    for (const t of ["learners", "lesson_sessions", "attempts", "brain_usage"])
+      await fails(as("authenticated", A, `truncate public.${t}`), /permission denied/);
+  });
+  it("any view in public must be security_invoker (views bypass RLS otherwise)", async () => {
+    const r = await db.query<{ relname: string; opts: string[] | null }>(`select c.relname, c.reloptions as opts from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'v'`);
+    for (const v of r.rows) expect((v.opts ?? []).join(","), v.relname).toMatch(/security_invoker=(true|on)/);
   });
   it("the private schema is not usable by API roles", async () => {
     await fails(as("authenticated", B, `select private.touch_updated_at()`), /permission denied/);

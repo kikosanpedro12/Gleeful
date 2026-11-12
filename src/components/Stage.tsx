@@ -8,7 +8,7 @@ import { WORLD_IDS, WORLDS } from "@/lib/worlds/registry";
 import TeacherActor from "./scene/TeacherActor";
 import CameraRig from "./scene/CameraRig";
 import Director from "./scene/Director";
-import { fx, resolveTarget, TEST_HOOKS } from "./scene/shared";
+import { fx, resolveTarget, teacherPosRef, TEST_HOOKS } from "./scene/shared";
 import { useSession } from "@/lib/session/store";
 
 /**
@@ -30,7 +30,7 @@ function Lights() {
       sun.current.color.set(L.sun);
       sun.current.intensity = L.sunI;
       // Shadows follow the teacher's area so the small shadow map stays sharp.
-      const t = (window as unknown as { __teacherPos?: THREE.Vector3 }).__teacherPos;
+      const t = teacherPosRef.current;
       const cx = t?.x ?? 0, cz = t?.z ?? 0;
       sun.current.position.set(cx + L.sunPos[0], L.sunPos[1], cz + L.sunPos[2]);
       sun.current.target.position.set(cx, 0, cz);

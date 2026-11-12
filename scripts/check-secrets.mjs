@@ -2,19 +2,25 @@
 // server-only secret is given a NEXT_PUBLIC_ name (which ships it to the browser).
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SKIP = new Set(["node_modules", ".next", ".git", "scripts/out", "coverage"]);
-const EXT = /\.(ts|tsx|js|mjs|cjs|json|md|sql|toml|yml|yaml|env|example|txt)$|^\.env/;
+const EXT = /\.(ts|tsx|js|jsx|mjs|cjs|json|md|sql|toml|yml|yaml|env|example|txt|html|sh|ps1|key|p8|pem|cfg|ini)$|^\.env|^\.npmrc$/;
 const PATTERNS = [
   [/sk-ant-[A-Za-z0-9_-]{20,}/, "Anthropic API key"],
-  [/sk-(proj-)?[A-Za-z0-9]{32,}/, "OpenAI-style secret key"],
+  [/sk-(proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}/, "OpenAI-style secret key"],
+  [/sbp_[A-Za-z0-9]{30,}/, "Supabase personal access token"],
+  [/gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}/, "GitHub token"],
+  [/AKIA[0-9A-Z]{16}/, "AWS access key"],
+  [/AIza[0-9A-Za-z_-]{35}/, "Google API key"],
+  [/xox[baprs]-[A-Za-z0-9-]{10,}/, "Slack token"],
   [/sb_secret_[A-Za-z0-9_-]{16,}/, "Supabase secret key"],
   [/eyJhbGciOi[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/, "JWT (legacy Supabase anon/service key?)"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "private key"],
   [/postgres(ql)?:\/\/[^:\s]+:[^@\s]+@/, "database URL with password"],
 ];
-const PUBLIC_SECRET = /NEXT_PUBLIC_[A-Z0-9_]*(SECRET|SERVICE_ROLE|PRIVATE|ANTHROPIC|OPENAI|PASSWORD|TOKEN)/;
+const PUBLIC_SECRET = /NEXT_PUBLIC_[A-Z0-9_]*(SECRET|SERVICE|PRIVATE|ANTHROPIC|OPENAI|PASSWORD|TOKEN|SB_SECRET)/;
 
 const hits = [];
 function walk(dir) {

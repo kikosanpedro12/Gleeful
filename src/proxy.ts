@@ -35,7 +35,7 @@ export function buildCsp(nonce: string, opts: { dev: boolean; https: boolean }) 
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    `form-action 'self'${supabaseOrigins().split(" ").filter((o) => o.startsWith("http")).map((o) => " " + o).join("")}`,
     "frame-ancestors 'none'",
     ...(opts.https ? ["upgrade-insecure-requests"] : []),
   ].join("; ");

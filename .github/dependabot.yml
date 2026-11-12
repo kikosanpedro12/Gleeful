@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    # Wait a few days after a release before proposing it (supply-chain attacks are usually caught fast).
+    cooldown:
+      default-days: 5
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    cooldown:
+      default-days: 5

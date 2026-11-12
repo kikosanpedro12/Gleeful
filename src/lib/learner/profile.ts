@@ -16,8 +16,10 @@ export interface Attempt {
    * "later_check" = no-hint check in a LATER session. The only evidence of independence.
    */
   context: "taught" | "recheck" | "later_check";
-  /** Session number when it happened. */
+  /** Session number when it happened (1 = first ever). */
   session?: number;
+  /** Id of the lesson session (uuid), the future lesson_sessions.id. */
+  sessionId?: string;
   at: string;
 }
 

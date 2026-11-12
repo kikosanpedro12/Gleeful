@@ -36,8 +36,10 @@ begin
 end;
 $$;
 
--- Evidence timestamps are set by the database, never by the client
--- (a client cannot back-date an attempt to fake a "later" check).
+-- Evidence timestamps are set by the database, never by the client.
+-- NOTE: until the server writes attempts (Stage B), the attempt's `context`
+-- (taught / recheck / later_check) is still asserted by the client. Only the
+-- parent's own device can write it, and it only affects their own report.
 create or replace function private.force_created_at()
 returns trigger
 language plpgsql
@@ -115,7 +117,7 @@ create table public.attempts (
     references public.lesson_sessions (id, learner_id, parent_id)
     on delete set null (session_id)
 );
-comment on table public.attempts is 'Append-only learning evidence. Clients may insert and delete, never edit.';
+comment on table public.attempts is 'Append-only learning evidence. Clients may insert and delete, never edit. context is client-asserted until the server writes attempts.';
 create index attempts_parent_id_idx on public.attempts (parent_id);
 create index attempts_learner_skill_created_idx on public.attempts (learner_id, skill, created_at);
 create index attempts_session_id_idx on public.attempts (session_id) where session_id is not null;
@@ -144,10 +146,20 @@ create index brain_usage_parent_id_idx on public.brain_usage (parent_id);
 -- Start from nothing, then grant exactly what each role needs.
 revoke all on table public.learners, public.lesson_sessions, public.attempts, public.brain_usage from public, anon, authenticated;
 
-grant select, insert, update, delete on table public.learners        to authenticated;
-grant select, insert, update, delete on table public.lesson_sessions to authenticated;
-grant select, insert, delete         on table public.attempts        to authenticated;  -- no update: evidence is append-only
-grant select                         on table public.brain_usage     to authenticated;  -- server writes only
+-- Updates are column-scoped: a parent can rename a child or end a session, but
+-- can never rewrite ids, ownership, or timestamps.
+grant select, insert, delete on table public.learners        to authenticated;
+grant update (nickname, grade, language, preferred_teacher)
+                             on table public.learners        to authenticated;
+grant select, insert, delete on table public.lesson_sessions to authenticated;
+grant update (ended_at, worlds_visited)
+                             on table public.lesson_sessions to authenticated;
+grant select, insert, delete on table public.attempts        to authenticated;  -- no update: evidence is append-only
+grant select                 on table public.brain_usage     to authenticated;  -- server writes only
+
+-- The identity sequence: inserts through the identity column need no grant.
+-- Revoke Supabase's default sequence grants so nobody can read or setval() it.
+revoke all on sequence public.attempts_id_seq from public, anon, authenticated;
 
 grant select, insert, update, delete on table public.learners, public.lesson_sessions, public.attempts, public.brain_usage to service_role;
 

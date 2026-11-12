@@ -8,7 +8,7 @@ import { session } from "@/lib/session/controller";
 import { frameMeter } from "@/lib/telemetry/frames";
 import { WORLDS } from "@/lib/worlds/registry";
 import { previewLevel } from "@/lib/voice/preview";
-import { fx, pointedRef, resolveTarget, TEST_HOOKS } from "./shared";
+import { fx, pointedRef, resolveTarget, teacherPosRef, TEST_HOOKS } from "./shared";
 import { WORLD_GROUND } from "./worlds";
 
 const ONBOARD_POS: Record<TeacherId, [number, number]> = { leo: [-0.75, -0.85], mia: [0.55, -0.85] };
@@ -83,7 +83,7 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
       onFirstAnimation: (turnId) => session.markAnimation(turnId),
     });
     pointedRef.current = animator.pointed;
-    (window as unknown as { __teacherPos?: unknown }).__teacherPos = rig.root.position;
+    teacherPosRef.current = rig.root.position;
     if (TEST_HOOKS) (window as any).__teacher = { rig, animator };
   });
   return <primitive object={rig.root} />;

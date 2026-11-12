@@ -16,6 +16,8 @@ export const resolveTarget = (name: string) => {
 };
 /** Which object the teacher is pointing at (written by the animator each frame). */
 export const pointedRef = { current: null as string | null };
+/** Where the active teacher stands (the light rig follows it). */
+export const teacherPosRef = { current: null as THREE.Vector3 | null };
 
 export function useRegister<T extends THREE.Object3D = THREE.Group>(name: string, enabled = true) {
   const ref = useRef<T>(null);
@@ -28,8 +30,11 @@ export function useRegister<T extends THREE.Object3D = THREE.Group>(name: string
   return ref;
 }
 
-/** Browser-test hooks (window.__teacher etc). Only with ?test=1 or ?dev=1, never in a normal session. */
-export const TEST_HOOKS = typeof window !== "undefined" && /[?&](test|dev)=1(&|$)/.test(window.location.search);
+/** Browser-test hooks (window.__teacher etc). Test/CI builds only, and only with ?test=1 or ?dev=1. */
+// Requires BOTH a build flag (set only for test/CI builds) and the URL flag, so a
+// normal production deployment never installs them, whatever the URL says.
+export const TEST_HOOKS =
+  process.env.NEXT_PUBLIC_TEST_HOOKS === "1" && typeof window !== "undefined" && /[?&](test|dev)=1(&|$)/.test(window.location.search);
 
 /** Soft pulsing ring on whatever the teacher is pointing at, or what we invite the child to tap. */
 export function Highlight({ name, radius, extra, flat }: { name: string; radius: number; extra?: () => boolean; flat?: boolean }) {

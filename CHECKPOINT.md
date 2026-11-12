@@ -1,56 +1,74 @@
-# Checkpoint — updated 2026-11-12
+# Checkpoint — updated 2026-11-12 (afternoon)
 
-**Phase:** 1 (teacher presence + realtime conversation) — **built, NOT complete**. The live voice milestone is unverified until a real API key is used on real devices.
+**Stage A (the scripted "wow" slice) is built and browser-tested.** Stage B (Claude brain) and Stage E (Supabase) are designed for, not built. See BUILD_PLAN.md.
 
-## Verified (by running it)
-- 3D classroom + jointed teacher renders in Chrome, landscape and portrait.
-- State changes are visible in the body: idle, listening, thinking, speaking; wave/nod/shrug/etc.; walks to the board; points at real object positions with a highlight ring.
-- Interruption in demo mode: Stop button and typed barge-in stop speech state, mouth and pointing; a new turn replaces the old one.
-- Scene-command validation, stale-turn dropping, state machine, latency maths: unit tests pass (68, plus 1 skipped that documents a known limit). Browser smoke test 12/12; tester's break script 14/14.
-- Mic-denied path falls back to typing automatically. No-key path falls back to labelled DEMO mode.
+## Verified by running it
+- **Onboarding:** pick Leo or Mia. Each waves and says hello in a male or female browser voice.
+- **The trip:**
+  - Classroom walls peel away, stars stream past, Mars grows, and a warm flash brings a landing on the Martian surface.
+  - The teacher wears a helmet in space and on Mars. A "Simulation" label shows, and the teacher says people need spacesuits.
+  - With reduced motion turned on, the trip is a short fade.
+- **Teacher body:** walks, turns, points at the real position of each object (highlight ring), gestures, blinks and looks around. The mouth moves while speaking.
+- **Lesson:**
+  - "Why is it red?" makes the teacher walk to the rock and invite a tap. The child can pick the rock up and spin it, with a NASA-sourced card.
+  - A question follows. A wrong answer gets a hint, not praise.
+  - Crater and volcano stops, then back to class for a no-hint recheck.
+- **Memory across sessions:**
+  - In the next session (Mia this time, since history is kept when the teacher switches), the teacher opens with a no-hint check based on stored evidence.
+  - The parent view (/parent) separates "during the lesson", "a few minutes later" and "a later session". Only the last counts as "did it on their own".
+- **Interruptions:** Stop, tap-to-talk and typing stop speech, mouth, walking and pointing at once. Stale actions are dropped. A queued arrival line plays about 1.2 s after Stop and never over the child.
+- **Fallbacks:** mic blocked or no speech, the browser voice failing (silent timeline keeps the pace), no WebGL (the trip still lands), End or Start mid-trip, tampered local storage.
+- **Security:**
+  - A strict per-request CSP nonce and security headers. The journey runs with zero CSP violations.
+  - The Supabase schema's row-level security was attacked on real Postgres: 42 tests, and 14 of 14 planted holes were caught.
+  - Secret scan, pinned dependencies, 0 known vulnerabilities.
+- **Tests:** 147 unit/database tests. A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
 
 ## Simulated or placeholder — do not mistake for the product
-- **DEMO mode is scripted, not AI.** Browser TTS voice; mouth follows a synthetic envelope; latency figures are simulated and excluded from verdicts.
-- **Teacher body is a procedural placeholder** (primitives, owned by us). Not the Leo concept art, no skinned mesh, no facial morph targets, no fingers.
-- **Mouth movement is loudness-driven, not lip sync.**
-- Mars globe texture is illustrative, not a real map.
-- Only Leo exists. No Mia, no voice preview, no Mars world, no rock, no memory, no parent area, no upload, no accounts.
+- **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
+- **Leo and Mia are procedural placeholders** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
+- **The mouth follows a synthetic rhythm, not lip sync.** Voices are the device's built-in browser voices.
+- **Learning history lives in this browser only.** Supabase is designed and tested but not deployed or wired.
+- The Mars terrain, globe and planet are illustrative and generated in code. They are not real maps.
+- Mars facts: drafted from NASA Space Place, **pending human review**.
 
-## Written but unverified (needs an OpenAI key)
-- Live WebRTC conversation (`src/lib/voice/openaiRealtime.ts`, token route). Built to the docs as read on 2026-11-12. Not confirmed there: `output_audio_buffer.started/stopped` events (code has fallbacks), exact `audio.input` session fields (route retries with a minimal session on a 400), voice name `cedar`.
-- Live barge-in, live tool calls, live latency, usage/cost numbers.
-- Any real-device fps (headless software rendering only so far).
+## Not verified yet
+- Real Android phone (Honor X9b): fps, voices, speech recognition, touch.
+- How the browser voices sound for Leo (male) and Mia (female) on that phone.
+- Anything on a hosted Supabase project (Security Advisor, dashboard auth settings).
 
-## Evidence inspected for the brief
-Master prompt (full), teacher duo image, storyboard image, and the actual MP4: probed (30 s, 1280×720, 24 fps, H.264 + AAC) and a 12-frame contact sheet extracted and viewed. Audio track not listened to.
-
-## Decisions made
-- Procedural teacher now; production character is a later asset decision (options + cost to be presented, nothing bought).
-- Supabase deferred to Phase 3; access code + hourly cap guard the token route for now.
-- Default model `gpt-realtime-2.1`; A/B `-mini` for cost (docs/COSTS.md).
+## Decisions
+- Experience first with a scripted brain; Claude API brain next (founder has Console credits). OpenAI dropped (git history at `1b1b029`).
+- Mars is one sample. Subjects plug in as data (`src/lib/worlds/registry.ts`) plus a scene registered in `src/components/scene/worlds.ts`.
+- Children never get accounts. Parents own learner profiles. Data is minimal: nickname, grade, language and teacher choice only.
+- Evidence is honest: a no-hint check in the same session is a "recheck", and only a later-session check counts as independent.
 
 ## Agent sign-off (2026-11-12)
-- **Tester — PASS WITH NOTES (demo mode only).** Added 3 test files. Found: late reply adopted by a new turn (high), latency verdict ignoring failures, typed-turn timing overwritten, board-text edge cases. All fixed; its regression tests now pass.
-- **Reviewer round 1 — PASS WITH NOTES.** 2 high (Stop while "thinking" did not stop the reply; token route open by default) + 8 medium. All fixed.
-- **Reviewer round 2 — BLOCK** on my first fix (two counters could double-count and silence the teacher). Reworked into one tested `ResponseGate` in the provider plus a state check in the controller. **Round 3 — PASS WITH NOTES**: no stuck or silent states found by tracing; two medium notes (cancel unconditionally on interrupt; cancel by response id) applied. Remaining low notes: a child re-speaking within ~2.5 s of a turn the server ignored can lose that turn until the 12 s timeout; a very late reply can be attributed to the next turn. Both need the live API to confirm.
-- Neither agent could test anything live.
-
-## Known issues (not fixed)
-- Phone portrait: long board text is clipped at the right edge. Phone landscape: banner/caption cover the teacher.
-- While pointing, the teacher turns side-on to the child (reduced, not solved).
-- Typing while the mic is mid-utterance can produce two replies in live mode (edge case, unverified).
-- Demo mode on loud speakers may hear its own voice and trigger "I heard a sound".
-- Session time cap and hourly cap are per browser / per server process, not real enforcement. Proper limits come with accounts in Phase 3.
-- After End → Start the teacher stays where he was standing.
+- Phase 1 rounds: tester PASS WITH NOTES; reviewer rounds 1–3 → PASS WITH NOTES (all high-severity findings fixed).
+- World-system build: tester PASS WITH NOTES (10 bugs found, all fixed and now covered by tests); reviewer PASS WITH NOTES (3 high-severity findings fixed: queued lines released by an interrupt, stuck arrival, no-WebGL trip).
+- Security/structure review: **PASS WITH NOTES**, no reachable hole found. Fixed:
+  - column-scoped update grants;
+  - sequence grants revoked;
+  - honest SECURITY.md;
+  - Windows-safe scripts;
+  - stronger secret scan;
+  - test hooks behind a build flag;
+  - this file rewritten.
+- Hardened-build tester round: see the latest entry in the founder's project notes.
 
 ## Blockers for the founder
-1. **OpenAI API key** (with a monthly budget limit, suggest $20) in `.env.local` — unblocks the whole live milestone.
-2. HTTPS access for the phone test (private Vercel deploy or a tunnel).
+1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
+2. **GitHub repo** (name + private). Then pin the CI actions to SHAs.
+3. **Stage B:** a Claude API key with a monthly spend limit set in the Console. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
+4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
+5. **Human review** of the Mars fact set.
 
 ## Exact next actions
-1. Founder: add key, run `npm run dev`, do the 20-turn test in docs/DEVICE_CHECKLIST.md on laptop, export measurements.
-2. Builder: fix whatever the first live session breaks; record real latency/cost here.
-3. Then Phase 2: Mars world, validated `openWorld`, rock interaction.
+1. Founder: create the GitHub repo, then I push `main`.
+2. Founder: Vercel project (or tunnel), then the phone test.
+3. Builder: Stage B Claude brain behind `/api/brain`, with server-side limits.
+4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
+5. Founder + builder: Stage E, create the Supabase project, `db push`, advisors, `SupabaseLearnerStore`, parent sign-in.
 
 ## Before real children or payments (not started)
-Parent accounts + consent flow, privacy policy, review of voice-provider terms for child-directed use, data retention/deletion, content safety testing, COPPA/GDPR-K style compliance review.
+See the SECURITY.md checklist: consent (COPPA, GDPR-K, Philippine Data Privacy Act), retention, vendor terms for speech, a content-safety test set, incident process, and an independent review.

@@ -79,7 +79,7 @@ class SessionController {
     this.set({ results: [...this.s.results, r] });
     try {
       const prev: unknown[] = JSON.parse(localStorage.getItem(RESULTS_KEY) || "[]");
-      prev.push({ ...r, at: new Date().toISOString(), ua: navigator.userAgent, net: (navigator as any).connection?.effectiveType ?? "unknown", model: this.s.model });
+      prev.push({ ...r, at: new Date().toISOString(), model: this.s.model });
       localStorage.setItem(RESULTS_KEY, JSON.stringify(prev.slice(-500)));
     } catch {}
   }
@@ -423,7 +423,7 @@ class SessionController {
   outputLevel() { return this.provider?.getOutputLevel() ?? 0; }
   inputLevel() { return this.provider?.getInputLevel() ?? 0; }
 
-  storedResults(): (TurnResult & { at: string; ua: string; net: string })[] {
+  storedResults(): (TurnResult & { at: string })[] {
     try { return JSON.parse(localStorage.getItem(RESULTS_KEY) || "[]"); } catch { return []; }
   }
   clearStoredResults() { try { localStorage.removeItem(RESULTS_KEY); } catch {} this.set({ results: [] }); }

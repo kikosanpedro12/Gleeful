@@ -1,6 +1,6 @@
 # Architecture (updated 2026-11-12)
 
-Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. No database yet (Supabase arrives in Stage E). No AI calls yet: the brain is scripted, and a Claude API brain plugs in at Stage B.
+Stack: Next.js 16 · React 19 · TypeScript · Three.js + React Three Fiber 9 · Zustand. Database: Supabase schema written and tested (supabase/, docs/DATABASE.md), **not deployed or wired yet**; the app saves through `LearnerStore` (this browser only today). No AI calls yet: the brain is scripted, and a Claude API brain plugs in at Stage B.
 
 ## One turn, end to end
 ```
@@ -36,6 +36,16 @@ Known gap: the scripted brain is Mars-specific code. That is acceptable because 
 - **The brain cannot run code.** It only gets prepared commands: gesture, pointAt, moveTeacherTo, writeOnBoard, openWorld, offerChoices, askQuestion and inviteTap. Board and choice text is plain text, sanitised and capped, and drawn to a canvas, never rendered as HTML.
 - **Honest learner evidence.** Attempts record correctness, hints used and context (`taught` vs `later_check`). One assisted correct answer is never shown as mastery.
 - **Measurement built in.** Per turn we log input → first audio and input → first animation; frame stats include the 1% low and stalls. Scripted timings never count as AI latency.
+
+## Adding a world (subject)
+1. Data: `src/lib/worlds/registry.ts`.
+2. Scene component: `src/components/scene/<World>.tsx`. It shows itself when `fx.shown` is its id.
+3. Register it in `src/components/scene/worlds.ts`, the only file that maps worlds to scenes.
+
+The engine (Director, CameraRig, Lights, TeacherActor) reads framing, background, planet and ground from the registry and `worlds.ts`, and has no world-specific code.
+
+## Security layers (see SECURITY.md)
+`src/proxy.ts` (per-request CSP nonce) · `next.config.mjs` (headers) · `src/lib/scene/commands.ts` (only validated actions) · `src/lib/learner/store.ts` (validated storage) · `supabase/migrations` (RLS, grants, composite keys) · `tests/db` + `scripts/mutate-rls.mjs` (proof).
 
 ## Stage B plug-in point
 Write a `ClaudeBrain` behind `/api/brain`, with the key kept on the server:

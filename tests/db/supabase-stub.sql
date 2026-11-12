@@ -15,3 +15,5 @@ grant usage on schema public to anon, authenticated, service_role;
 -- Supabase grants broad default privileges on public tables to the API roles.
 -- Mirror that so the test proves the migration's own REVOKEs/RLS are what protect the data.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;

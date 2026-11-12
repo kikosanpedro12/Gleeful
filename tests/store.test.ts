@@ -18,6 +18,8 @@ describe("local learner store", () => {
     expect(p2.sessions).toBe(2);
     expect(p2.teacher).toBe("mia");
     expect(p2.attempts[0]).toMatchObject({ ...ok, session: 1 });
+    expect(p2.attempts[0].sessionId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(p2.sessionId).not.toBe(p2.attempts[0].sessionId);
   });
   it("survives corrupted or tampered storage without breaking the lesson", async () => {
     const s = new LocalLearnerStore();
@@ -27,6 +29,7 @@ describe("local learner store", () => {
     }
     mem.set(KEY, JSON.stringify({ version: 1, learnerId: 5, teacher: "<script>", sessions: -3, attempts: [
       ok, { ...ok, context: "mastered" }, { ...ok, hintsUsed: -1 }, { ...ok, correct: "yes" }, null, "x",
+      { ...ok, questionId: "<script>" }, { ...ok, skill: "x".repeat(200) }, { ...ok, at: "not a date" }, { ...ok, sessionId: "../../etc" },
     ] }));
     const p = await s.load();
     expect(p.attempts).toEqual([ok]);
@@ -50,6 +53,12 @@ describe("local learner store", () => {
     const s = new LocalLearnerStore();
     await s.recordAttempt(ok);
     await s.deleteAll();
+    expect((await s.load()).attempts).toEqual([]);
+  });
+  it("refuses to record what the database would refuse", async () => {
+    const s = new LocalLearnerStore();
+    await s.recordAttempt({ ...ok, questionId: "Robert'); drop table--" });
+    await s.recordAttempt({ ...ok, hintsUsed: 99 });
     expect((await s.load()).attempts).toEqual([]);
   });
 });

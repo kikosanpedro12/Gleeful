@@ -2,9 +2,10 @@
 // Software rendering (~5-10 fps): this checks behaviour and takes screenshots; it says nothing about device fps.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const TARGET = process.env.SMOKE_URL || "http://localhost:3111/?test=1";
-const OUT = new URL("./out/", import.meta.url).pathname;
+const OUT = fileURLToPath(new URL("./out/", import.meta.url));
 fs.mkdirSync(OUT, { recursive: true });
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 720), TAG = process.env.TAG || "d";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -19,7 +20,10 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+const cspMsgs = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); if (/Content-Security-Policy|Refused/i.test(m.text())) cspMsgs.push(m.text()); });
+// securitypolicyviolation fires even when Chrome does not log; record across every navigation.
+await page.evaluateOnNewDocument(() => { document.addEventListener("securitypolicyviolation", (e) => console.error(`Refused (CSP event): ${e.violatedDirective} ${e.blockedURI}`)); });
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
 if (process.env.RM) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
 
@@ -174,6 +178,7 @@ check("parent view shows 2 sessions", /Sessions started:\s*2/.test(parent2));
 await page.screenshot({ path: `${OUT}${TAG}-15-parent-session2.png`, fullPage: true });
 void said2;
 
+check("no CSP violations / 'Refused' messages across the journey", cspMsgs.length === 0, cspMsgs.slice(0, 3).join(" | "));
 const real = errors.filter((e) => !/favicon|404/.test(e));
 check("no page errors", real.length === 0, real.slice(0, 3).join(" | "));
 await browser.close();
