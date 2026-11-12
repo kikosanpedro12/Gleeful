@@ -1,4 +1,4 @@
-# Build plan (updated 2026-11-12)
+# Build plan — Gleeful (updated 2026-11-13)
 
 **Founder decision (12 Nov):** lead with the experience. Build the "wow" with a scripted brain (free, clearly labelled), then plug in a real brain via the **Claude API** (founder has Console credits). OpenAI Realtime is dropped (still in git history at commit `1b1b029`).
 
@@ -8,7 +8,7 @@
 | Stage | What | Status |
 |---|---|---|
 | A. Wow slice (scripted) | Pick Leo/Mia with voice preview · classroom → walls peel open → space flight → Mars landing · Leo walks, points, gestures, helmet · tappable/spinnable rock that changes the lesson · question with hint · choose next stop (crater/volcano) · back to class · later no-hint check · honest parent view · tap-to-talk + typing · reduced-motion path | **Built, browser-tested (headless)**. Not yet on a real phone. |
-| B. Claude brain | Server route calls the Claude API with the current world's facts + tools (`toolsFor()`), streams text; browser speaks it. Key stays server-side. Measure input→first audio. | Not started. Needs: API key in `.env.local`, model choice, budget cap. |
+| B. Claude brain | Server route calls the Claude API with the current world's facts + tools (`toolsFor()`), streams text; browser speaks it. Key stays server-side. Measure input→first audio. | Not started. Key created (Console workspace `ai-teacher`, $20/month cap); it goes into Vercel env. Needs: Vercel project, model choice. |
 | C. Second subject | Prove generality with Gaddi's real homework: **repeated division / equal groups** as a classroom activity (drag objects into groups). Then one history or geography world. | Not started. |
 | D. Production characters | Replace the procedural Leo/Mia with rigged GLB characters (face morphs, fingers, real walk). | **Decision needed** (asset purchase or commission). See CHECKPOINT. |
 | E. Accounts + memory | Supabase auth, parent accounts, learner evidence with RLS, delete/export. Replaces local demo storage. | Not started. |

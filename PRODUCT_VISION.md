@@ -9,7 +9,8 @@
 - Child-led: speak, type or show schoolwork. No adult has to author a lesson first.
 - Two AI teachers, Leo and Mia (placeholders). Friendly, credible adults; honestly identified as AI.
 - Personalisation = evidence-based learner profile (skill, task, answer, hints, independence, later retention). Observations kept separate from inferences. No fixed labels ("visual learner"). No per-child model training.
-- Parents buy; children use. Pricing hypothesis $30/month per child — must be validated against real cost and usage.
+- Parents buy; children use. Pricing (13 Nov 2026): one price worldwide, Solo $29/month and Family $79/month (up to 4 kids), with live-hour caps. A 7-day free trial (card required) follows a 2–3 turn taste. Details: claude.ai doc "Pricing Strategy — Gleeful". Must be validated against real cost and usage.
+- Teacher look: Leo and Mia are placeholders; the founder is weighing a friendly mascot (possible name: Glee) that ages well from K1 to Grade 12.
 
 ## Non-negotiables
 - Real rigged 3D body and real-time engine on the device. Not a talking avatar beside a chat box; not generated video per frame.

@@ -1,4 +1,4 @@
-# Costs (updated 2026-11-12)
+# Costs — Gleeful (updated 2026-11-13)
 
 ## Development — spent so far: $0
 No assets bought, no services subscribed, no API calls made. Existing Claude subscription only.
