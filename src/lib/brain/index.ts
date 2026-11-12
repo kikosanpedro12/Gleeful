@@ -8,5 +8,5 @@ import { FallbackBrain } from "./fallbackBrain";
  * NEXT_PUBLIC_BRAIN=model (a switch, not a secret), and always falls back to the script.
  */
 export function createBrain(): Brain {
-  return process.env.NEXT_PUBLIC_BRAIN === "model" ? new FallbackBrain(new ClaudeBrain(), new ScriptedBrain()) : new ScriptedBrain();
+  return process.env.NEXT_PUBLIC_BRAIN === "model" ? new FallbackBrain(new ClaudeBrain({ probe: true }), new ScriptedBrain()) : new ScriptedBrain();
 }

@@ -52,6 +52,10 @@ export function checkReply(v: unknown): BrainReply {
   return { segments: out };
 }
 
+/** Remembered for the page's lifetime: does the server have a key and is it switched on? Undefined = not checked, or could not tell. */
+let configuredCache: boolean | undefined;
+export function resetProbeCache() { configuredCache = undefined; }
+
 export class ClaudeBrain implements Brain {
   readonly kind = "model" as const;
   private sessionId = newId();
@@ -59,7 +63,7 @@ export class ClaudeBrain implements Brain {
   /** Questions the model has put on screen and the child has not finished, with hints given so far. */
   private open = new Map<string, number>();
 
-  constructor(private opts: { fetchImpl?: typeof fetch; endpoint?: string; timeoutMs?: number } = {}) {}
+  constructor(private opts: { fetchImpl?: typeof fetch; endpoint?: string; timeoutMs?: number; probe?: boolean } = {}) {}
 
   async respond(input: BrainInput, ctx: BrainContext): Promise<BrainReply> {
     const wire = toWire(input);
@@ -122,8 +126,26 @@ export class ClaudeBrain implements Brain {
     return { prior, after };
   }
 
+  /**
+   * One cheap GET before the first POST, so a build with no key does not log a red 503
+   * on every page load. A 200 {configured:false} means do not call; anything else
+   * (network, 404, odd body) means we cannot tell, so the POST path still decides.
+   */
+  private async probe(f: typeof fetch): Promise<void> {
+    if (!this.opts.probe || configuredCache !== undefined) return;
+    try {
+      const res = await f(this.opts.endpoint ?? BRAIN_ENDPOINT, { method: "GET", credentials: "same-origin", cache: "no-store" });
+      if (res.ok) {
+        const j = (await res.json()) as { configured?: unknown };
+        if (typeof j.configured === "boolean") configuredCache = j.configured;
+      }
+    } catch { /* cannot tell: let the POST decide */ }
+  }
+
   private async call(req: BrainRequest): Promise<BrainReply> {
     const f = this.opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+    await this.probe(f);
+    if (configuredCache === false) throw new BrainUnavailable("brain_unconfigured", 503);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), this.opts.timeoutMs ?? CLIENT_TIMEOUT_MS);
     try {

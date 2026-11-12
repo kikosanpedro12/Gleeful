@@ -13,13 +13,14 @@ import type { WireInput } from "../protocol";
 /**
  * Anything that looks like a link or address is removed. We never speak or show one.
  * Covers: schemes, www., hosts ending in a long list of TLDs (with any path),
- * scheme-less host/path, bare IPv4 addresses, and a spelled-out "name dot com".
+ * scheme-less host/path, bare IPv4 addresses, e-mail addresses, and a spelled-out "name dot com".
  */
 const TLDS = "com|org|net|io|ai|app|dev|co|gov|edu|info|xyz|me|ly|tv|ph|uk|us|site|shop|link|click|top|online|store|tech|club|live|fun|page|website|space|cloud|biz|cc|ws|gg|to|sh|so|ru|cn|in|de|fr|jp|ca|au|ink|vip|win|icu|cyou|buzz|pro|mobi|name|zip|mov|ly|gl|ae|sa|kr|br|mx|es|it|nl|se|ch|pw|tk|ml|ga|cf|gq|work|world|today|news|life|email|support|center|run|bio|one|art|lol|wtf";
 /** The spelled-out form uses only unambiguous endings ("the dot to the next dot" is just teaching). */
 const SPOKEN_TLDS = "com|org|net|io|ai|app|dev|gov|edu|xyz|info|shop|site|link|click";
 const LINKISH = new RegExp(
   [
+    String.raw`[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,4}`,
     String.raw`\b(?:https?|ftp|file|javascript|data|vbscript)\s*:\S*`,
     String.raw`\bwww\.\S+`,
     String.raw`\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?(?:/\S*)?`,
@@ -53,6 +54,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
   let dropped = 0;
   let total = 0;
   let travelling = false;
+  let interactive = 0;
 
   const attach = (a: Action) => {
     if (total >= LIMITS.maxActionsPerReply) { dropped++; return; }
@@ -77,6 +79,11 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
       if (typeof b.name !== "string") { dropped++; continue; }
       const parsed = parseSceneCommand(b.name, b.input, contextFor(w));
       if (!parsed.ok) { dropped++; continue; }
+      // One question or choice set per reply is enforced here, not left to the prompt.
+      if (parsed.command.name === "askQuestion" || parsed.command.name === "offerChoices") {
+        if (interactive >= 1) { dropped++; continue; }
+        interactive++;
+      }
       // Text the model puts on the board or on a button gets the same treatment as speech.
       const cmd = parsed.command;
       if (cmd.name === "writeOnBoard") {

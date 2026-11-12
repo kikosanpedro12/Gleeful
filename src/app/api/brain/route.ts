@@ -16,3 +16,12 @@ export async function POST(req: Request) {
   // Re-read the environment per request so the kill switch and key rotation take effect without a code change.
   return handleBrain(req, { ...base, env: readEnv() });
 }
+
+/**
+ * Capability check for the client: is the brain switched on and keyed? One boolean, no secrets,
+ * never cached. It lets a build with no key skip the POST instead of logging a 503 on every page load.
+ */
+export async function GET() {
+  const env = readEnv();
+  return Response.json({ configured: Boolean(env.apiKey) && !env.disabled }, { headers: { "cache-control": "no-store" } });
+}

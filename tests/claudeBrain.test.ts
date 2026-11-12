@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ClaudeBrain, BrainUnavailable, checkReply } from "@/lib/brain/claudeBrain";
+import { ClaudeBrain, BrainUnavailable, checkReply, resetProbeCache } from "@/lib/brain/claudeBrain";
 import { FallbackBrain } from "@/lib/brain/fallbackBrain";
 import { createBrain } from "@/lib/brain";
 import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
@@ -162,5 +162,43 @@ describe("FallbackBrain and createBrain", () => {
     process.env.NEXT_PUBLIC_BRAIN = "anything-else";
     expect(createBrain()).toBeInstanceOf(ScriptedBrain);
     if (old === undefined) delete process.env.NEXT_PUBLIC_BRAIN; else process.env.NEXT_PUBLIC_BRAIN = old;
+  });
+});
+
+describe("ClaudeBrain: one capability check instead of a 503 on every page load", () => {
+  const probeOf = (configured: unknown, status = 200) => new Response(JSON.stringify({ configured }), { status });
+  const methods = (f: ReturnType<typeof fetchOf>) => f.mock.calls.map((c) => (c[1] as { method: string }).method);
+  const pb = (f: ReturnType<typeof fetchOf>) => new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true });
+
+  it("not configured: never POSTs, throws brain_unconfigured, and asks only once", async () => {
+    resetProbeCache();
+    const f = fetchOf(probeOf(false));
+    const b = pb(f);
+    await expect(b.respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "brain_unconfigured" });
+    await expect(b.respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "brain_unconfigured" });
+    expect(methods(f)).toEqual(["GET"]);
+  });
+  it("configured: probes once, then POSTs as usual", async () => {
+    resetProbeCache();
+    const f = fetchOf(probeOf(true), ok([{ say: "Hi!" }]), ok([{ say: "Again!" }]));
+    const b = pb(f);
+    await b.respond({ kind: "text", text: "hi" }, ctx("classroom"));
+    await b.respond({ kind: "text", text: "hello" }, ctx("classroom"));
+    expect(methods(f)).toEqual(["GET", "POST", "POST"]);
+  });
+  it("cannot tell (404, odd body, offline): the POST still decides, so the 503 fallback keeps working", async () => {
+    for (const first of [probeOf(undefined, 404), new Response("nope", { status: 200 }), new TypeError("offline")]) {
+      resetProbeCache();
+      const f = fetchOf(first, new Response(JSON.stringify({ error: "brain_unconfigured" }), { status: 503 }));
+      await expect(pb(f).respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "brain_unconfigured", status: 503 });
+      expect(methods(f)).toEqual(["GET", "POST"]);
+    }
+    resetProbeCache();
+  });
+  it("probe is off by default (existing callers and tests unchanged)", async () => {
+    resetProbeCache();
+    const f = fetchOf(ok([{ say: "Hello!" }]));
+    await brain(f).respond({ kind: "text", text: "hi" }, ctx("classroom"));
+    expect(methods(f)).toEqual(["POST"]);
   });
 });

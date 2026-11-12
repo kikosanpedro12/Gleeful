@@ -79,6 +79,7 @@
 - [ ] Separate production workspace + key from dev.
 - [ ] Claude API key `AI-Teacher-Brain` (workspace ai-teacher, created 2026-11-13, 90-day expiry → ~2027-02-11). Scheduled reminder fires 2027-02-04 to rotate it.
 - [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
+- [ ] **BLOCKER for any public traffic: parent sign-in + usage limits in `brain_usage`.** Until then anyone can rotate address/session/learner ids and bypass every per-user cap (proven in `tests/brainAttack.test.ts`); the Console spend limit is the only hard ceiling, so keep it low and share the Vercel link with nobody.
 - [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo $29 / 10 h, Family $79 / 40 h; one price worldwide).
 
 ## Before real children or payments (not started)
