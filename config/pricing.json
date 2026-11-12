@@ -1,12 +1,35 @@
 {
   "_note": "Vendor list prices in USD, from public pages on 2026-11-12. Estimates, not invoices. Update when a vendor changes price; /cost-report reads this file.",
   "checked": "2026-11-12",
-  "stt": { "vendor": "Deepgram Flux", "perMinute": 0.0065, "regularPerMinute": 0.0077 },
-  "tts": { "vendor": "Cartesia Sonic", "creditsPerAudioMinute": 775, "usdPerMillionCredits": 41.5 },
-  "pipe": { "vendor": "LiveKit Cloud", "agentPerMinute": 0.01, "webrtcPerMinute": 0.0004, "ownRelayPerMinute": 0.001 },
+  "stt": {
+    "vendor": "Deepgram Flux",
+    "perMinute": 0.0065,
+    "regularPerMinute": 0.0077
+  },
+  "tts": {
+    "vendor": "Cartesia Sonic",
+    "creditsPerAudioMinute": 775,
+    "usdPerMillionCredits": 41.5
+  },
+  "pipe": {
+    "vendor": "LiveKit Cloud",
+    "agentPerMinute": 0.01,
+    "webrtcPerMinute": 0.0004,
+    "ownRelayPerMinute": 0.001
+  },
   "brain": {
-    "haiku": { "model": "claude-haiku-5-5", "inPerM": 0.10, "outPerM": 0.50, "cachedPerM": 0.01 },
-    "sonnet": { "model": "claude-sonnet-5-5", "inPerM": 2.0, "outPerM": 10.0, "cachedPerM": 0.10 }
+    "haiku": {
+      "model": "claude-haiku-5-5",
+      "inPerM": 0.1,
+      "outPerM": 0.5,
+      "cachedPerM": 0.01
+    },
+    "sonnet": {
+      "model": "claude-sonnet-5-5",
+      "inPerM": 2.0,
+      "outPerM": 10.0,
+      "cachedPerM": 0.1
+    }
   },
   "assumptions": {
     "turnsPerMinute": 2.7,
@@ -18,13 +41,22 @@
     "childTalkShare": 0.25,
     "paymentFeeShare": 0.05
   },
-  "optimized": { "sttOnlyWhileChildTalks": true, "prerecordedShare": 0.5, "useLiveKit": false },
+  "optimized": {
+    "sttOnlyWhileChildTalks": true,
+    "prerecordedShare": 0.5,
+    "useLiveKit": false
+  },
   "plans": [
-    { "name": "Solo T1", "price": 29, "capHours": 10 },
-    { "name": "Family T1", "price": 79, "capHours": 40 },
-    { "name": "Solo T2", "price": 19, "capHours": 7 },
-    { "name": "Family T2", "price": 49, "capHours": 25 },
-    { "name": "Solo T3", "price": 12, "capHours": 4 },
-    { "name": "Family T3", "price": 29, "capHours": 15 }
-  ]
+    {
+      "name": "Solo",
+      "price": 29,
+      "capHours": 10
+    },
+    {
+      "name": "Family",
+      "price": 79,
+      "capHours": 40
+    }
+  ],
+  "pricingPolicy": "One price worldwide (founder decision 2026-11-12). No regional discounts."
 }

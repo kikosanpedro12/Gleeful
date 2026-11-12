@@ -41,6 +41,7 @@
 - Experience first with a scripted brain; Claude API brain next (founder has Console credits). OpenAI dropped (git history at `1b1b029`).
 - Mars is one sample. Subjects plug in as data (`src/lib/worlds/registry.ts`) plus a scene registered in `src/components/scene/worlds.ts`.
 - Children never get accounts. Parents own learner profiles. Data is minimal: nickname, grade, language and teacher choice only.
+- Pricing: one price worldwide (Solo $29, Family $79), no regional discounts.
 - Evidence is honest: a no-hint check in the same session is a "recheck", and only a later-session check counts as independent.
 
 ## Agent sign-off (2026-11-12)
@@ -75,7 +76,7 @@
 - [ ] **Raise the `ai-teacher` Console spend limit** from the $20 dev cap to a launch budget (from `/cost-report` × expected users), and add an email alert at 50% and 80%.
 - [ ] Separate production workspace + key from dev.
 - [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
-- [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo 10 h, Family 40 h, by region tier).
+- [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo $29 / 10 h, Family $79 / 40 h; one price worldwide).
 
 ## Before real children or payments (not started)
 See the SECURITY.md checklist: consent (COPPA, GDPR-K, Philippine Data Privacy Act), retention, vendor terms for speech, a content-safety test set, incident process, and an independent review.

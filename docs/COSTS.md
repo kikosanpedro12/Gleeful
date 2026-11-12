@@ -41,7 +41,7 @@ Run `node scripts/cost-model.mjs` (prices in `config/pricing.json`). Pricing str
 | Brain: Haiku 5.5 + 10% Sonnet 5.5 | $0.0010 | $0.0010 |
 | **Total** | **$0.034/min ≈ $2.04/hr** | **$0.0117/min ≈ $0.70/hr** |
 
-Plans (US tier): Solo $29 / 10 live hrs (71% margin at cap), Family $79 / 40 live hrs (60%). Unoptimized, Family at its cap loses money, so the cost cuts are launch blockers.
+Plans (one price worldwide): Solo $29 / 10 live hrs (71% margin at cap), Family $79 / 40 live hrs (60%). Unoptimized, Family at its cap loses money, so the cost cuts are launch blockers.
 
 Console: workspace `ai-teacher` has a $20/month dev spend limit (2026-11-12). Raise it at go-live (CHECKPOINT go-live checklist).
 
