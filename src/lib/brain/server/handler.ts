@@ -10,7 +10,7 @@ import "server-only";
 import type { BrainEnv } from "./config";
 import { LIMITS } from "./config";
 import { callAnthropic, UpstreamError } from "./anthropic";
-import { RateLimiter, type UsageStore } from "./limits";
+import { RateLimiter, SessionCounter, type UsageStore } from "./limits";
 import { buildSystem, buildUserMessage, isHardTurn, modelFor } from "./prompt";
 import { parseRequest } from "./request";
 import { buildReply } from "./sanitize";
@@ -25,7 +25,7 @@ export interface Deps {
   usage: UsageStore;
   ipLimiter: RateLimiter;
   sessionLimiter: RateLimiter;
-  sessionTotals: Map<string, number>;
+  sessionTotals: SessionCounter;
   /** Structured, content-free events only. */
   log: (event: string, fields: Record<string, string | number>) => void;
 }
@@ -36,7 +36,7 @@ export function makeDeps(partial: Pick<Deps, "env" | "usage"> & Partial<Deps>): 
     now: () => Date.now(),
     ipLimiter: new RateLimiter(LIMITS.perIpPerMinute, 60_000),
     sessionLimiter: new RateLimiter(LIMITS.perSessionPerMinute, 60_000),
-    sessionTotals: new Map(),
+    sessionTotals: new SessionCounter(),
     log: (event, fields) => console.warn(`[brain] ${event}`, fields),
     ...partial,
   };
@@ -51,7 +51,16 @@ export function clientIp(req: Request): string {
   return /^[0-9a-fA-F:.]{3,45}$/.test(first) ? first : "unknown";
 }
 
-/** Same-origin only: a page on another site must not be able to spend our key. */
+/**
+ * Same-origin only: a page on another site must not be able to spend our key.
+ *
+ * DECISION: a request with NEITHER Origin nor Sec-Fetch-Site is allowed. Every
+ * browser sends at least one of them on a POST, so a cross-site web page cannot
+ * omit both; only non-browser clients (curl, scripts) do, and they can forge
+ * either header anyway. This check is CSRF protection for browsers, NOT a spend
+ * control. Spend is controlled by the rate limits, the daily caps and the
+ * Console spend limit.
+ */
 function crossOrigin(req: Request): boolean {
   const site = req.headers.get("sec-fetch-site");
   if (site && site !== "same-origin" && site !== "none") return true;
@@ -59,6 +68,37 @@ function crossOrigin(req: Request): boolean {
   if (!origin) return false;
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
   try { return new URL(origin).host !== host; } catch { return true; }
+}
+
+/**
+ * Reads the body with a hard cap on BYTES (not characters) and a time limit, so a
+ * chunked or slow-drip request cannot hold the function open or fill memory.
+ */
+export async function readBody(req: Request, maxBytes: number, timeoutMs: number): Promise<{ ok: true; text: string } | { ok: false; status: 400 | 413 }> {
+  if (!req.body) return { ok: true, text: "" };
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; void reader.cancel().catch(() => {}); }, timeoutMs);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) { void reader.cancel().catch(() => {}); return { ok: false, status: 413 }; }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, status: 400 };
+  } finally {
+    clearTimeout(timer);
+  }
+  if (timedOut) return { ok: false, status: 400 };
+  const all = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.byteLength; }
+  try { return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(all) }; } catch { return { ok: false, status: 400 }; }
 }
 
 export async function handleBrain(req: Request, d: Deps): Promise<Response> {
@@ -73,29 +113,37 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > LIMITS.maxBodyBytes) return fail(413, "too_large");
-  let text: string;
-  try { text = await req.text(); } catch { return fail(400, "bad_request"); }
-  if (text.length > LIMITS.maxBodyBytes) return fail(413, "too_large");
+  const raw = await readBody(req, LIMITS.maxBodyBytes, LIMITS.bodyReadTimeoutMs);
+  if (!raw.ok) return raw.status === 413 ? fail(413, "too_large") : fail(400, "bad_request");
   let json: unknown;
-  try { json = JSON.parse(text); } catch { return fail(400, "bad_request"); }
+  try { json = JSON.parse(raw.text); } catch { return fail(400, "bad_request"); }
   const parsed = parseRequest(json);
   if (!parsed.ok) return fail(400, "bad_request");
   const r = parsed.req;
 
   const sWait = d.sessionLimiter.take(r.sessionId, now);
   if (sWait) return fail(429, "rate_limited", { "retry-after": String(sWait) });
-  const done = d.sessionTotals.get(r.sessionId) ?? 0;
+  const done = d.sessionTotals.count(r.sessionId, now);
+  if (done === null) return fail(503, "global_limit"); // table full of live sessions: refuse new ones (never evict a live one)
   if (done >= LIMITS.perSessionTotal) return fail(429, "daily_limit");
 
+  const ip = clientIp(req);
   const usage = await d.usage.today(r.learnerId, r.tz, now);
-  if (usage.turns >= LIMITS.dailyTurnsPerLearner) return fail(429, "daily_limit");
-  if ((await d.usage.globalToday(now)).turns >= LIMITS.dailyTurnsGlobal) return fail(503, "global_limit");
+  const ipDay = await d.usage.ipToday(ip, now);
+  if (!usage || !ipDay) return fail(503, "global_limit"); // fail closed when a table is full of live keys
+  if (usage.turns >= LIMITS.dailyTurnsPerLearner || ipDay.turns >= LIMITS.dailyTurnsPerIp) return fail(429, "daily_limit");
+  const global = await d.usage.globalToday(now);
+  if (global.turns >= LIMITS.dailyTurnsGlobal) return fail(503, "global_limit");
 
-  const hard = isHardTurn(r) && usage.hardTurns < LIMITS.dailyHardTurnsPerLearner;
+  // Sonnet needs ALL budgets: this learner's, this client address's (learnerId is browser-chosen, so rotating it must not help) and the deployment's.
+  const hard = isHardTurn(r)
+    && usage.hardTurns < LIMITS.dailyHardTurnsPerLearner
+    && ipDay.hardTurns < LIMITS.dailyHardTurnsPerIp
+    && global.hardTurns < LIMITS.dailyHardTurnsGlobal;
   await d.usage.reserve(usage, hard);
-  await d.usage.reserveGlobal(now);
-  d.sessionTotals.set(r.sessionId, done + 1);
-  if (d.sessionTotals.size > LIMITS.maxTrackedKeys) d.sessionTotals.delete(d.sessionTotals.keys().next().value as string);
+  await d.usage.reserveIp(ip, now, hard);
+  await d.usage.reserveGlobal(now, hard);
+  d.sessionTotals.add(r.sessionId, now);
 
   const ctx = contextFor(r.world);
   let up;

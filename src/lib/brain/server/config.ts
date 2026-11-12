@@ -7,7 +7,7 @@ import "server-only";
 export const MODELS = {
   /** Default for almost every turn: fast and cheap. */
   default: "claude-haiku-5-5",
-  /** Only for flagged hard turns (see isHardTurn). About 20x the price of default. */
+  /** Only for flagged hard turns (see isHardTurn). Priced higher per token; published prices are recorded in docs/COSTS.md. */
   hard: "claude-sonnet-5-5",
 } as const;
 
@@ -32,10 +32,27 @@ export const LIMITS = {
   dailyTurnsPerLearner: 400,
   /** Sonnet turns are expensive; a stuck child gets a few, not unlimited. */
   dailyHardTurnsPerLearner: 20,
-  /** Whole-deployment ceiling per day. A stand-in for the Console spend limit, never a replacement. */
+  /**
+   * The same budget keyed on the client address, because learnerId is chosen by
+   * the browser and rotating it must not buy more Sonnet turns. A household
+   * shares one address, so this is above one learner's budget but far below abuse.
+   */
+  dailyHardTurnsPerIp: 40,
+  /** All turns per client address per day (also not resettable by rotating learnerId). */
+  dailyTurnsPerIp: 1500,
+  /** Whole-deployment ceilings per day. A stand-in for the Console spend limit, never a replacement. */
   dailyTurnsGlobal: 5000,
-  /** In-memory tables never grow past this many keys (oldest dropped first). */
+  dailyHardTurnsGlobal: 300,
+  /** Reading the request body must finish within this, however slowly the client sends it. */
+  bodyReadTimeoutMs: 5_000,
+  /**
+   * In-memory tables never grow past this many keys. When full, a NEW key is
+   * refused (fail closed) after expired entries are purged. Evicting a live
+   * entry instead would let an attacker reset a victim's counters by flooding.
+   */
   maxTrackedKeys: 5000,
+  /** A session counter idle this long is expired and may be purged when the table is full. */
+  sessionIdleMs: 2 * 60 * 60_000,
 } as const;
 
 export const ESCALATE_TO_HARD_MODEL = true;

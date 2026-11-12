@@ -97,6 +97,8 @@ export class ScriptedProvider implements VoiceProvider {
         },
       }))
       .then((reply) => {
+        // Honest labelling: report who answered even if this reply is no longer wanted.
+        this.ev.onBrainKind?.(this.brain.kind);
         if (run.cancelled || this.run !== run) return;
         const wait = Math.max(0, THINK_MS - (performance.now() - startedAt));
         run.timers.push(setTimeout(() => this.playSegments(run, reply.segments, 0), wait));

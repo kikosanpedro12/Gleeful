@@ -32,6 +32,8 @@ export interface VoiceEvents {
   onAssistantTranscript(responseId: string, delta: string, newSegment?: boolean): void;
   onToolCall(responseId: string, callId: string, name: string, args: string): void;
   onUsage(u: UsageDelta): void;
+  /** Who actually answered the last turn: the model, or the built-in script (a fallback counts as scripted). */
+  onBrainKind?(kind: "scripted" | "model"): void;
   onError(message: string): void;
 }
 

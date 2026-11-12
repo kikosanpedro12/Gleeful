@@ -3,11 +3,17 @@ import "server-only";
  * Rate limits and daily usage for the brain route.
  *
  * HONEST STATUS: these tables live in this server instance's memory. On
- * serverless hosting each instance has its own copy and a restart clears it, so
- * this is an abuse brake, NOT the billing control. The hard ceiling is the
+ * serverless hosting each warm instance has its own copy and a cold start clears
+ * it, so the real ceiling is (number of instances x these caps), not these caps.
+ * They are an abuse BRAKE, not the billing control. The hard ceiling is the
  * monthly spend limit on the Anthropic Console workspace. The `UsageStore`
  * interface exists so the same rules can move to public.brain_usage (Stage E)
  * without touching the handler.
+ *
+ * FAIL CLOSED, NEVER EVICT: every table is bounded. When a table is full the
+ * expired entries are purged, and if it is still full a NEW key is refused.
+ * Evicting a live entry to make room would let an attacker reset a victim's
+ * counters (or free a pinned time zone) just by sending requests with fresh ids.
  */
 import { DEFAULT_TIME_ZONE, LIMITS } from "./config";
 
@@ -16,18 +22,45 @@ export class RateLimiter {
   private hits = new Map<string, { windowStart: number; count: number }>();
   constructor(private max: number, private windowMs: number, private maxKeys: number = LIMITS.maxTrackedKeys) {}
 
+  private purgeExpired(now: number) {
+    for (const [k, e] of this.hits) if (now - e.windowStart >= this.windowMs) this.hits.delete(k);
+  }
+
   /** Returns 0 if allowed, otherwise the seconds to wait. */
   take(key: string, now: number): number {
     const e = this.hits.get(key);
-    if (!e || now - e.windowStart >= this.windowMs) {
-      this.hits.delete(key);
-      this.hits.set(key, { windowStart: now, count: 1 });
-      if (this.hits.size > this.maxKeys) this.hits.delete(this.hits.keys().next().value as string);
+    if (e && now - e.windowStart < this.windowMs) {
+      if (e.count >= this.max) return Math.max(1, Math.ceil((this.windowMs - (now - e.windowStart)) / 1000));
+      e.count++;
       return 0;
     }
-    if (e.count >= this.max) return Math.max(1, Math.ceil((this.windowMs - (now - e.windowStart)) / 1000));
-    e.count++;
+    if (!e && this.hits.size >= this.maxKeys) {
+      this.purgeExpired(now);
+      if (this.hits.size >= this.maxKeys) return Math.max(1, Math.ceil(this.windowMs / 1000)); // full of live keys: refuse the new one
+    }
+    this.hits.set(key, { windowStart: now, count: 1 });
     return 0;
+  }
+}
+
+/** Per-session lifetime turn counts, bounded, idle sessions expire, never evicts a live one. */
+export class SessionCounter {
+  private m = new Map<string, { n: number; seen: number }>();
+  constructor(private maxKeys: number = LIMITS.maxTrackedKeys, private idleMs: number = LIMITS.sessionIdleMs) {}
+
+  /** Turns so far, or null when the table is full of live sessions (the caller must refuse). */
+  count(id: string, now: number): number | null {
+    const e = this.m.get(id);
+    if (e) return e.n;
+    if (this.m.size >= this.maxKeys) {
+      for (const [k, v] of this.m) if (now - v.seen >= this.idleMs) this.m.delete(k);
+      if (this.m.size >= this.maxKeys) return null;
+    }
+    return 0;
+  }
+  add(id: string, now: number) {
+    const e = this.m.get(id);
+    if (e) { e.n++; e.seen = now; } else this.m.set(id, { n: 1, seen: now });
   }
 }
 
@@ -48,47 +81,87 @@ export function dayKey(nowMs: number, tz: string): string {
 }
 
 export interface Usage { tz: string; day: string; turns: number; hardTurns: number; tokensIn: number; tokensOut: number }
+export interface DayCount { turns: number; hardTurns: number }
 
 export interface UsageStore {
-  /** Today's usage for a learner. The zone is pinned on first sight: a client cannot move the day boundary by changing it. */
-  today(learnerId: string, requestedTz: string, nowMs: number): Promise<Usage>;
+  /**
+   * Today's usage for a learner. The zone is pinned on first sight: a client cannot move the day boundary by changing it.
+   * Returns null when the table is full of live learners (fail closed: the caller must refuse).
+   */
+  today(learnerId: string, requestedTz: string, nowMs: number): Promise<Usage | null>;
   /** Count one turn before the model call (so a failing upstream cannot be hammered for free). */
   reserve(usage: Usage, hard: boolean): Promise<void>;
   addTokens(usage: Usage, tokensIn: number, tokensOut: number): Promise<void>;
-  globalToday(nowMs: number): Promise<{ turns: number }>;
-  reserveGlobal(nowMs: number): Promise<void>;
+  /**
+   * Whole-deployment and per-client-address counts use the UTC day on purpose:
+   * the browser chooses its own time zone, so a zone-based day would let a client
+   * move the boundary of a limit that is meant to bind it. (Only the per-learner
+   * family limit uses the family's zone, with the zone pinned.) null = table full.
+   */
+  globalToday(nowMs: number): Promise<DayCount>;
+  ipToday(ip: string, nowMs: number): Promise<DayCount | null>;
+  reserveGlobal(nowMs: number, hard: boolean): Promise<void>;
+  reserveIp(ip: string, nowMs: number, hard: boolean): Promise<void>;
 }
 
 export class MemoryUsageStore implements UsageStore {
   private byLearner = new Map<string, Usage>();
-  private pinnedTz = new Map<string, string>();
-  private global = { day: "", turns: 0 };
+  private byIp = new Map<string, { day: string; turns: number; hardTurns: number }>();
+  private global = { day: "", turns: 0, hardTurns: 0 };
   constructor(private maxKeys: number = LIMITS.maxTrackedKeys) {}
 
-  async today(learnerId: string, requestedTz: string, nowMs: number): Promise<Usage> {
-    let tz = this.pinnedTz.get(learnerId);
-    if (!tz) {
-      tz = safeTimeZone(requestedTz);
-      this.pinnedTz.set(learnerId, tz);
-      if (this.pinnedTz.size > this.maxKeys) this.pinnedTz.delete(this.pinnedTz.keys().next().value as string);
+  async today(learnerId: string, requestedTz: string, nowMs: number): Promise<Usage | null> {
+    const cur = this.byLearner.get(learnerId);
+    if (cur) {
+      // The zone stays pinned from the first sight; only the day label moves.
+      const day = dayKey(nowMs, cur.tz);
+      if (cur.day === day) return cur;
+      cur.day = day; cur.turns = 0; cur.hardTurns = 0; cur.tokensIn = 0; cur.tokensOut = 0;
+      return cur;
     }
-    const day = dayKey(nowMs, tz);
-    const key = learnerId;
-    const cur = this.byLearner.get(key);
-    if (cur && cur.day === day) return cur;
-    const fresh: Usage = { tz, day, turns: 0, hardTurns: 0, tokensIn: 0, tokensOut: 0 };
-    this.byLearner.delete(key);
-    this.byLearner.set(key, fresh);
-    if (this.byLearner.size > this.maxKeys) this.byLearner.delete(this.byLearner.keys().next().value as string);
+    if (this.byLearner.size >= this.maxKeys) {
+      // Only entries whose own day has passed are expired; live ones are never evicted.
+      for (const [k, u] of this.byLearner) if (u.day !== dayKey(nowMs, u.tz)) this.byLearner.delete(k);
+      if (this.byLearner.size >= this.maxKeys) return null;
+    }
+    const tz = safeTimeZone(requestedTz);
+    const fresh: Usage = { tz, day: dayKey(nowMs, tz), turns: 0, hardTurns: 0, tokensIn: 0, tokensOut: 0 };
+    this.byLearner.set(learnerId, fresh);
     return fresh;
   }
   async reserve(u: Usage, hard: boolean) { u.turns++; if (hard) u.hardTurns++; }
   async addTokens(u: Usage, i: number, o: number) { u.tokensIn += i; u.tokensOut += o; }
+
   private globalDay(nowMs: number) {
     const d = dayKey(nowMs, "UTC");
-    if (this.global.day !== d) this.global = { day: d, turns: 0 };
+    if (this.global.day !== d) this.global = { day: d, turns: 0, hardTurns: 0 };
     return this.global;
   }
-  async globalToday(nowMs: number) { return { turns: this.globalDay(nowMs).turns }; }
-  async reserveGlobal(nowMs: number) { this.globalDay(nowMs).turns++; }
+  async globalToday(nowMs: number) { const g = this.globalDay(nowMs); return { turns: g.turns, hardTurns: g.hardTurns }; }
+  async reserveGlobal(nowMs: number, hard: boolean) { const g = this.globalDay(nowMs); g.turns++; if (hard) g.hardTurns++; }
+
+  private ipEntry(ip: string, nowMs: number, create: boolean) {
+    const day = dayKey(nowMs, "UTC");
+    const e = this.byIp.get(ip);
+    if (e) {
+      if (e.day !== day) { e.day = day; e.turns = 0; e.hardTurns = 0; }
+      return e;
+    }
+    if (!create) return null;
+    if (this.byIp.size >= this.maxKeys) {
+      for (const [k, v] of this.byIp) if (v.day !== day) this.byIp.delete(k);
+      if (this.byIp.size >= this.maxKeys) return null;
+    }
+    const fresh = { day, turns: 0, hardTurns: 0 };
+    this.byIp.set(ip, fresh);
+    return fresh;
+  }
+  async ipToday(ip: string, nowMs: number): Promise<DayCount | null> {
+    const e = this.ipEntry(ip, nowMs, true);
+    return e ? { turns: e.turns, hardTurns: e.hardTurns } : null;
+  }
+  async reserveIp(ip: string, nowMs: number, hard: boolean) {
+    const e = this.ipEntry(ip, nowMs, false);
+    if (e) { e.turns++; if (hard) e.hardTurns++; }
+  }
 }

@@ -5,8 +5,10 @@ import { readEnv } from "@/lib/brain/server/config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+/** Seconds. Covers the 5 s body read and 12 s model call with margin; stops a stuck call from running for the platform default. */
+export const maxDuration = 20;
 
-// One set of in-memory tables per server instance (see limits.ts for what that does and does not guarantee).
+// One set of in-memory tables per WARM server instance: a brake, not a ceiling (see limits.ts). The Anthropic Console spend limit is the real ceiling until public.brain_usage is wired in.
 const usage = new MemoryUsageStore();
 const base = makeDeps({ env: readEnv(), usage });
 

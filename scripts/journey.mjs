@@ -61,6 +61,9 @@ await page.waitForSelector('[data-testid="demo-badge"]', { timeout: 10000 });
 check("scripted mode labelled on screen", true);
 const g = await waitFor((d) => d.state === "speaking");
 check("Leo greets", !!g);
+// Honest labelling: the smoke server never has a model key, so whichever brain is built, the script answered and the badge must say so.
+const badge = await page.$eval('[data-testid="demo-badge"]', (e) => e.textContent || "");
+check("badge says scripted when the script answered (never claims AI)", /Scripted|not AI/i.test(badge), JSON.stringify(badge));
 await waitFor((d) => d.mouth > 0.2, 5000).then((d) => check("mouth moves while speaking", !!d));
 const c1 = await waitFor((d) => d.choices.includes("mars") && d.state === "idle", 20000);
 check("greeting offers a Mars choice", !!c1);

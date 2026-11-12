@@ -51,17 +51,18 @@ The engine (Director, CameraRig, Lights, TeacherActor) reads framing, background
 ```
 browser  ClaudeBrain ──POST /api/brain──▶  route.ts → handler.ts                       (src/lib/brain/claudeBrain.ts, src/lib/brain/server/)
          FallbackBrain(Claude, Scripted)    1 kill switch / key present?   → 503 → script
-                                            2 same-origin, JSON, size      → 403/415/413
+                                            2 same-origin, JSON, byte-capped timed body read → 403/415/413/400
                                             3 per-IP rate limit            → 429
                                             4 validate request (request.ts) → 400
-                                            5 per-session limits, daily turns per learner (family time zone), global cap → 429/503
+                                            5 per-session limits, daily turns per learner (family time zone), per address, global cap → 429/503 (full tables refuse NEW keys, never evict)
                                             6 prompt.ts: safety rules + world facts FROM THE REGISTRY + child text as data
-                                            7 anthropic.ts: one fetch, 12 s timeout, key only here
+                                            7 anthropic.ts: one fetch, one 12 s timer over request AND body read, key only here
                                             8 sanitize.ts: text blocks → plain speech; tool calls → parseSceneCommand per world
 ```
-- **Models** (`config.ts`): `claude-haiku-5-5` by default; `claude-sonnet-5-5` only on a "hard turn" (long or deep question, or a child who just missed the same question again), capped at 20 per learner per day. One constant turns escalation off.
+- **Models** (`config.ts`): `claude-haiku-5-5` by default; `claude-sonnet-5-5` only on a "hard turn" (a 120+ character reasoning question, or a server-verified wrong answer after a hint; never length or a client number alone), inside three daily budgets: 20 per learner, 40 per client address, 300 per deployment. Sonnet is priced higher per token (published prices in docs/COSTS.md). One constant turns escalation off.
 - **The model can only:** say short plain sentences, and call the same validated tools as the script (ids from the current world). Links, HTML, markdown, unknown tools and unknown ids are dropped. Arriving somewhere simulated always says "simulation": enforced in code.
 - **The model never judges answers or writes evidence.** The server tells it correct / not correct from the registry; `ClaudeBrain` records the attempt in the browser from the question data (a first miss is a hint and a retry, not evidence).
 - **Fallback:** any failure (no key, limit, timeout, bad output) → the scripted lesson answers that turn. A missing key, kill switch or daily cap pauses model calls for 5 minutes.
 - **Env:** `ANTHROPIC_API_KEY` (server only), `BRAIN_DISABLED=1` (kill switch), `NEXT_PUBLIC_BRAIN=model` (build-time opt-in, not a secret). See `.env.example`.
-- **Limits live in memory per server instance** (`limits.ts`, behind a `UsageStore` interface so `brain_usage` can replace it). They are an abuse brake. The hard ceiling is the Console spend limit.
+- **Limits live in memory per WARM server instance** (`limits.ts`, behind a `UsageStore` interface so `brain_usage` can replace it). On serverless every instance has its own copy and a cold start clears it, so the real ceiling is (instances × the caps): a brake, not a ceiling. **The Console spend limit is the only real ceiling until `brain_usage` is wired in.** The route sets `maxDuration = 20`.
+- **The on-screen badge tells the truth about the last turn:** it reads "AI teacher · test build" only when the model actually answered; a fallback to the script shows "Scripted lesson · not AI yet" (the provider reports `brain.kind` after each turn).

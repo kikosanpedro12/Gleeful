@@ -44,6 +44,8 @@ export interface SessionStore {
   rejectedCommands: number;
   staleDropped: number;
   model: string | null;
+  /** Who answered the last turn. null until a turn has been answered. Drives the on-screen "AI" badge. */
+  brainKind: "scripted" | "model" | null;
 }
 
 export const emptyUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, responses: 0 };
@@ -74,6 +76,7 @@ export const initialStore = (): SessionStore => ({
   rejectedCommands: 0,
   staleDropped: 0,
   model: null,
+  brainKind: null,
 });
 
 export const useSession = create<SessionStore>(() => initialStore());

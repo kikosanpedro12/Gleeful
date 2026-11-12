@@ -187,6 +187,7 @@ class SessionController {
       this.dispatch({ type: "RESPONSE_AUDIO_STOP", turnId });
       this.finalize(turnId);
     },
+    onBrainKind: (kind) => this.set({ brainKind: kind }),
     onResponseFailed: (id, reason) => {
       const turnId = this.responseTurn.get(id);
       if (turnId === undefined || turnId !== this.s.conv.turnId) return;

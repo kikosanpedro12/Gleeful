@@ -100,6 +100,7 @@ function SourcesButton() {
 const STATE_LABEL: Record<string, string> = { offline: "", idle: "", listening: "Listening…", thinking: "Thinking…", speaking: "" };
 
 export default function Hud() {
+  const brainKind = useSession((s) => s.brainKind);
   const status = useSession((s) => s.status);
   const conv = useSession((s) => s.conv);
   const banner = useSession((s) => s.banner);
@@ -136,8 +137,8 @@ export default function Hud() {
       <span id="tap-tag" className="tag" style={{ display: "none" }} aria-hidden>👆 Tap to investigate</span>
       <header className="top">
         {live && <span className="chip wide-only">{name} · AI teacher</span>}
-        {live && (process.env.NEXT_PUBLIC_BRAIN === "model"
-          ? <span className="chip demo" data-testid="demo-badge" title="Powered by Claude, an AI. If it cannot be reached, a built-in script answers instead. Test build."><span className="wide-only">AI teacher · test build</span><span className="narrow-only">AI · test</span></span>
+        {live && (brainKind === "model"
+          ? <span className="chip demo" data-testid="demo-badge" title="This answer came from Claude, an AI. If it cannot be reached, a built-in script answers instead. Test build."><span className="wide-only">AI teacher · test build</span><span className="narrow-only">AI · test</span></span>
           : <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>)}
         {live && notice && <span className="chip sim" data-testid="sim-badge" title={notice}><span className="wide-only">{notice}</span><span className="narrow-only">Simulation</span></span>}
         <span className="grow" />

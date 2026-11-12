@@ -22,10 +22,11 @@
   - A strict per-request CSP nonce and security headers. The journey runs with zero CSP violations.
   - The Supabase schema's row-level security was attacked on real Postgres: 49 database tests, and 15 of 15 planted holes were caught. Reviewer pre-production pass on the migration (13 Nov): PASS WITH NOTES; the database now also sets `lesson_sessions.started_at`.
   - Secret scan, pinned dependencies, 0 known vulnerabilities.
-- **Tests:** 211 unit/database tests (53 are the Claude brain: route, limits, injection, sanitizer, client, fallback). A 31-step browser journey passes on desktop, phone (390×844) and reduced motion.
+- **Tests:** 229 unit/database tests (about 70 are the Claude brain: route, limits, injection, sanitizer, client, fallback, badge). A 32-step browser journey passes on desktop and phone (390×844); 31 on reduced motion.
+- **Stage B review round (13 Nov):** independent reviewer PASS WITH NOTES on a991c2e (fine for a private low-limit phone test, FAIL for public traffic). All 3 high and 4 medium findings and the low ones were fixed (Sonnet un-forceable with per-address and deployment budgets, fail-closed tables, `maxDuration`, link/board/choice sanitising, truthful badge, byte-capped timed body read, tagged history). Tester round pending.
 
 ## Simulated or placeholder — do not mistake for the product
-- **The Claude brain has never talked to the real API.** `/api/brain` + `ClaudeBrain` are tested with a mocked Anthropic. Default build is still the script; `NEXT_PUBLIC_BRAIN=model` opts in (falls back to the script on any failure; the badge then reads "AI teacher · test build"). A model-mode build with no key passed 31/32 journey checks (the one flag is Chrome logging the expected 503).
+- **The Claude brain has never talked to the real API.** `/api/brain` + `ClaudeBrain` are tested with a mocked Anthropic. Default build is still the script; `NEXT_PUBLIC_BRAIN=model` opts in (falls back to the script on any failure; the badge then reads "AI teacher · test build"). A model-mode build with no key passed 32/33 journey checks (the one flag is Chrome logging the expected 503), and its badge reads "Scripted lesson · not AI yet" because the script answered.
 - **The lesson is scripted, not AI.** Labelled "Scripted lesson · not AI yet". It understands keywords only, and says so for anything off-script.
 - **Leo and Mia are procedural placeholders (founder is considering a mascot instead of human teachers)** built from primitives we own. They are not the concept-art quality: no skinned mesh, no facial morphs, no fingers.
 - **The mouth follows a synthetic rhythm, not lip sync.** Voices are the device's built-in browser voices.
