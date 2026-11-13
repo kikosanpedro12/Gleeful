@@ -135,11 +135,23 @@ describe("evidence integrity", () => {
   it("constraints reject junk: grade 13, empty nickname, unknown teacher/context, free-text ids", async () => {
     const L = `insert into public.learners (parent_id, nickname, grade, preferred_teacher) values ($1, $2, $3, $4)`;
     await fails(as("authenticated", A, L, [A, "x", 13, "leo"]), /check/);
+    await fails(as("authenticated", A, L, [A, "x", -1, "leo"]), /check/);
     await fails(as("authenticated", A, L, [A, "   ", 3, "leo"]), /check/);
     await fails(as("authenticated", A, L, [A, "x", 3, "bob"]), /check/);
     const T = `insert into public.attempts (learner_id, parent_id, skill, question_id, answer_id, correct, context) values ($1, $2, 'm.s', $3, 'a', true, $4)`;
     await fails(as("authenticated", A, T, [learnerA, A, "q", "mastered"]), /check/);
     await fails(as("authenticated", A, T, [learnerA, A, "<script>", "taught"]), /check/);
+  });
+});
+
+describe("kindergarten (grade 0)", () => {
+  it("a parent can add and move a learner to grade 0, and nothing wider", async () => {
+    const L = `insert into public.learners (parent_id, nickname, grade) values ($1, $2, $3) returning id, grade`;
+    const k = await as<{ id: string; grade: number }>("authenticated", A, L, [A, "Little K", 0]);
+    expect(k[0].grade).toBe(0);
+    expect(await as("authenticated", A, `update public.learners set grade = 12 where id = $1 returning id`, [k[0].id])).toHaveLength(1);
+    expect(await as("authenticated", A, `update public.learners set grade = 0 where id = $1 returning id`, [k[0].id])).toHaveLength(1);
+    await fails(as("authenticated", A, `update public.learners set grade = 13 where id = $1`, [k[0].id]), /check/);
   });
 });
 

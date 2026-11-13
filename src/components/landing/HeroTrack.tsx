@@ -91,7 +91,7 @@ export default function HeroTrack() {
       <div className="lp-stage" aria-hidden>
         {mode !== "poster" && <HeroScene progress={progress} active={active} onReady={onReady} onPerf={onPerf} />}
         <p className="lp-bug" style={{ background: ch.plate, color: ch.plateInk }}>
-          <span className="lp-bug-dot" />Now showing: {ch.episode}
+          <span className="lp-bug-dot" />Now showing: {ch.episode}{ch.preview ? " (preview)" : ""}
         </p>
       </div>
       {CHAPTERS.map((c, i) => (
@@ -105,7 +105,7 @@ export default function HeroTrack() {
         >
           <Poster id={c.id} />
           <div className="lp-third">
-            <p className="lp-episode">{c.subject}</p>
+            <p className="lp-episode">{c.subject}{c.preview && <span className="lp-preview" data-testid="preview-tag"> · Preview, not in the demo yet</span>}</p>
             {i === 0
               ? <h1 id={`h-${c.id}`} className="lp-headline"><span>{c.headline}</span></h1>
               : <h2 id={`h-${c.id}`} className="lp-headline"><span>{c.headline}</span></h2>}
@@ -113,16 +113,16 @@ export default function HeroTrack() {
             {i === 0 && (
               <>
                 <div className="lp-ctas">
-                  <a className="lp-btn lp-btn-main" href="#waitlist" data-testid="cta-waitlist">Join the waitlist</a>
-                  <a className="lp-btn lp-btn-alt" href="/learn" data-testid="cta-demo">Try the demo lesson</a>
+                  <a className="lp-btn lp-btn-main" href="/learn" data-testid="cta-demo">Try the demo lesson</a>
+                  <a className="lp-btn lp-btn-alt" href="#how" data-testid="cta-how">How it works</a>
                 </div>
-                <p className="lp-status">Early access. The demo lesson is scripted; the live AI teacher is in private testing. Scroll to fly.</p>
+                <p className="lp-status">Early access. The demo is one scripted lesson; the live AI teacher is in private testing. The other worlds here are previews. Scroll to fly.</p>
               </>
             )}
             {i === CHAPTERS.length - 1 && (
               <div className="lp-ctas">
-                <a className="lp-btn lp-btn-main" href="#waitlist">Join the waitlist</a>
-                <a className="lp-btn lp-btn-alt" href="/learn">Try the demo lesson</a>
+                <a className="lp-btn lp-btn-main" href="/learn">Try the demo lesson</a>
+                <a className="lp-btn lp-btn-alt" href="#pricing">Prices at launch</a>
               </div>
             )}
           </div>

@@ -19,7 +19,7 @@ Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHI
 - New asset or source → add a row to ASSET_LICENSES.md first.
 - Commit straight to `main`. Update CHECKPOINT.md at the end of each working session.
 
-Commands: `npm run dev` · `npm run typecheck` · `npm test` (includes database security tests) · `npm run mutate` · `npm run check:secrets` · `npm run build:test` then `npm start -- -p 3111` then `npm run smoke` (full journey; `W=390 H=844 TAG=p` for phone, `RM=1` for reduced motion). `npm run smoke:landing` (landing page: poster, reduced motion, 3D flight, waitlist state; `ORIGIN=http://localhost:<port>`). `npm run build` is the deployment build (no test hooks).
+Commands: `npm run dev` · `npm run typecheck` · `npm test` (includes database security tests) · `npm run mutate` · `npm run check:secrets` · `npm run build:test` then `npm start -- -p 3111` then `npm run smoke` (full journey; `W=390 H=844 TAG=p` for phone, `RM=1` for reduced motion). `npm run smoke:landing` (landing page: poster, reduced motion, 3D flight, no-waitlist and US$ price checks; `ORIGIN=http://localhost:<port>`). `npm run build` is the deployment build (no test hooks).
 
 ## In-house skills (.claude/skills)
 - `/new-world` — add a world as data + scene + tests.

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MIG_DIR = path.join(ROOT, "supabase/migrations");
 const INIT = "20261112051808_init_learning_schema.sql";
-const WAITLIST = "20261113014844_waitlist.sql";
+const KINDERGARTEN = "20261113071456_learners_allow_kindergarten.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -31,12 +31,9 @@ const MUTANTS = [
   ["session FK not tied to learner", "    foreign key (session_id, learner_id, parent_id)\n    references public.lesson_sessions (id, learner_id, parent_id)\n    on delete set null (session_id)", "    foreign key (session_id) references public.lesson_sessions (id) on delete set null"],
   ["client can back-date evidence", "create trigger attempts_force_created_at\n  before insert on public.attempts\n  for each row execute function private.force_created_at();", ""],
   ["client can back-date a session", "create trigger lesson_sessions_force_started_at\n  before insert on public.lesson_sessions\n  for each row execute function private.force_started_at();", ""],
-  // Waitlist (server-only table). Each entry's 5th field names the migration file to mutate.
-  ["waitlist readable by signed-out visitors", "alter table public.waitlist enable row level security;", "alter table public.waitlist enable row level security;\ngrant select on table public.waitlist to anon;\ncreate policy \"oops\" on public.waitlist for select to anon using (true);", null, WAITLIST],
-  ["waitlist writable by signed-in parents", "grant insert (email, consent, source) on table public.waitlist to service_role;", "grant insert (email, consent, source) on table public.waitlist to service_role, authenticated;\ncreate policy \"oops\" on public.waitlist for insert to authenticated with check (true);", null, WAITLIST],
-  ["waitlist editable by the server", "grant insert (email, consent, source) on table public.waitlist to service_role;", "grant insert, update, delete on table public.waitlist to service_role;", null, WAITLIST],
-  ["waitlist accepts no consent", "  consent     boolean     not null check (consent),", "  consent     boolean     not null,", null, WAITLIST],
-  ["waitlist keeps default grants", "revoke all on table public.waitlist from public, anon, authenticated, service_role;", "", null, WAITLIST],
+  // Other migrations: the 5th field names the migration file to mutate.
+  ["kindergarten still refused", "check (grade between 0 and 12)", "check (grade between 1 and 12)", null, KINDERGARTEN],
+  ["grade range widened too far", "check (grade between 0 and 12)", "check (grade between 0 and 99)", null, KINDERGARTEN],
   ["brain_usage writable by parents", "grant select                 on table public.brain_usage     to authenticated;  -- server writes only", "grant select, insert, update on table public.brain_usage to authenticated;\ncreate policy \"oops\" on public.brain_usage for all to authenticated using (true) with check (true);"],
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";

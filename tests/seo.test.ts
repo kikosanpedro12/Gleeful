@@ -38,11 +38,11 @@ describe("robots.txt when indexing is on", () => {
 });
 
 describe("private paths", () => {
-  it.each(["/api", "/api/brain", "/api/waitlist", "/learn", "/learn/", "/parent", "/parent/", "/PARENT", "/tester", "/tester/x"])("%s is private", (p) => expect(isPrivatePath(p)).toBe(true));
+  it.each(["/api", "/api/brain", "/learn", "/learn/", "/parent", "/parent/", "/PARENT", "/tester", "/tester/x"])("%s is private", (p) => expect(isPrivatePath(p)).toBe(true));
   it.each(["/", "/parents-guide", "/apiary", "/testers", "/learners"])("%s is not private", (p) => expect(isPrivatePath(p)).toBe(false));
   it("the sitemap lists public pages only", () => {
     const urls = sitemapEntries(SITE).map((e) => e.url);
-    expect(urls).toEqual([SITE]);
+    expect(urls).toEqual([SITE, `${SITE}/privacy`]);
     for (const p of PUBLIC_PATHS) expect(isPrivatePath(p)).toBe(false);
   });
   it("next.config sends X-Robots-Tag noindex on every private prefix", async () => {

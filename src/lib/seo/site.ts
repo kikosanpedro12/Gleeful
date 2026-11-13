@@ -1,8 +1,8 @@
 /**
  * Discoverability policy for search engines and AI crawlers.
  *
- * Gleeful is a children's product, so the rule is: only the public start
- * landing page (/) may be indexed. Anything a family or child uses after
+ * Gleeful is a children's product, so the rule is: only the public landing page (/)
+ * and the privacy notice (/privacy) may be indexed. Anything a family or child uses after
  * that (/learn, /parent, /tester, /api) is disallowed in robots.txt AND sent with
  * `X-Robots-Tag: noindex` (next.config.mjs), because robots.txt alone is a
  * request, not a control. No child data or session id ever appears in a URL.
@@ -31,7 +31,7 @@ export function indexingEnabled(env: Record<string, string | undefined> = proces
 }
 
 /** Paths that may appear in the sitemap and be indexed (when indexing is on). */
-export const PUBLIC_PATHS: readonly string[] = ["/"];
+export const PUBLIC_PATHS: readonly string[] = ["/", "/privacy"];
 
 /** Never indexed, always disallowed. Keep in sync with next.config.mjs (tested). */
 /** /learn is the lesson app itself (a child uses it); it is not a page for search engines. */
@@ -99,7 +99,7 @@ export function jsonLd(siteUrl: string = SITE_URL) {
         description: SITE_DESCRIPTION,
         audience: { "@type": "EducationalAudience", educationalRole: "student", audienceType: "Children from kindergarten to grade 12, with a parent" },
         publisher: { "@id": `${siteUrl}/#org` },
-        releaseNotes: "Early access. A scripted demo lesson is public; the live AI teacher is in private testing. Waitlist open on the home page when configured.",
+        releaseNotes: "Early access. A scripted demo lesson is public; the live AI teacher is in private testing.",
       },
     ],
   };

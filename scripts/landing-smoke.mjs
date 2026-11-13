@@ -43,20 +43,18 @@ const scrollToChapter = async (page, id) => {
   const { page, errors, res } = await open("/");
   check("/ responds 200", res.status() === 200, `(${res.status()})`);
   const h1 = await page.$eval("h1", (e) => e.textContent);
-  check("hero headline is real HTML text", /live show your kid can talk to/i.test(h1), `"${h1}"`);
+  check("hero headline is real HTML text", /AI teacher your kid can talk to/i.test(h1), `"${h1}"`);
   const robots = await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "");
   // Indexing follows SITE_INDEXING (src/lib/seo/site.ts): off by default, on only when Kiko turns it on.
   const indexing = process.env.SITE_INDEXING === "on";
   check(`/ robots meta follows SITE_INDEXING (${indexing ? "on" : "off"})`, indexing ? (/index/.test(robots) && !/noindex/.test(robots)) : /noindex/.test(robots), robots);
   check("/ has a title and description", /live AI teacher/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
   check("demo CTA goes to /learn", (await page.$eval('[data-testid="cta-demo"]', (e) => e.getAttribute("href"))) === "/learn");
-  check("waitlist CTA jumps to the form", (await page.$eval('[data-testid="cta-waitlist"]', (e) => e.getAttribute("href"))) === "#waitlist");
+  check("no waitlist anywhere on the page", !(await page.evaluate(() => /waitlist/i.test(document.body.innerText))));
+  check("prices are shown in US dollars", await page.evaluate(() => /US\$29/.test(document.body.innerText) && /US\$79/.test(document.body.innerText)));
   const status = await page.$eval(".lp-status", (e) => e.textContent);
   check("hero says the demo is scripted", /scripted/i.test(status));
   check("every episode headline is in the page", (await page.$$eval(".lp-headline", (els) => els.length)) === 7);
-  await sleep(1500);
-  const st = await page.waitForSelector('[data-testid="waitlist-closed"]', { timeout: 8000 }).then(() => true).catch(() => false);
-  check("without Supabase keys the form says the waitlist opens soon", st);
   // Keyboard: the first tab stop is the skip link.
   await page.keyboard.press("Tab");
   check("first Tab focuses the skip link", (await page.evaluate(() => document.activeElement?.className)) === "lp-skip");
@@ -75,7 +73,7 @@ const scrollToChapter = async (page, id) => {
     await scrollToChapter(page, id);
     await page.screenshot({ path: `${OUT}${TAG}-poster-${id}.png` });
   }
-  for (const sel of ["#how", "#parents", "#pricing", "#faq", "#waitlist"]) {
+  for (const sel of ["#how", "#parents", "#pricing", "#faq", "#try"]) {
     await page.evaluate((s) => document.querySelector(s).scrollIntoView({ behavior: "instant", block: "start" }), sel);
     await sleep(300);
     await page.screenshot({ path: `${OUT}${TAG}-section-${sel.slice(1)}.png` });

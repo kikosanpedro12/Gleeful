@@ -1,5 +1,4 @@
 import HeroTrack from "./HeroTrack";
-import WaitlistForm from "./WaitlistForm";
 
 const STEPS = [
   { title: "Your child asks", body: "Out loud or by typing, in their own words. Any question, from volcanoes to long division." },
@@ -23,10 +22,10 @@ const BEFORE_LAUNCH = [
 
 const FAQ = [
   { q: "Is the teacher really AI?", a: "The demo lesson you can try today is scripted, so you can feel the experience. The live AI teacher, built on Anthropic's Claude, is in private testing. Every build tells you which one you're talking to." },
-  { q: "What ages is it for?", a: "Kindergarten to grade 12. You set your child's grade, and lessons are pitched to it." },
+  { q: "What ages is it for?", a: "Kindergarten to grade 12. You set your child's grade (kindergarten is grade 0 in our records), and lessons are pitched to it. Today's demo is one scripted lesson." },
   { q: "Do we need to install anything?", a: "No. It runs in the browser on phones, tablets and laptops. On older devices the trips show as still pictures, and the lesson works the same." },
   { q: "Does it replace school?", a: "No. Gleeful is for curiosity and practice at home, alongside school and alongside you." },
-  { q: "How does the free trial work?", a: "At launch you start a 7-day free trial with a card. You're charged on day 8 unless you cancel first, and you can cancel any time." },
+  { q: "How does the free trial work?", a: "At launch you start a 7-day free trial with a card. You're charged on day 8 unless you cancel first, and you can cancel any time. Nothing is charged today." },
   { q: "Are there ads?", a: "No. Gleeful is paid for by families, not advertisers." },
 ];
 
@@ -41,7 +40,7 @@ export default function Landing() {
           <a href="#parents">For parents</a>
           <a href="#pricing">Pricing</a>
         </nav>
-        <a className="lp-btn lp-btn-nav" href="#waitlist">Join the waitlist</a>
+        <a className="lp-btn lp-btn-nav" href="/learn">Try the demo</a>
       </header>
 
       <main id="main">
@@ -88,17 +87,17 @@ export default function Landing() {
         <section id="pricing" className="lp-section lp-pricing" aria-labelledby="price-h">
           <div className="lp-wrap">
             <h2 id="price-h" className="lp-h2">Prices at launch.</h2>
-            <p className="lp-lede">One price in every country. 7-day free trial with a card; cancel before day 8 and you pay nothing.</p>
+            <p className="lp-lede">One price in every country, shown in US dollars. Planned: a 7-day free trial with a card, charged on day 8 unless you cancel first, and you can cancel any time. Payments are not switched on yet, so nothing is charged today.</p>
             <div className="lp-plans">
               <article className="lp-plan">
                 <h3>Solo</h3>
-                <p className="lp-price"><span>$29</span> a month</p>
-                <p>For one child. Up to 10 live hours a month with the teacher.</p>
+                <p className="lp-price"><span>US$29</span> a month</p>
+                <p>For one child. Up to 10 hours a month with the AI teacher.</p>
               </article>
               <article className="lp-plan lp-plan-family">
                 <h3>Family</h3>
-                <p className="lp-price"><span>$79</span> a month</p>
-                <p>For brothers and sisters. Up to 40 live hours a month, shared.</p>
+                <p className="lp-price"><span>US$79</span> a month</p>
+                <p>For brothers and sisters. Up to 40 hours a month with the AI teacher, shared.</p>
               </article>
             </div>
           </div>
@@ -116,12 +115,14 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="waitlist" className="lp-section lp-join" aria-labelledby="join-h">
+        <section id="try" className="lp-section lp-join" aria-labelledby="join-h">
           <div className="lp-wrap lp-wrap-narrow">
-            <h2 id="join-h" className="lp-h2">Be first on the show.</h2>
-            <p className="lp-lede">Leave a parent's email and we'll invite you when early access opens. Families in the Philippines get the first seats.</p>
-            <WaitlistForm />
-            <p className="lp-join-alt">Can't wait? <a href="/learn">Try the demo lesson now</a>.</p>
+            <h2 id="join-h" className="lp-h2">Come and see it.</h2>
+            <p className="lp-lede">The demo lesson is open now: no sign-up, nothing to install. It is scripted, so you can feel the experience. The live AI teacher is in private testing.</p>
+            <div className="lp-ctas">
+              <a className="lp-btn lp-btn-main" href="/learn" data-testid="cta-demo-final">Try the demo lesson</a>
+            </div>
+            <p className="lp-join-alt">Read how we handle your child's data in the <a href="/privacy">privacy notice</a>.</p>
           </div>
         </section>
       </main>
@@ -130,9 +131,10 @@ export default function Landing() {
         <div className="lp-wrap lp-foot-row">
           <p className="lp-mark lp-mark-foot">gleeful</p>
           <nav aria-label="Footer">
-            <a href="/learn">Demo lesson</a>
+            <a href="/learn">Scripted demo</a>
             <a href="/parent">Parent view</a>
-            <a href="#parents">Privacy and safety</a>
+            <a href="/privacy">Privacy notice</a>
+            <a href="#parents">Safety</a>
           </nav>
           <p className="lp-fine">© 2026 Gleeful. Built in the Philippines for curious kids everywhere.</p>
         </div>

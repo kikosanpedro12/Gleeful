@@ -20,11 +20,12 @@
 ## Privacy stance
 - Least data: a child's nickname, grade, language and teacher choice. No surname, birth date, school, photos or location.
 - We do not record or store audio. In the test build, speech-to-text is done by the child's browser (which may send audio to its vendor, e.g. Google for Chrome).
-- The waitlist stores only an adult's email, their consent and the date.
+- There is no sign-up or waitlist yet, so the site collects no personal data from visitors.
 - Verifiable parental consent (COPPA, GDPR-K, Philippine Data Privacy Act) is required before real children use it, and is not built yet.
 
 ## Pages
-- [Home](/): what Gleeful is, how it works, what is true today, planned prices, FAQ and the waitlist.
+- [Home](/): what Gleeful is, how it works, what is true today, planned prices and FAQ.
+- [Privacy notice](/privacy): what is collected, parental consent, deletion.
 
 ## Not for crawlers
 - /learn (the lesson app), /parent, /tester and /api are private and must not be indexed or fetched.
