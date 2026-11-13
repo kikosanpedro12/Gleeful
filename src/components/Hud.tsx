@@ -5,6 +5,7 @@ import { session } from "@/lib/session/controller";
 import { LOOKS, type TeacherId } from "@/lib/teacher/rig";
 import { WORLDS } from "@/lib/worlds/registry";
 import { MODEL_BUILD } from "@/lib/brain/mode";
+import { probeBrain, useReach } from "@/lib/brain/reach";
 import { playPreview, stopPreview } from "@/lib/voice/preview";
 import { actors } from "./scene/TeacherActor";
 
@@ -21,7 +22,18 @@ const Icon = {
   info: <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="8.5" fill="none" /><path d="M12 11v5M12 8h.01" fill="none" /></svg>,
 };
 
+/**
+ * Start screen. AI wording follows `useReach().ai` (can THIS visitor reach the AI:
+ * key + switched on + tester code when the gate is on), never the build flag alone.
+ */
 function Onboarding() {
+  const ai = useReach((s) => s.ai);
+  useEffect(() => { if (MODEL_BUILD) void probeBrain(); }, []);
+  return <OnboardingView ai={ai} />;
+}
+
+/** The start screen itself; `ai` = can this visitor reach the AI (see reach.ts). Exported for the honesty test. */
+export function OnboardingView({ ai }: { ai: boolean }) {
   const teacher = useSession((s) => s.teacher);
   const previewing = useSession((s) => s.previewing);
   const status = useSession((s) => s.status);
@@ -32,7 +44,7 @@ function Onboarding() {
   return (
     <div className="start" data-testid="onboarding">
       <h1>Choose your teacher</h1>
-      <p>{MODEL_BUILD ? "Leo and Mia are AI teachers. Tap one to hear them say hi." : "Tap Leo or Mia to hear them say hi."}</p>
+      <p>{ai ? "Leo and Mia are AI teachers. Tap one to hear them say hi." : "Tap Leo or Mia to hear them say hi."}</p>
       <div className="pick">
         {TEACHERS.map((id) => (
           <button key={id} className={`teacher-card ${id} ${teacher === id ? "on" : ""}`} data-testid={`pick-${id}`} onClick={() => pick(id)} aria-pressed={teacher === id}>
@@ -46,7 +58,7 @@ function Onboarding() {
         {status === "connecting" ? "Getting ready…" : teacher ? `Start with ${LOOKS[teacher].name}` : "Pick a teacher"}
       </button>
       <small className="fine">
-        {MODEL_BUILD
+        {ai
           ? "Test version: answers come from an AI (Claude) when it can be reached, and from a scripted lesson when it can't. AI can make mistakes. "
           : "Test version: the lessons are scripted, not AI yet. "}
         Nothing is recorded, and answers stay in this browser. When you use the mic, your browser sends your speech to its own service (Google, Microsoft or Apple) to turn it into text.
@@ -164,15 +176,16 @@ export default function Hud() {
     return () => clearTimeout(t);
   }, [banner]);
   // Model builds: say so, once, when the AI could not answer and the script took over.
+  const aiReach = useReach((s) => s.ai);
   const toldFallback = useRef(false);
   const lastKind = useRef(brainKind);
   useEffect(() => {
-    if (MODEL_BUILD && live && brainKind === "scripted" && lastKind.current !== "scripted" && !toldFallback.current) {
+    if (aiReach && live && brainKind === "scripted" && lastKind.current !== "scripted" && !toldFallback.current) {
       toldFallback.current = true;
       useSession.setState({ banner: { kind: "info", text: `${name} can't reach the AI right now, so this part is the scripted lesson. You can keep going.` } });
     }
     lastKind.current = brainKind;
-  }, [brainKind, live, name]);
+  }, [brainKind, live, name, aiReach]);
   useEffect(() => { if (!live) { setTyping(false); setShowWords(false); toldFallback.current = false; } }, [live]);
 
   const lastTeacher = [...transcript].reverse().find((l) => l.role === "teacher");
@@ -191,7 +204,7 @@ export default function Hud() {
     <div className={`hud ${teacher ?? ""}`}>
       <span id="tap-tag" className="tag" style={{ display: "none" }} aria-hidden>Tap to look closer</span>
       <header className="top">
-        {live && <span className="chip name wide-only">{MODEL_BUILD && brainKind === "model" ? `${name} · AI teacher` : name}</span>}
+        {live && <span className="chip name wide-only">{brainKind === "model" ? `${name} · AI teacher` : name}</span>}
         {live && (brainKind === "model"
           ? <span className="chip demo" data-testid="demo-badge" title="This answer came from Claude, an AI. If it cannot be reached, a built-in script answers instead. Test build."><span className="wide-only">AI teacher · test build</span><span className="narrow-only">AI · test</span></span>
           : <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>)}

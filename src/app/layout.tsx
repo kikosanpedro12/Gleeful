@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: SITE_NAME, title: SITE_TITLE, description: SITE_DESCRIPTION, url: "/", locale: "en_US" },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, themeColor: "#f3e7d3" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, viewportFit: "cover", themeColor: "#f3e7d3" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Render per request so every page gets the per-request CSP nonce (src/proxy.ts).

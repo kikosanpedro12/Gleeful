@@ -118,9 +118,18 @@ export async function readBody(req: Request, maxBytes: number, timeoutMs: number
   try { return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(all) }; } catch { return { ok: false, status: 400 }; }
 }
 
+/** Logged once per server instance; never includes the code or its length. */
+let warnedMisconfigured = false;
+export function warnTesterMisconfigured() {
+  if (warnedMisconfigured) return;
+  warnedMisconfigured = true;
+  console.warn("[brain] BRAIN_TESTER_CODE is shorter than 16 characters: model calls are refused until it is fixed.");
+}
+
 export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   if (d.env.disabled) return fail(503, "brain_disabled");
   if (!d.env.apiKey) return fail(503, "brain_unconfigured");
+  if (d.env.testerMisconfigured) { warnTesterMisconfigured(); return fail(503, "brain_unconfigured"); }
   if (crossOrigin(req)) return fail(403, "forbidden_origin");
   if (!(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json")) return fail(415, "unsupported_media");
 

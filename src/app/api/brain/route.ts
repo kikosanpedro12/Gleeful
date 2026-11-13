@@ -1,5 +1,5 @@
 import "server-only";
-import { handleBrain, makeDeps } from "@/lib/brain/server/handler";
+import { handleBrain, makeDeps, warnTesterMisconfigured } from "@/lib/brain/server/handler";
 import { MemoryUsageStore } from "@/lib/brain/server/limits";
 import { readEnv } from "@/lib/brain/server/config";
 
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
  */
 export async function GET() {
   const env = readEnv();
+  if (env.testerMisconfigured) warnTesterMisconfigured();
   // testerRequired is one more boolean (no hint about the code), so a browser without the code skips the POST.
-  return Response.json({ configured: Boolean(env.apiKey) && !env.disabled, testerRequired: Boolean(env.testerCode) }, { headers: { "cache-control": "no-store" } });
+  return Response.json({ configured: Boolean(env.apiKey) && !env.disabled && !env.testerMisconfigured, testerRequired: Boolean(env.testerCode) }, { headers: { "cache-control": "no-store" } });
 }

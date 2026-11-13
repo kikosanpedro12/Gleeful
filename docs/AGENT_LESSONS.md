@@ -25,6 +25,7 @@ Rules for entries:
 
 ## Honesty
 - **Labels that claim more than is running** (badge said AI when the script answered; scripted Mia said "your AI teacher") → the badge is bound to the brain that actually answered; scripted copy never claims AI → `tests/brainKind.test.ts`, journey check; reviewer treats overclaims as BLOCK.
+- **AI copy gated on the build flag, not on what the visitor can reach** (model build behind the tester gate: visitors without the code heard "I'm an AI teacher" and got the script) → AI wording follows `useReach().ai` = probe `configured` + (gate off or tester code present), never `NEXT_PUBLIC_*` alone; until the probe answers, show the non-AI copy → `tests/honesty.test.ts` renders the start screen and preview line for scripted / no key / gate without code / with code.
 - **Docs saying something is deployed or verified when it is not** (CHECKPOINT said the migration auto-deployed; it had not) → only write "done" after checking the live system (connector, curl, dashboard), and say how it was checked.
 
 ## Platform facts that bit us
@@ -49,5 +50,6 @@ Rules for entries:
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
 
 ## Round log (newest first, one line each)
+- 13 Nov, UX polish e8ce640: tester FAIL / reviewer PASS WITH NOTES → honesty copy keyed on reachability, 44px icons, viewportFit cover, tester code ≥16 chars, named camera framing.
 - 2026-11-13: landing page round: global svg rule from the UI polish broke landing posters; scoped to `.app`.
 - 2026-11-13: seeded from CHECKPOINT/SECURITY history (Stage A rounds 1-4, Stage B review + tester rounds, deploy setup).

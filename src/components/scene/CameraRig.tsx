@@ -13,6 +13,24 @@ import { actors } from "./TeacherActor";
  */
 const pos = new THREE.Vector3(), look = new THREE.Vector3(), dir = new THREE.Vector3(), side = new THREE.Vector3();
 
+/** Per-orientation value: [portrait, landscape]. */
+type PL = readonly [number, number];
+const pick = (v: PL, portrait: boolean) => (portrait ? v[0] : v[1]);
+
+/** Named framing numbers per shot (metres in world space). Tweak framing here, not inline. */
+const SHOT = {
+  /** Start screen: teachers in front of the board; landscape-wide pushes them left of the picker card. */
+  onboarding: { wideX: 0.75, x: -0.1, camY: [1.3, 1.35] as PL, camZ: [4.4, 3.4] as PL, lookY: [0.4, 1.0] as PL, lookZ: -0.85 },
+  /** Flight: off to the right so the planet (upper left) and the teacher are both in view. */
+  space: { camX: 1.1, camY: 1.55, camZ: [5.0, 4.1] as PL, lookX: -0.9, lookY: 1.6, lookZ: -4 },
+  /** Outdoor walk: camera leads from the side and a little ahead so her face shows while she talks. */
+  walk: { minDistance: 0.6, ahead: [0.9, 1.3] as PL, out: [3.4, 4.4] as PL, lead: [0.5, 1.6] as PL, camY: 1.55, lookY: 1.05 },
+  /** Outdoor, standing at a stop. */
+  stop: { followX: 0.75, offsetX: 0.2, camY: 1.65, camZ: [4.1, 3.7] as PL, lookFollowX: 0.9, lookY: 1.05, lookZ: -1.6 },
+  /** Classroom: near head height so the board's words sit clearly above her head. */
+  classroom: { followX: [0.5, 0.35] as PL, camY: [1.62, 1.66] as PL, camZ: [4.1, 4.0] as PL, depthFollow: 0.35, depthOrigin: 0.8, lookFollowX: [0.85, 0.6] as PL, lookY: [1.0, 1.05] as PL },
+} as const;
+
 export default function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
   const { camera, size } = useThree();
   const lookAt = useRef(new THREE.Vector3(0, 1.2, -1));
@@ -32,15 +50,16 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
     if (onboarding) {
       // Landscape: teachers left of centre, picker card on the right.
       const wide = size.width >= 760 && !portrait;
-      pos.set(wide ? 0.75 : -0.1, portrait ? 1.3 : 1.35, portrait ? 4.4 : 3.4);
-      look.set(wide ? 0.75 : -0.1, portrait ? 0.4 : 1.0, -0.85);
+      const o = SHOT.onboarding, x = wide ? o.wideX : o.x;
+      pos.set(x, pick(o.camY, portrait), pick(o.camZ, portrait));
+      look.set(x, pick(o.lookY, portrait), o.lookZ);
     } else if (fx.shot === "space") {
-      // Off to the right so the planet (upper left) and the teacher are both in view.
-      pos.set(1.1, 1.55, portrait ? 5.0 : 4.1);
-      look.set(-0.9, 1.6, -4);
+      const o = SHOT.space;
+      pos.set(o.camX, o.camY, pick(o.camZ, portrait));
+      look.set(o.lookX, o.lookY, o.lookZ);
     } else if (fx.shot === "outdoor") {
       const to = s.teacher ? actors[s.teacher]?.animator.walkTarget() : null;
-      if (to && t && Math.hypot(to.x - tx, to.z - tz) > 0.6) {
+      if (to && t && Math.hypot(to.x - tx, to.z - tz) > SHOT.walk.minDistance) {
         // Lead the walk from the front and to one side: the child sees the teacher's
         // face while she talks, and where she is going, instead of her back.
         dir.set(to.x - tx, 0, to.z - tz).normalize();
@@ -48,17 +67,18 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
         if (side.z < 0) side.negate(); // stay on the camera's side of the path
         // Mostly from the side and a little ahead: her face turns to the child while she
         // talks, and there is room in the frame in the direction she is walking.
-        const ahead = portrait ? 0.9 : 1.3, out = portrait ? 3.4 : 4.4, lead = portrait ? 0.5 : 1.6;
-        pos.set(tx + dir.x * ahead + side.x * out, ty + 1.55, tz + dir.z * ahead + side.z * out);
-        look.set(tx + dir.x * lead, ty + 1.05, tz + dir.z * lead);
+        const w = SHOT.walk, ahead = pick(w.ahead, portrait), out = pick(w.out, portrait), lead = pick(w.lead, portrait);
+        pos.set(tx + dir.x * ahead + side.x * out, ty + w.camY, tz + dir.z * ahead + side.z * out);
+        look.set(tx + dir.x * lead, ty + w.lookY, tz + dir.z * lead);
       } else {
-        pos.set(tx * 0.75 + 0.2, ty + 1.65, tz + (portrait ? 4.1 : 3.7));
-        look.set(tx * 0.9, ty + 1.05, tz - 1.6);
+        const o = SHOT.stop;
+        pos.set(tx * o.followX + o.offsetX, ty + o.camY, tz + pick(o.camZ, portrait));
+        look.set(tx * o.lookFollowX, ty + o.lookY, tz + o.lookZ);
       }
     } else {
-      // Camera near head height, so the board's words sit clearly above the teacher's head.
-      pos.set(tx * (portrait ? 0.5 : 0.35), portrait ? 1.62 : 1.66, (portrait ? 4.1 : 4.0) + (tz + 0.8) * 0.35);
-      look.set(tx * (portrait ? 0.85 : 0.6), portrait ? 1.0 : 1.05, tz);
+      const o = SHOT.classroom;
+      pos.set(tx * pick(o.followX, portrait), pick(o.camY, portrait), pick(o.camZ, portrait) + (tz + o.depthOrigin) * o.depthFollow);
+      look.set(tx * pick(o.lookFollowX, portrait), pick(o.lookY, portrait), tz);
     }
     // Snap on a world swap (hidden by the flash) so the camera never sweeps across a new world.
     const snap = fx.shot !== lastShot.current && lastShot.current === "space";

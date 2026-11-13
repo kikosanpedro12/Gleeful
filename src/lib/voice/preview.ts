@@ -1,4 +1,4 @@
-import { MODEL_BUILD } from "@/lib/brain/mode";
+import { useReach } from "@/lib/brain/reach";
 import type { TeacherId } from "@/lib/teacher/rig";
 import { useSession } from "@/lib/session/store";
 import { loadVoices, ttsAvailable, voiceFor } from "./speech";
@@ -24,14 +24,19 @@ export function stopPreview() {
   useSession.setState({ previewing: null });
 }
 
+/**
+ * The hello line. Claims AI only when this visitor can actually reach it
+ * (`useReach().ai`); otherwise the script will answer, and the badge says "not AI".
+ */
+export function previewLine(id: TeacherId, ai: boolean): string {
+  const tag = ai ? " I'm an AI teacher." : "";
+  return id === "leo" ? `Hi, I'm Leo!${tag} Let's explore things together.` : `Hi, I'm Mia!${tag} I can't wait to learn with you.`;
+}
+
 export async function playPreview(id: TeacherId, onGesture: () => void) {
   stopPreview();
   await loadVoices();
-  // Scripted builds never claim AI (the badge says "not AI"); model builds disclose it.
-  const ai = MODEL_BUILD ? " I'm an AI teacher." : "";
-  const text = id === "leo"
-    ? `Hi, I'm Leo!${ai} Let's explore things together.`
-    : `Hi, I'm Mia!${ai} I can't wait to learn with you.`;
+  const text = previewLine(id, useReach.getState().ai);
   useSession.setState({ previewing: id });
   onGesture();
   const start = () => {

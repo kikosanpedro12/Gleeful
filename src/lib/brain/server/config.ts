@@ -70,13 +70,24 @@ export interface BrainEnv {
    * parent sign-in. Use 16+ random characters.
    */
   testerCode?: string;
+  /**
+   * BRAIN_TESTER_CODE is set but shorter than TESTER_CODE_MIN: treated as a
+   * misconfiguration (a short code is guessable), so model calls are refused and
+   * the script answers. Fails closed rather than running with a weak gate.
+   */
+  testerMisconfigured?: boolean;
 }
+
+/** Shortest accepted private-test passcode. */
+export const TESTER_CODE_MIN = 16;
 
 export function readEnv(env: Record<string, string | undefined> = process.env): BrainEnv {
   const flag = (env.BRAIN_DISABLED ?? "").trim().toLowerCase();
+  const tester = env.BRAIN_TESTER_CODE?.trim() ?? "";
   return {
     apiKey: env.ANTHROPIC_API_KEY?.trim() || undefined,
     disabled: flag === "1" || flag === "true" || flag === "yes",
-    testerCode: env.BRAIN_TESTER_CODE?.trim() || undefined,
+    testerCode: tester || undefined,
+    testerMisconfigured: !!tester && tester.length < TESTER_CODE_MIN,
   };
 }

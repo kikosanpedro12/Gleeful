@@ -61,7 +61,7 @@ describe("server: tester passcode gate", () => {
     for (let i = 0; i < 40; i++) codes.push((await handleBrain(http({ [TESTER_HEADER]: `g${i}` }), d)).status);
     expect(codes).toContain(429);
   });
-  it("testerOk is a constant-time compare over hashes (lengths do not matter)", () => {
+  it("testerOk compares SHA-256 digests with timingSafeEqual: right code passes, missing, wrong or doubled code fails", () => {
     expect(testerOk(undefined, null)).toBe(true);
     expect(testerOk(CODE, null)).toBe(false);
     expect(testerOk(CODE, CODE)).toBe(true);
@@ -71,6 +71,22 @@ describe("server: tester passcode gate", () => {
     expect(readEnv({ BRAIN_TESTER_CODE: `  ${CODE} ` }).testerCode).toBe(CODE);
     expect(readEnv({ BRAIN_TESTER_CODE: "   " }).testerCode).toBeUndefined();
     expect(readEnv({}).testerCode).toBeUndefined();
+  });
+  it("a BRAIN_TESTER_CODE under 16 characters is a misconfiguration: model never called, script answers", async () => {
+    expect(readEnv({ BRAIN_TESTER_CODE: "short-code" }).testerMisconfigured).toBe(true);
+    expect(readEnv({ BRAIN_TESTER_CODE: "exactly-16-chars" }).testerMisconfigured).toBe(false);
+    expect(readEnv({}).testerMisconfigured).toBe(false);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const f = upstream();
+    const d = makeDeps({ env: { apiKey: "test-key-not-real", disabled: false, testerCode: "short-code", testerMisconfigured: true }, usage: new MemoryUsageStore(), fetchImpl: f as unknown as typeof fetch, log: () => {} });
+    const res = await handleBrain(http({ [TESTER_HEADER]: "short-code" }), d);
+    expect(res.status).toBe(503);
+    expect(((await res.json()) as { error: string }).error).toBe("brain_unconfigured");
+    expect(f).not.toHaveBeenCalled();
+    await handleBrain(http({ [TESTER_HEADER]: "short-code" }), d);
+    expect(warn.mock.calls.length).toBeLessThanOrEqual(1);
+    for (const c of warn.mock.calls) expect(String(c[0])).not.toContain("short-code");
+    warn.mockRestore();
   });
 });
 

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { clearTesterCode, getTesterCode, setTesterCode } from "@/lib/brain/tester";
+import { refreshReach } from "@/lib/brain/reach";
 
 /**
  * Private-test passcode screen. The code is kept in this tab only and checked
@@ -13,7 +14,7 @@ export default function TesterPage() {
   useEffect(() => { setSaved(!!getTesterCode()); }, []);
   const save = (e: React.FormEvent) => {
     e.preventDefault();
-    if (setTesterCode(code)) { setCode(""); setSaved(true); }
+    if (setTesterCode(code)) { setCode(""); setSaved(true); refreshReach(); }
   };
   return (
     <main className="tester">
@@ -23,7 +24,7 @@ export default function TesterPage() {
         <>
           <p className="ok" role="status" data-testid="tester-saved">Passcode saved for this tab.</p>
           <a className="primary" href="/learn">Start a lesson</a>
-          <button className="ghost" onClick={() => { clearTesterCode(); setSaved(false); }}>Forget passcode</button>
+          <button className="ghost" onClick={() => { clearTesterCode(); setSaved(false); refreshReach(); }}>Forget passcode</button>
         </>
       ) : (
         <form onSubmit={save}>

@@ -13,6 +13,7 @@ import { BRAIN_ENDPOINT, type BrainRequest, type BrainResponse, type WireInput }
 import { skillStatus } from "@/lib/learner/profile";
 import { WORLDS } from "@/lib/worlds/registry";
 import { clearTesterCode, getTesterCode, TESTER_HEADER } from "./tester";
+import { probeBrain, probeState, refreshReach, resetReach } from "./reach";
 
 export class BrainUnavailable extends Error {
   constructor(public code: string, public status = 0) { super(code); }
@@ -53,11 +54,8 @@ export function checkReply(v: unknown): BrainReply {
   return { segments: out };
 }
 
-/** Remembered for the page's lifetime: does the server have a key and is it switched on? Undefined = not checked, or could not tell. */
-let configuredCache: boolean | undefined;
-/** The server wants the private-test passcode (BRAIN_TESTER_CODE is set). */
-let testerRequiredCache = false;
-export function resetProbeCache() { configuredCache = undefined; testerRequiredCache = false; }
+/** The probe result lives in reach.ts, shared with the honesty copy, so the page asks the server once. */
+export function resetProbeCache() { resetReach(); }
 
 export class ClaudeBrain implements Brain {
   readonly kind = "model" as const;
@@ -134,25 +132,20 @@ export class ClaudeBrain implements Brain {
    * on every page load. A 200 {configured:false} means do not call; anything else
    * (network, 404, odd body) means we cannot tell, so the POST path still decides.
    */
+  /** One cheap GET before the first POST (shared with the on-screen copy): a build with no key never POSTs. */
   private async probe(f: typeof fetch): Promise<void> {
-    if (!this.opts.probe || configuredCache !== undefined) return;
-    try {
-      const res = await f(this.opts.endpoint ?? BRAIN_ENDPOINT, { method: "GET", credentials: "same-origin", cache: "no-store" });
-      if (res.ok) {
-        const j = (await res.json()) as { configured?: unknown; testerRequired?: unknown };
-        if (typeof j.configured === "boolean") configuredCache = j.configured;
-        testerRequiredCache = j.testerRequired === true;
-      }
-    } catch { /* cannot tell: let the POST decide */ }
+    if (!this.opts.probe) return;
+    await probeBrain(f, this.opts.endpoint ?? BRAIN_ENDPOINT, true);
   }
 
   private async call(req: BrainRequest): Promise<BrainReply> {
     const f = this.opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
     await this.probe(f);
-    if (configuredCache === false) throw new BrainUnavailable("brain_unconfigured", 503);
+    const p = probeState();
+    if (this.opts.probe && p.configured === false) throw new BrainUnavailable("brain_unconfigured", 503);
     const passcode = getTesterCode();
     // No passcode in this tab: don't even ask (the script answers, nothing is logged as an error).
-    if (testerRequiredCache && !passcode) throw new BrainUnavailable("tester_required", 403);
+    if (this.opts.probe && p.testerRequired && !passcode) throw new BrainUnavailable("tester_required", 403);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), this.opts.timeoutMs ?? CLIENT_TIMEOUT_MS);
     try {
@@ -164,7 +157,7 @@ export class ClaudeBrain implements Brain {
       if (!res.ok) {
         let code = "http_error";
         try { const j = (await res.json()) as { error?: unknown }; if (typeof j.error === "string") code = j.error.slice(0, 40); } catch { /* keep default */ }
-        if (code === "tester_required") clearTesterCode(); // wrong or stale passcode: ask again on /tester
+        if (code === "tester_required") { clearTesterCode(); refreshReach(true); } // wrong or stale passcode: ask again on /tester; stop claiming AI
         throw new BrainUnavailable(code, res.status);
       }
       return checkReply(await res.json());
