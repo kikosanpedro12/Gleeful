@@ -162,3 +162,26 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-foot nav { display: flex; gap: 0 22px; flex-wrap: wrap; font-weight: 700; }
 .lp-foot nav a { display: inline-flex; align-items: center; min-height: 44px; }
 .lp-fine { flex-basis: 100%; margin: 0; font-size: var(--t-1); opacity: .8; }
+
+/* ------------------------------------------------------------------ taste: ask the teacher */
+.lp-taste { background: var(--night); color: var(--cloud); --focus: var(--sun); }
+.lp-taste .lp-h2 { color: #fff; }
+.lp-tag { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: var(--t-1); background: rgba(255, 255, 255, .12); }
+.lp-tag-live { background: var(--sun); color: var(--night); }
+.lp-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--night); animation: lp-pulse 1.6s ease-in-out infinite; }
+@keyframes lp-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .lp-dot { animation: none; } }
+.lp-host { margin: 0 0 24px; padding: 22px 26px; border-left: 6px solid var(--sun); background: rgba(255, 255, 255, .07); border-radius: 0 20px 20px 0; min-height: 5.5em; }
+.lp-host-q { margin: 0 0 10px; font-weight: 700; opacity: .75; }
+.lp-host-say { margin: 0; font-family: var(--display); font-weight: 600; font-size: var(--t1); line-height: 1.35; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.lp-host-wait { opacity: .8; }
+.lp-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }
+.lp-chip { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, .45); background: transparent; color: inherit; font: inherit; font-size: var(--t-1); font-weight: 700; cursor: pointer; }
+.lp-chip:hover { background: rgba(255, 255, 255, .12); }
+.lp-taste-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.lp-taste-input { flex: 1 1 260px; min-height: 56px; border-radius: 999px; border: 3px solid var(--sun); padding: 0 22px; font: inherit; font-size: max(16px, var(--t0)); background: #fff; color: var(--night); }
+.lp-taste-input:disabled { background: rgba(255, 255, 255, .6); }
+.lp-taste-meta { margin: 12px 0 0; font-size: var(--t-1); opacity: .8; }
+.lp-taste-err { margin: 12px 0 0; font-weight: 700; color: var(--sun); }
+.lp-taste-err a { color: #fff; }
+.lp-taste-done p { margin: 0 0 18px; font-weight: 700; }

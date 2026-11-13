@@ -20,7 +20,7 @@ const browser = await puppeteer.launch({
   args: ["--no-sandbox", "--no-proxy-server", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
 });
 
-async function open(path, { rm = false } = {}) {
+async function open(path, { rm = false, stub = false } = {}) {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -28,9 +28,22 @@ async function open(path, { rm = false } = {}) {
   await page.evaluateOnNewDocument(() => { document.addEventListener("securitypolicyviolation", (e) => console.error(`Refused (CSP event): ${e.violatedDirective} ${e.blockedURI}`)); });
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 1, isMobile: W < 700, hasTouch: W < 700 });
   if (rm) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+  const posts = { count: 0 };
+  if (stub) {
+    await page.setRequestInterception(true);
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (u.pathname !== "/api/taste") return r.continue();
+      const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
+      if (r.method() === "GET") return json(200, { available: true, maxTurns: 3 });
+      posts.count++;
+      if (stub === "over") return json(429, { error: "taste_over" });
+      return json(200, { reply: `Here is answer ${posts.count}.`, turnsLeft: 3 - posts.count });
+    });
+  }
   const res = await page.goto(ORIGIN + path, { waitUntil: "domcontentloaded", timeout: 60000 });
   await sleep(1200);
-  return { page, errors, res };
+  return { page, errors, res, posts };
 }
 const mode = (page) => page.$eval('[data-testid="hero"]', (e) => e.getAttribute("data-mode"));
 const scrollToChapter = async (page, id) => {
@@ -153,6 +166,57 @@ const scrollToChapter = async (page, id) => {
   const bad = await fetch(ORIGIN + "/auth/callback?code=abc&next=https://evil.example", { redirect: "manual" });
   const where = bad.headers.get("location") || "";
   check("a bad sign-in link goes back to /sign-in, never off-site", bad.status === 303 && new URL(where, ORIGIN).origin === ORIGIN && /\/sign-in/.test(where), `(${bad.status} ${where})`);
+}
+
+// 7. Ask the teacher (the 3-question taste). Honesty first: without a server key the page shows the labelled Preview and
+// the API refuses. Then the live box is driven with stubbed network replies (no key needed, nothing is spent).
+{
+  const { page, errors } = await open("/");
+  await page.waitForSelector('[data-testid="taste-preview"], [data-testid="taste-live"]');
+  const live0 = await page.$('[data-testid="taste-live"]');
+  const hasKey = !!process.env.ANTHROPIC_API_KEY;
+  if (!hasKey) {
+    check("taste shows the labelled Preview when the server cannot answer", !live0 && /Preview/.test(await page.$eval('[data-testid="taste-preview"]', (e) => e.textContent)));
+    check("Preview box has no input to type into", !(await page.$("#taste-q")));
+    const st = await (await fetch(ORIGIN + "/api/taste")).json();
+    check("GET /api/taste says unavailable without a key", st.available === false && st.maxTurns === 3, JSON.stringify(st));
+    const post = await fetch(ORIGIN + "/api/taste", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ v: 1, tasteId: "smoke_taste_01", text: "hi", history: [] }) });
+    check("POST /api/taste never reaches a model without a key", post.status === 503, `(${post.status})`);
+  }
+  check("no console or CSP errors with the taste on the page", errors.filter((e) => !/Failed to load resource/.test(e)).length === 0, errors.slice(0, 3).join(" | "));
+  await page.close();
+
+  const live = await open("/", { stub: true });
+  const lp = live.page;
+  await lp.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
+  check("taste turns live only after GET /api/taste says yes", !!(await lp.$('[data-testid="taste-live"]')));
+  await lp.$eval("#taste", (e) => e.scrollIntoView({ block: "center" })).catch(() => {});
+  const tiny = await lp.$$eval("#taste button, #taste input, #taste a.lp-btn", (els) => els.filter((e) => e.getBoundingClientRect().height < 43).map((e) => e.outerHTML.slice(0, 70)));
+  check("taste controls are at least 44px tall", tiny.length === 0, tiny.join(" | "));
+  const noScroll = await lp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  check("no sideways scrolling with the taste on the page", noScroll);
+  await lp.screenshot({ path: `${OUT}${TAG}-taste-live.png` });
+  for (let i = 1; i <= 3; i++) {
+    await lp.click("#taste-q");
+    await lp.type("#taste-q", `question number ${i}`);
+    await lp.click('#taste button[type="submit"]');
+    await lp.waitForFunction((n) => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes(`answer ${n}`), { timeout: 10000 }, i).catch(() => {});
+    check(`taste question ${i} gets the stubbed answer`, (await lp.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes(`answer ${i}`));
+  }
+  check("after 3 questions the box closes and points to the demo lesson", !!(await lp.$('[data-testid="taste-done"]')) && !(await lp.$("#taste-q")));
+  check("the 4th question is never sent (3 POSTs only)", live.posts.count === 3, `(${live.posts.count})`);
+  await lp.screenshot({ path: `${OUT}${TAG}-taste-done.png` });
+  check("no console or CSP errors in the live taste", live.errors.filter((e) => !/Failed to load resource/.test(e)).length === 0, live.errors.slice(0, 3).join(" | "));
+  await lp.close();
+
+  const over = await open("/", { stub: "over" });
+  await over.page.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
+  await over.page.type("#taste-q", "anything");
+  await over.page.click('#taste button[type="submit"]');
+  await over.page.waitForSelector('[data-testid="taste-done"]', { timeout: 10000 }).catch(() => {});
+  const doneText = await over.page.$eval('[data-testid="taste-done"]', (e) => e.textContent).catch(() => "");
+  check("when the daily budget is used up the box says so honestly (no fake answer)", /resting|come back/i.test(doneText) && !(await over.page.$('[data-testid="taste-reply"]')), doneText);
+  await over.page.close();
 }
 
 await browser.close();
