@@ -7,9 +7,12 @@ import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const SRC = path.join(ROOT, "supabase/migrations/20261112051808_init_learning_schema.sql");
+const MIG_DIR = path.join(ROOT, "supabase/migrations");
+const INIT = "20261112051808_init_learning_schema.sql";
+const WAITLIST = "20261113014844_waitlist.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
-const base = fs.readFileSync(SRC, "utf8");
+const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
+const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
 const LEARNER_UPDATE_POLICY = 'for update to authenticated using ((select auth.uid()) = parent_id) with check ((select auth.uid()) = parent_id);\ncreate policy "parents delete own learners"';
 const LEARNER_UPDATE_GRANT = "grant update (nickname, grade, language, preferred_teacher)\n                             on table public.learners        to authenticated;";
 const MUTANTS = [
@@ -28,6 +31,12 @@ const MUTANTS = [
   ["session FK not tied to learner", "    foreign key (session_id, learner_id, parent_id)\n    references public.lesson_sessions (id, learner_id, parent_id)\n    on delete set null (session_id)", "    foreign key (session_id) references public.lesson_sessions (id) on delete set null"],
   ["client can back-date evidence", "create trigger attempts_force_created_at\n  before insert on public.attempts\n  for each row execute function private.force_created_at();", ""],
   ["client can back-date a session", "create trigger lesson_sessions_force_started_at\n  before insert on public.lesson_sessions\n  for each row execute function private.force_started_at();", ""],
+  // Waitlist (server-only table). Each entry's 5th field names the migration file to mutate.
+  ["waitlist readable by signed-out visitors", "alter table public.waitlist enable row level security;", "alter table public.waitlist enable row level security;\ngrant select on table public.waitlist to anon;\ncreate policy \"oops\" on public.waitlist for select to anon using (true);", null, WAITLIST],
+  ["waitlist writable by signed-in parents", "grant insert (email, consent, source) on table public.waitlist to service_role;", "grant insert (email, consent, source) on table public.waitlist to service_role, authenticated;\ncreate policy \"oops\" on public.waitlist for insert to authenticated with check (true);", null, WAITLIST],
+  ["waitlist editable by the server", "grant insert (email, consent, source) on table public.waitlist to service_role;", "grant insert, update, delete on table public.waitlist to service_role;", null, WAITLIST],
+  ["waitlist accepts no consent", "  consent     boolean     not null check (consent),", "  consent     boolean     not null,", null, WAITLIST],
+  ["waitlist keeps default grants", "revoke all on table public.waitlist from public, anon, authenticated, service_role;", "", null, WAITLIST],
   ["brain_usage writable by parents", "grant select                 on table public.brain_usage     to authenticated;  -- server writes only", "grant select, insert, update on table public.brain_usage to authenticated;\ncreate policy \"oops\" on public.brain_usage for all to authenticated using (true) with check (true);"],
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";
@@ -35,12 +44,15 @@ const TESTS = process.env.RLS_TESTS || "tests/db";
 try { execSync(`npx vitest run ${TESTS}`, { cwd: ROOT, stdio: "pipe" }); }
 catch { console.log(`BASELINE FAILS: ${TESTS} is red on the real migration; mutation results would be meaningless.`); process.exit(2); }
 let survived = 0;
-MUTANTS.forEach(([name, from, to, fn], i) => {
+MUTANTS.forEach(([name, from, to, fn, file = INIT], i) => {
+  const base = read(file);
   const mutated = fn ? fn(base) : base.includes(from) ? base.replace(from, to) : null;
   if (!mutated || mutated === base) { console.log(`SKIP (pattern not found): ${name}`); survived++; return; }
   const dir = path.join(OUT, String(i));
+  fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "m.sql"), mutated);
+  // Every migration runs, in order; only the target file is mutated.
+  for (const f of FILES) fs.writeFileSync(path.join(dir, f), f === file ? mutated : read(f));
   let killed = false;
   try { execSync(`npx vitest run ${TESTS}`, { cwd: ROOT, env: { ...process.env, MIGRATIONS_DIR: dir }, stdio: "pipe" }); }
   catch { killed = true; }

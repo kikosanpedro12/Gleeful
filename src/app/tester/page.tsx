@@ -22,7 +22,7 @@ export default function TesterPage() {
       {saved ? (
         <>
           <p className="ok" role="status" data-testid="tester-saved">Passcode saved for this tab.</p>
-          <a className="primary" href="/">Start a lesson</a>
+          <a className="primary" href="/learn">Start a lesson</a>
           <button className="ghost" onClick={() => { clearTesterCode(); setSaved(false); }}>Forget passcode</button>
         </>
       ) : (

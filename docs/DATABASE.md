@@ -9,6 +9,7 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 | `lesson_sessions` | One per lesson: teacher, scripted/model brain, worlds visited, start/end | Parent: read, add, edit, delete their own |
 | `attempts` | One per answer: skill, question, answer ids, correct, hints, context | Parent: read, add, delete their own. **No edits** (evidence). The database sets the time. |
 | `brain_usage` | Per child per day: turns, tokens | Parent: read their own. **Only the server writes.** |
+| `waitlist` | One per adult email: email (lowercased), consent, form used, time | **Nobody but the server.** anon/authenticated: no privileges, RLS on with no policies. service_role: insert the three data columns + select; no edit/delete. Migration `20261113014844_waitlist.sql`, **committed, NOT yet applied to the live project** (Kiko pastes it into the SQL Editor after review). |
 
 `auth.users` (Supabase Auth) holds the parent accounts. Children have no accounts.
 

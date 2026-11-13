@@ -2,14 +2,15 @@
  * Discoverability policy for search engines and AI crawlers.
  *
  * Gleeful is a children's product, so the rule is: only the public start
- * surface may be indexed. Anything a family or child uses after that
- * (/parent, /tester, /api) is disallowed in robots.txt AND sent with
+ * landing page (/) may be indexed. Anything a family or child uses after
+ * that (/learn, /parent, /tester, /api) is disallowed in robots.txt AND sent with
  * `X-Robots-Tag: noindex` (next.config.mjs), because robots.txt alone is a
  * request, not a control. No child data or session id ever appears in a URL.
  *
  * Indexing is OFF unless the server env `SITE_INDEXING=on` is set at build
  * time. While off, robots.txt disallows everything and every page is noindex.
- * Turn it on only once there is a public landing page and parental consent.
+ * Turn it on when Kiko is ready for the landing page to be found (it is
+ * built); the lesson app stays noindex either way.
  */
 export const SITE_URL = normaliseSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 
@@ -33,7 +34,8 @@ export function indexingEnabled(env: Record<string, string | undefined> = proces
 export const PUBLIC_PATHS: readonly string[] = ["/"];
 
 /** Never indexed, always disallowed. Keep in sync with next.config.mjs (tested). */
-export const PRIVATE_PREFIXES: readonly string[] = ["/api", "/parent", "/tester"];
+/** /learn is the lesson app itself (a child uses it); it is not a page for search engines. */
+export const PRIVATE_PREFIXES: readonly string[] = ["/api", "/learn", "/parent", "/tester"];
 
 export function isPrivatePath(pathname: string): boolean {
   const p = pathname.toLowerCase().replace(/\/+$/, "") || "/";
@@ -77,9 +79,9 @@ export function sitemapEntries(siteUrl: string = SITE_URL, now: Date = new Date(
 }
 
 export const SITE_NAME = "Gleeful";
-export const SITE_TITLE = "Gleeful: a talking teacher for kids in interactive 3D worlds (early test)";
+export const SITE_TITLE = "Gleeful: a live AI teacher your kid can talk to (early access)";
 export const SITE_DESCRIPTION =
-  "Gleeful is an early test of a talking teacher for kids in grades 1 to 12 that takes them into interactive 3D worlds, starting with a trip to Mars. Lessons are scripted in this test version; the AI teacher is in private testing.";
+  "Gleeful is a talking teacher for kids from kindergarten to grade 12: your child asks out loud, and the teacher takes them into interactive 3D worlds to see the answer. Early access: the demo lesson is scripted; the live AI teacher is in private testing.";
 
 /** schema.org JSON-LD. Static facts only: no ratings, prices we do not charge yet, or features we have not shipped. */
 export function jsonLd(siteUrl: string = SITE_URL) {
@@ -95,9 +97,9 @@ export function jsonLd(siteUrl: string = SITE_URL) {
         applicationCategory: "EducationalApplication",
         operatingSystem: "Web browser",
         description: SITE_DESCRIPTION,
-        audience: { "@type": "EducationalAudience", educationalRole: "student", audienceType: "Children in grades 1 to 12, with a parent" },
+        audience: { "@type": "EducationalAudience", educationalRole: "student", audienceType: "Children from kindergarten to grade 12, with a parent" },
         publisher: { "@id": `${siteUrl}/#org` },
-        releaseNotes: "Early test version. Not yet open to the public.",
+        releaseNotes: "Early access. A scripted demo lesson is public; the live AI teacher is in private testing. Waitlist open on the home page when configured.",
       },
     ],
   };

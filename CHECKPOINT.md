@@ -72,6 +72,12 @@
 - **Agents side by side:** own ports (3111 main, 3222 tester, 3333+ builders), never `pkill` others' servers, second builder in its own clone.
 - **Crawlers:** robots.txt, sitemap.xml, `/llms.txt`, JSON-LD, Open Graph/Twitter cards and a share image are in. `/api`, `/parent`, `/tester` are always noindex. **Indexing is OFF** until `SITE_INDEXING=on` is set in Vercel, which should wait for a public landing page and parental consent. Next: build the landing page.
 
+## Landing page (13 Nov)
+- `/` is now a public landing page; the lesson moved to `/learn` (links, tests, smoke scripts, CI updated). Cinematic scroll hero: the classroom walls fall away and Leo and Mia fly through seven worlds (classroom, ocean, inside a leaf, dinosaurs, ancient city, fractions, space) with TV-style lower-third headlines. Still pictures on old phones, reduced motion and no-WebGL. Sections: how it works, "True today / Before we launch", prices at launch, FAQ, waitlist.
+- Waitlist: form + `POST /api/waitlist` + `waitlist` table migration. **The waitlist is closed** (shows "opens soon") until Kiko (1) pastes `supabase/migrations/20261113014844_waitlist.sql` into the Supabase SQL Editor and (2) adds `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY` in Vercel env (secret key never in chat).
+- Verified: landing smoke 23 checks on desktop and phone (headless, software rendering: says nothing about real fps). Not verified: fps on the Honor X9b; the real Supabase insert.
+- Still noindex until `SITE_INDEXING=on`.
+
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
 2. **Domains** (gleeful.ai / getgleeful.com — not yet checked); GitHub repo and Supabase project exist. Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.

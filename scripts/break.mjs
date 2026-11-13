@@ -1,10 +1,10 @@
 // Tester adversarial browser run for the world/scripted-brain flow (DEMO mode only, TTS silent in headless).
-// Needs the built app (build:test). Usage: SMOKE_URL=http://localhost:3112/?test=1 node scripts/break.mjs   Screenshots: scripts/out/b-*.png
+// Needs the built app (build:test). Usage: SMOKE_URL=http://localhost:3112/learn?test=1 node scripts/break.mjs   Screenshots: scripts/out/b-*.png
 // Software rendering (~5-10 fps): behaviour only, no performance claims.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
 
-const TARGET = process.env.SMOKE_URL || "http://localhost:3111/?test=1";
+const TARGET = process.env.SMOKE_URL || "http://localhost:3111/learn?test=1";
 const OUT = new URL("./out/", import.meta.url).pathname;
 fs.mkdirSync(OUT, { recursive: true });
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 720);

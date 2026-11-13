@@ -22,8 +22,8 @@ html, body { margin:0; height:100%; background:var(--sand); color:var(--ink); ov
 button { font:inherit; cursor:pointer; border:0; color:inherit; }
 button:disabled { cursor:default; }
 button:focus-visible, input:focus-visible, a:focus-visible { outline:3px solid var(--coral); outline-offset:3px; }
-svg { width:1.35em; height:1.35em; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; fill:currentColor; }
-svg [fill="none"], svg path { fill:none; }
+.app svg { width:1.35em; height:1.35em; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; fill:currentColor; }
+.app svg [fill="none"], .app svg path { fill:none; }
 
 /* First paint while the 3D classroom loads: a quiet chalk dot that breathes. */
 .loading { position:absolute; inset:0; display:grid; place-items:center; align-content:center; gap:14px; padding:24px; text-align:center; font-size:var(--t-m); font-weight:700; color:var(--ink-2); }

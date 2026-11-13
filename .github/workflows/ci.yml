@@ -54,6 +54,8 @@ jobs:
           CHROME=$(which google-chrome || which chromium) npm run smoke
           CHROME=$(which google-chrome || which chromium) W=390 H=844 TAG=p npm run smoke
           CHROME=$(which google-chrome || which chromium) RM=1 TAG=rm npm run smoke
+          CHROME=$(which google-chrome || which chromium) npm run smoke:landing
+          CHROME=$(which google-chrome || which chromium) W=390 H=844 TAG=lp-p npm run smoke:landing
       - name: Keep screenshots when something fails
         if: failure()
         uses: actions/upload-artifact@v4

@@ -1,30 +1,33 @@
 # Gleeful
 
-> Gleeful is an early test of a talking teacher for children in grades 1 to 12. The teacher speaks with the child and takes them into interactive 3D worlds (the first sample world is a trip to Mars). It is aimed at families worldwide.
+> Gleeful is a talking teacher for children from kindergarten to grade 12. The child asks a question out loud or by typing, and the teacher answers and takes them into an interactive 3D world to see it: under the sea, inside a leaf, out past the Moon. It is aimed at families worldwide, with the first testers in the Philippines.
 
 ## Status (honest)
-- Early test version. Not yet open to the public. There is no sign-up yet.
-- In the public test build, lessons are scripted, not live AI. A Claude-based AI teacher is in private testing.
+- Early test version, in early access. Not yet open to the public as a paid product.
+- The public demo lesson is scripted, not live AI. A Claude-based AI teacher is in private testing.
+- The worlds shown on the home page are previews of where the product is going; the demo lesson today is one trip.
 - The 3D characters are placeholders.
 
 ## Who it is for
-- Children in grades 1 to 12, always under a parent's account. Children never have their own accounts.
+- Children from kindergarten to grade 12, always under a parent's account. Children never have their own accounts.
 - Parents who want honest progress: the parent view separates help during a lesson from doing it alone in a later session.
 
 ## Planned pricing (not yet charging)
-- Solo: US$29/month. Family: US$79/month. One price worldwide.
-- A 7-day free trial is planned. No free tier.
+- Solo: US$29/month, one child, up to 10 live hours a month.
+- Family: US$79/month, up to 40 live hours a month shared.
+- One price worldwide. A 7-day free trial with a card is planned. No free tier.
 
 ## Privacy stance
 - Least data: a child's nickname, grade, language and teacher choice. No surname, birth date, school, photos or location.
 - We do not record or store audio. In the test build, speech-to-text is done by the child's browser (which may send audio to its vendor, e.g. Google for Chrome).
+- The waitlist stores only an adult's email, their consent and the date.
 - Verifiable parental consent (COPPA, GDPR-K, Philippine Data Privacy Act) is required before real children use it, and is not built yet.
 
 ## Pages
-- [Home](/): the start screen of the test build.
+- [Home](/): what Gleeful is, how it works, what is true today, planned prices, FAQ and the waitlist.
 
 ## Not for crawlers
-- /parent, /tester and /api are private and must not be indexed or fetched.
+- /learn (the lesson app), /parent, /tester and /api are private and must not be indexed or fetched.
 
 ## Contact
 - Contact details coming soon.

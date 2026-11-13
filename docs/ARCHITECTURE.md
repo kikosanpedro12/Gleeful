@@ -69,10 +69,16 @@ browser  ClaudeBrain ──POST /api/brain──▶  route.ts → handler.ts    
 
 ## Discoverability (search engines and AI crawlers)
 One policy file, `src/lib/seo/site.ts` (tested in `tests/seo.test.ts`):
-- **Public:** `/` (the start screen) and `/llms.txt` (plain-language summary for AI agents: what Gleeful is, honest status, planned pricing, privacy stance). Listed in `sitemap.xml`.
-- **Private, always:** `/api`, `/parent`, `/tester`. Disallowed in `robots.txt` AND sent with `X-Robots-Tag: noindex, nofollow, noarchive` (next.config.mjs), since robots.txt is only a request.
+- **Public:** `/` (the landing page) and `/llms.txt` (plain-language summary for AI agents: what Gleeful is, honest status, planned pricing, privacy stance). Listed in `sitemap.xml`.
+- **Private, always:** `/api`, `/learn` (the lesson app), `/parent`, `/tester`. Disallowed in `robots.txt` AND sent with `X-Robots-Tag: noindex, nofollow, noarchive` (next.config.mjs), since robots.txt is only a request.
 - **Switch:** indexing is OFF unless the build has `SITE_INDEXING=on`. While off, robots.txt disallows everything and every route is noindex. Turn it on only with a public landing page and parental consent in place.
 - `robots.txt` names the welcomed crawlers (Googlebot, Bingbot, GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended).
 - Metadata: title, description, canonical, Open Graph and Twitter cards; a generated share image (`src/app/opengraph-image.tsx`, text and shapes only). Site origin from `NEXT_PUBLIC_SITE_URL` (https only), fallback `https://gleeful-six.vercel.app`.
 - schema.org JSON-LD (Organization + SoftwareApplication, `applicationCategory: EducationalApplication`) via `src/lib/seo/JsonLd.tsx`, carrying the CSP nonce. No ratings, offers or claims we cannot back.
-- Next: a real public landing page (owned by the UI work on `page.tsx`); then add it to `PUBLIC_PATHS`.
+- The landing page is `/` (already in `PUBLIC_PATHS`); the lesson app is `/learn`.
+
+## Landing page (`/`)
+- Files: `src/app/(marketing)/` (route + metadata + fonts), `src/components/landing/` (`Landing.tsx` sections, `HeroTrack.tsx` scroll + mode, `HeroScene.tsx` R3F stage, `worlds3d.ts` procedural worlds, `Posters.tsx` stills, `chapters.ts` copy and colours, `WaitlistForm.tsx`, `landing.css`).
+- **Hero = a broadcast.** Seven chapters (classroom, ocean, leaf cell, dinosaur valley, ancient city, fraction island, space), each a 100svh HTML section with its headline as a TV lower-third. A sticky R3F canvas sits behind them; scroll progress reaches the scene through a ref (no React re-render per scroll), the camera eases along -Z through worlds 40 units apart, and Leo and Mia fly with it (helmets on underwater and in space).
+- **Progressive:** the server renders headlines and still SVG posters, so the page is complete without JS or WebGL. The 3D stage starts on idle only if WebGL works, reduced motion is off, Save-Data is off, the device has ≥4 cores and ≥3 GB (when reported). If the first 3 s average under 22 fps it falls back to the stills for the session. `?poster=1` / `?3d=1` force either mode (tests). Worlds far from the camera are hidden; DPR is capped at 1.5 on phones; the render loop stops when the hero is off-screen or the tab is hidden.
+- **Honesty:** the hero says the demo lesson is scripted and the AI teacher is in private testing; the worlds are previews. The trust section separates "True today" from "Before we launch".

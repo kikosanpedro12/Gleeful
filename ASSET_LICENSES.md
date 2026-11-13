@@ -9,6 +9,10 @@
 | Mars globe/planet texture | drawMarsTexture() in src/components/scene/shared.tsx | Drawn in code; illustrative, not a real map | Owned | Yes |
 | Mars facts + questions | src/lib/worlds/registry.ts | Paraphrased facts. Source: NASA Space Place https://spaceplace.nasa.gov/all-about-mars/en/ | Facts; NASA content generally public domain (verify page terms before reusing text or images) | Yes (facts) |
 | npm dependencies (next, react, three, @react-three/fiber, zustand) | package.json | npm | MIT | Yes |
+| Landing worlds: classroom, ocean, leaf cell, dinosaur valley, ancient city, fraction island, space | src/components/landing/worlds3d.ts | Generated in code for this project; stylised, not reconstructions of real places or animals | Owned | Yes |
+| Landing still illustrations (posters) | src/components/landing/Posters.tsx | Drawn in SVG for this project | Owned | Yes |
+| Unbounded (display typeface) | @fontsource-variable/unbounded 5.3.0 | Google Fonts via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |
+| Atkinson Hyperlegible (body typeface) | @fontsource/atkinson-hyperlegible 5.3.0 | Braille Institute via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |
 | Teacher voices | runtime | The user's browser / OS speech voices | Not shipped by us; device-dependent | Test only. Choose a licensed voice for production. |
 | Speech recognition | runtime | Browser Web Speech API (Chrome sends audio to Google to transcribe) | Google / browser terms | Test only. Review before real-child use. |
 

@@ -10,6 +10,7 @@ A product for children. Rule: **least data, least privilege, nothing trusted fro
 | Lesson sessions (teacher, worlds visited, times) | `public.lesson_sessions` | Continuity |
 | Attempts (skill id, question id, answer id, correct, hints, context) | `public.attempts` | Honest progress |
 | Daily brain usage (turns, tokens) | `public.brain_usage` | Spend limits |
+| Waitlist: an adult's email, consent tick, which form, time | `public.waitlist` (server-only) | Early-access invites |
 
 **Never stored by us:** audio, free text typed or said by the child, birth date, surname, school, photos, location.
 
@@ -80,6 +81,13 @@ Built and tested against a **mocked** API (tests/brainServer.test.ts, tests/clau
 - [ ] Per-IP limit trusts the first `x-forwarded-for` value: correct on Vercel (it sets the header), spoofable elsewhere
 - [ ] Concurrent requests can overshoot a daily cap by a few turns (in-memory counters)
 - [ ] Anthropic API data handling and retention reviewed for child-directed use (before real children)
+
+## Landing page and waitlist (13 Nov)
+- `/` is the public landing page; the lesson app moved to `/learn`. `/learn`, `/parent`, `/tester`, `/api` are always noindex and disallowed (`src/lib/seo/site.ts`); `/` follows `SITE_INDEXING`.
+- `POST /api/waitlist` (`src/lib/waitlist/server.ts`, tests in `tests/waitlist.test.ts`): same-origin check (same rule as /api/brain), JSON only, 2 KB byte-capped timed body read, 8 posts per address per hour (in memory per warm instance: a brake), honeypot field, strict email check, consent must be `true`, then one insert through the Supabase Data API with `SUPABASE_SECRET_KEY` (server only). Duplicates are ignored, so the form cannot reveal who is on the list. The email is never logged, echoed or put in a URL. With no Supabase env vars the route answers 503 and the form shows "opens soon"; `GET /api/waitlist` returns only `{open:boolean}`.
+- Database: RLS on, no policies, no anon/authenticated privileges, service_role insert + select only, consent and email shape checked by the database too, time set by the database. Covered by `tests/db/waitlist.test.ts` and 5 mutants in `scripts/mutate-rls.mjs`.
+- Not verified against the live project: the migration is not applied yet, and the real PostgREST insert path has only been tested with a mocked fetch.
+- The 3D hero runs only in the browser and receives nothing from the network except our own bundle; no third-party scripts, fonts are self-hosted (`font-src 'self'`).
 
 ## Before any real child uses it (not started)
 - [ ] Verifiable parental consent flow and privacy notice (COPPA, GDPR-K, and the Philippine Data Privacy Act).

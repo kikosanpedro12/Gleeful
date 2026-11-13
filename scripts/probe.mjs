@@ -1,11 +1,11 @@
 // Tester probes (round 4): test hooks off without ?test=1, CSP positive control + injection
 // through every reachable text path, tampered localStorage, queued arrival after Stop,
 // tap-to-talk with no speech, rapid End/Start. DEMO mode only.
-// Usage: SMOKE_URL='http://localhost:3112/?test=1' node scripts/probe.mjs
+// Usage: SMOKE_URL='http://localhost:3112/learn?test=1' node scripts/probe.mjs
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
 
-const TARGET = process.env.SMOKE_URL || "http://localhost:3111/?test=1";
+const TARGET = process.env.SMOKE_URL || "http://localhost:3111/learn?test=1";
 const ORIGIN = new URL(TARGET).origin;
 const OUT = new URL("./out/", import.meta.url).pathname;
 fs.mkdirSync(OUT, { recursive: true });
@@ -55,7 +55,7 @@ const start = async (who = "leo") => {
 const fresh = async (url = TARGET) => { await page.goto(url, { waitUntil: "domcontentloaded" }); await page.evaluate(() => localStorage.clear()); await page.goto(url, { waitUntil: "domcontentloaded" }); await page.waitForSelector("canvas", { timeout: 30000 }); await sleep(1500); };
 
 // ---- (c) test hooks are off without ?test=1
-for (const q of ["/", "/?test=0", "/?test=1x", "/#test=1", "/?xtest=1"]) {
+for (const q of ["/learn", "/learn?test=0", "/learn?test=1x", "/learn#test=1", "/learn?xtest=1"]) {
   await page.goto(ORIGIN + q, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("canvas", { timeout: 30000 }); await sleep(2500);
   const hooks = await page.evaluate(() => ["__teacher", "__project", "__teachers", "__fx"].filter((k) => typeof window[k] !== "undefined"));
@@ -64,7 +64,7 @@ for (const q of ["/", "/?test=0", "/?test=1x", "/#test=1", "/?xtest=1"]) {
 { // started lesson without hooks too (hooks may be set lazily)
   await page.click('[data-testid="pick-leo"]'); await sleep(200); await page.click('[data-testid="start"]'); await sleep(5000);
   const hooks = await page.evaluate(() => ["__teacher", "__project", "__teachers", "__fx"].filter((k) => typeof window[k] !== "undefined"));
-  check("no test hooks after starting a lesson at /", hooks.length === 0, hooks.join(","));
+  check("no test hooks after starting a lesson at /learn", hooks.length === 0, hooks.join(","));
 }
 
 // ---- (a) CSP positive control: the violation listener must actually see a blocked inline handler.

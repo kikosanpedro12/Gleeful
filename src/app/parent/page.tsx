@@ -15,7 +15,7 @@ export default function ParentPage() {
   const skills = Array.from(new Set(p.attempts.map((a) => a.skill)));
   return (
     <main className="parent">
-      <a href="/">← Back to the classroom</a>
+      <a href="/learn">← Back to the classroom</a>
       <h1>Parent view</h1>
       <p className="warn">Test version. Where this history is stored: <b>{learnerStore.label}</b>. Lessons are scripted, not live AI.</p>
       <p>Sessions started: <b>{p.sessions}</b>{p.teacher ? <> · Teacher: <b>{LOOKS[p.teacher].name}</b></> : null}</p>

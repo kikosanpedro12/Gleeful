@@ -42,8 +42,12 @@ Rules for entries:
 - **Two builders editing one working tree** → a second builder works in its own clone and runs `git pull --rebase origin main` plus the gate before pushing.
 - **Tester ran on a moving tree** (files edited mid-run) → test a pinned commit (`git archive <sha>` into a temp dir) when others are building.
 
+## Styling
+- **Bare element selectors in globals.css leak across surfaces** (a lesson-icon `svg { width:1.35em; path fill:none }` rule blanked the landing illustrations) → scope app styles under `.app`, landing styles under `.lp`; never style a bare element globally except resets → `npm run smoke:landing` ("poster mode shows the still illustrations").
+
 ## Ports
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
 
 ## Round log (newest first, one line each)
+- 2026-11-13: landing page round: global svg rule from the UI polish broke landing posters; scoped to `.app`.
 - 2026-11-13: seeded from CHECKPOINT/SECURITY history (Stage A rounds 1-4, Stage B review + tester rounds, deploy setup).

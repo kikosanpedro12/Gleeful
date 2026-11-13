@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const TARGET = process.env.SMOKE_URL || "http://localhost:3111/?test=1";
+const TARGET = process.env.SMOKE_URL || "http://localhost:3111/learn?test=1";
 const OUT = fileURLToPath(new URL("./out/", import.meta.url));
 fs.mkdirSync(OUT, { recursive: true });
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 720), TAG = process.env.TAG || "d";
