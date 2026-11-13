@@ -48,7 +48,7 @@ const scrollToChapter = async (page, id) => {
   // Indexing follows SITE_INDEXING (src/lib/seo/site.ts): off by default, on only when Kiko turns it on.
   const indexing = process.env.SITE_INDEXING === "on";
   check(`/ robots meta follows SITE_INDEXING (${indexing ? "on" : "off"})`, indexing ? (/index/.test(robots) && !/noindex/.test(robots)) : /noindex/.test(robots), robots);
-  check("/ has a title and description", /live AI teacher/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
+  check("/ has a title and description", /AI teacher.*early access/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
   check("demo CTA goes to /learn", (await page.$eval('[data-testid="cta-demo"]', (e) => e.getAttribute("href"))) === "/learn");
   check("no waitlist anywhere on the page", !(await page.evaluate(() => /waitlist/i.test(document.body.innerText))));
   check("prices are shown in US dollars", await page.evaluate(() => /US\$29/.test(document.body.innerText) && /US\$79/.test(document.body.innerText)));

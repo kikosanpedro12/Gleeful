@@ -79,7 +79,7 @@ export function sitemapEntries(siteUrl: string = SITE_URL, now: Date = new Date(
 }
 
 export const SITE_NAME = "Gleeful";
-export const SITE_TITLE = "Gleeful: a live AI teacher your kid can talk to (early access)";
+export const SITE_TITLE = "Gleeful: a talking AI teacher for kids, in 3D worlds (early access)";
 export const SITE_DESCRIPTION =
   "Gleeful is a talking teacher for kids from kindergarten to grade 12: your child asks out loud, and the teacher takes them into interactive 3D worlds to see the answer. Early access: the demo lesson is scripted; the live AI teacher is in private testing.";
 

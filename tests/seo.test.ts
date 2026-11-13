@@ -94,3 +94,17 @@ describe("llms.txt", () => {
     for (const p of PRIVATE_PREFIXES) expect(txt).toContain(p);
   });
 });
+
+describe("page titles do not overclaim (the public demo is scripted)", () => {
+  it("no title or description says the teacher is 'live' without saying it is private testing", async () => {
+    const { SITE_TITLE, SITE_DESCRIPTION } = await import("@/lib/seo/site");
+    const layout = readFileSync(new URL("../src/app/(marketing)/layout.tsx", import.meta.url), "utf8");
+    for (const text of [SITE_TITLE, layout.match(/title: \{ absolute: "([^"]+)"/)?.[1] ?? ""]) {
+      expect(text.length).toBeGreaterThan(0);
+      expect(text).not.toMatch(/\blive\b/i);
+      expect(text).toMatch(/early access/i);
+    }
+    expect(SITE_DESCRIPTION).toMatch(/scripted/i);
+    expect(layout).toMatch(/scripted/i);
+  });
+});
