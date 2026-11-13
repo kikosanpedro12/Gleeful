@@ -1,4 +1,4 @@
-# Checkpoint — updated 2026-11-13
+# Checkpoint — updated 2026-11-14
 
 **Product name: Gleeful** (decided 13 Nov 2026). **Stage A (the scripted "wow" slice) is built and browser-tested.** **Stage B (Claude brain) is built and tested against a mocked API only** (13 Nov); Stage E (Supabase wiring) is not built. See BUILD_PLAN.md.
 
@@ -82,7 +82,7 @@
 
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
-2. **Domains** (gleeful.ai / getgleeful.com — not yet checked); GitHub repo and Supabase project exist. Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.
+2. **Domain: DONE 14 Nov (getgleeful.com bought; see "Domain, email and live infrastructure").** Trademark/attorney clearance for "Gleeful" is still open; GitHub repo and Supabase project exist. Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.
 3. **Stage B:** Console workspace `ai-teacher` has a **$20/month dev spend limit**; key `AI-Teacher-Brain` created there (90 days). It goes only into Vercel env as `ANTHROPIC_API_KEY` once the Vercel project exists. Pick a model after a side-by-side teaching test (Haiku 5.5 vs Sonnet 5.5; docs/COSTS.md).
 4. **Production characters:** a decision on buying or commissioning rigged Leo and Mia models (cost to be quoted; nothing bought).
 5. **Human review** of the Mars fact set.
@@ -126,3 +126,11 @@ Still open: privacy contact is Kiko's personal email for now (swap to a domain a
 - Spacing scale, text-wrap balance, warmer shorter copy. Honesty labels unchanged.
 - **Product noun is now "tutor"** (Kiko, 14 Nov): landing, titles/meta/OG, JSON-LD, llms.txt, privacy page, parent page, consent text. The in-world character stays teacher/host/Glee (scripted lesson, Leo/Mia picker, brain prompts, voice preview). Landing copy reads it from src/components/landing/copy.ts.
 - **Consent wording changed ("AI tutor") so CONSENT_VERSION bumped to 2026-11-14.v1.** No real consent rows exist yet (migration not applied live). The lawyer still has to approve the final wording.
+
+## Domain, email and live infrastructure (14 Nov 2026)
+- **Domain:** `getgleeful.com`, bought on Cloudflare Registrar (about US$11.17/yr, auto-renew at the same price). Cloudflare DNS, apex CNAME to Vercel (DNS only, no proxy). Live over HTTPS and serving the latest build. Vercel env `NEXT_PUBLIC_SITE_URL` = `https://getgleeful.com` (the only code-side switch); the old `gleeful-six.vercel.app` still works.
+- **Supabase Auth URLs:** Site URL `https://getgleeful.com`; redirect URLs `https://getgleeful.com/auth/callback` and the vercel.app one. Email provider on, confirm email on, anonymous sign-ins off.
+- **Inbound mail:** Cloudflare Email Routing: `privacy@getgleeful.com` forwards to the founder's Gmail (tested from a second sender, delivered). Privacy page now shows `privacy@getgleeful.com`. Replying from that address is not set up (optional later: Gmail "Send mail as" through Resend).
+- **Outbound mail (sign-in links):** Resend domain `getgleeful.com` (Tokyo region) VERIFIED. DNS added in Cloudflare: DKIM TXT `resend._domainkey`, CNAMEs `send` and `rsend` (DNS only), `_dmarc` TXT `v=DMARC1; p=none;`. The optional receiving MX was deliberately NOT added (it would collide with Cloudflare Email Routing). A sending-only Resend API key named `gleeful-supabase-smtp` (scoped to getgleeful.com) exists; the founder pastes it into Supabase Auth, SMTP settings: host `smtp.resend.com`, port 465, username `resend`, sender `noreply@getgleeful.com`, name `Gleeful`. Until that is saved, magic links only reach Supabase team addresses.
+- **Spend ceiling:** Anthropic Console monthly limit set to US$20 at the org and the `ai-teacher` workspace (real ceiling; in-app counters are only a brake).
+- **Still open:** Resend account is shared with another venture (truely.live); a payments merchant of record (Paddle vs Polar) is not chosen; the DTI sole proprietorship / SEC One Person Corporation is not filed; lawyer review of consent wording; trademark clearance; Vercel Hobby must move to Pro before charging customers.
