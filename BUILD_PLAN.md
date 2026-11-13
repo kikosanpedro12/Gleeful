@@ -1,4 +1,4 @@
-# Build plan — Gleeful (updated 2026-11-13)
+# Build plan — Gleeful (updated 2026-11-14)
 
 **Founder decision (12 Nov):** lead with the experience. Build the "wow" with a scripted brain (free, clearly labelled), then plug in a real brain via the **Claude API** (founder has Console credits). OpenAI Realtime is dropped (still in git history at commit `1b1b029`).
 
@@ -8,12 +8,12 @@
 | Stage | What | Status |
 |---|---|---|
 | A. Wow slice (scripted) | Pick Leo/Mia with voice preview · classroom → walls peel open → space flight → Mars landing · Leo walks, points, gestures, helmet · tappable/spinnable rock that changes the lesson · question with hint · choose next stop (crater/volcano) · back to class · later no-hint check · honest parent view · tap-to-talk + typing · reduced-motion path | **Built, browser-tested (headless)**. Not yet on a real phone. |
-| B. Claude brain | Server route calls the Claude API with the current world's facts + tools (`toolsFor()`), streams text; browser speaks it. Key stays server-side. Measure input→first audio. | Not started. Key created (Console workspace `ai-teacher`, $20/month cap); it goes into Vercel env. Needs: Vercel project, model choice. |
+| B. Claude brain | Server route calls the Claude API with the current world's facts + tools (`toolsFor()`), streams text; browser speaks it. Key stays server-side. Measure input→first audio. | **Built (13 Nov), mocked-API tested; real API verified on the landing taste (14 Nov, Haiku 5.5, correct answer in about 1.8 s).** The lesson brain on the real API still needs the tester passcode run. |
 | C. Second subject | Prove generality with Gaddi's real homework: **repeated division / equal groups** as a classroom activity (drag objects into groups). Then one history or geography world. | Not started. |
 | D. Production characters | Replace the procedural Leo/Mia with rigged GLB characters (face morphs, fingers, real walk). | **Decision needed** (asset purchase or commission). See CHECKPOINT. |
-| E. Accounts + memory | Supabase auth, parent accounts, learner evidence with RLS, delete/export. Replaces local demo storage. | Not started. |
+| E. Accounts + memory | Supabase auth, parent accounts, learner evidence with RLS, delete/export. Replaces local demo storage. | **Partly built:** parent sign-in (magic link + password), consent table and kindergarten (grade 0) migrations applied live; SMTP for real sign-in emails pending (Resend verified, key paste pending). Learner store still browser-only. |
 | F. Assignment upload | Photo/PDF of homework → identify the skill → lesson. Uploads are untrusted content. | Not started. |
-| G. Private test deploy | HTTPS deploy (Vercel) so the Android phone can be tested; device checklist. | Not started. |
+| G. Private test deploy | HTTPS deploy (Vercel) so the Android phone can be tested; device checklist. | **Done:** live at https://getgleeful.com (Vercel Hobby; move to Pro before charging). Real-phone test still to run. |
 
 ## Acceptance for Stage A (current)
 - [x] Child picks Leo or Mia; preview shows them waving and speaking
