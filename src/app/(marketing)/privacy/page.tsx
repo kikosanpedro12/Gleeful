@@ -51,7 +51,7 @@ export default function Privacy() {
           <p>Payments are not switched on. When they are, card details will be handled by a payment provider, never stored by Gleeful.</p>
 
           <h2>Contact</h2>
-          <p>Privacy contact email: to be added before launch.</p>
+          <p>Privacy contact email: <a href="mailto:kikosanpedro12@gmail.com">kikosanpedro12@gmail.com</a>.</p>
         </div>
       </main>
       <footer className="lp-foot">
