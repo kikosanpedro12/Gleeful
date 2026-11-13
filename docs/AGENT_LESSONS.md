@@ -37,6 +37,8 @@ Rules for entries:
 - **Forks cannot spawn agents** → the orchestrator (main session) runs tester and reviewer itself after a fork builds; a fork's self-review is never a verdict.
 - **Agents clashed on port 3111 and `pkill -f next-server` killed each other's servers** → each agent uses its own port (`PORT`, see below) and stops only the PID it started → /security-check, tester.md.
 - **`kill $!` after `npx next start` kills npx, not the server**, so the old build kept answering and a check looked like it failed → `npm run stop` (scripts/stop-server.mjs) stops only this checkout's next-server → tester.md, /security-check.
+- **`pkill -f "next start"` also kills any shell whose command line contains that text** (another agent's gate died mid-run) → never pkill by pattern; use `npm run stop`.
+- **Journey timing checks can flake when two agents run Chrome at once** ("mouth moves while speaking" failed once under load, passed on rerun) → rerun once before reporting; a failure that repeats is real.
 - **Two builders editing one working tree** → a second builder works in its own clone and runs `git pull --rebase origin main` plus the gate before pushing.
 - **Tester ran on a moving tree** (files edited mid-run) → test a pinned commit (`git archive <sha>` into a temp dir) when others are building.
 
