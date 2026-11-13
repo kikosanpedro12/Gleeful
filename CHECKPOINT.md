@@ -117,3 +117,12 @@ Still open: privacy contact is Kiko's personal email for now (swap to a domain a
 - Untested against the real model (no key here). Set the env below, then try 3 questions by hand and read the replies.
 - Env (server only): `ANTHROPIC_API_KEY` (already used by `/api/brain`), optional `TASTE_DISABLED=1` (kill switch, also stopped by `BRAIN_DISABLED`), `TASTE_DAILY_TURNS_PER_IP` (default 9, max 60), `TASTE_DAILY_TURNS_GLOBAL` (default 600, max 5000). Set a low monthly spend limit on the Anthropic Console workspace: that is the real ceiling (the in-memory counters are a brake).
 - Worst case at the defaults: 600 turns a day x about 1,000 input + 150 output tokens at Haiku 5.5 prices ($0.10 / $0.50 per million) is roughly $0.10 a day (about $3 a month). Even if the real price is 10x, under $1 a day. Per-instance counters can multiply this by the number of warm serverless instances, which is why the Console limit matters.
+
+
+## Landing polish + "tutor" (14 Nov 2026)
+- **Bug fixed:** with the 3D stage live, the sticky stage (negative bottom margin) overshot the hero and painted over the "Ask the tutor" box, hiding the field and chips. Hero now clips at its edge and later sections stack above it. Smoke check added (field, chips and Ask must be on top in 3D mode).
+- Question ideas send at once on tap; Enter sends; "You asked: ..." and "Thinking..." show in the host box.
+- Pricing: price on one line, "a month" under it in both cards at every width (smoke checks it).
+- Spacing scale, text-wrap balance, warmer shorter copy. Honesty labels unchanged.
+- **Product noun is now "tutor"** (Kiko, 14 Nov): landing, titles/meta/OG, JSON-LD, llms.txt, privacy page, parent page, consent text. The in-world character stays teacher/host/Glee (scripted lesson, Leo/Mia picker, brain prompts, voice preview). Landing copy reads it from src/components/landing/copy.ts.
+- **Consent wording changed ("AI tutor") so CONSENT_VERSION bumped to 2026-11-14.v1.** No real consent rows exist yet (migration not applied live). The lawyer still has to approve the final wording.

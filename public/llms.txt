@@ -1,10 +1,10 @@
 # Gleeful
 
-> Gleeful is a talking teacher for children from kindergarten to grade 12. The child asks a question out loud or by typing, and the teacher answers and takes them into an interactive 3D world to see it: under the sea, inside a leaf, out past the Moon. It is aimed at families worldwide, with the first testers in the Philippines.
+> Gleeful is a talking tutor for children from kindergarten to grade 12. The child asks a question out loud or by typing, and the tutor answers and takes them into an interactive 3D world to see it: under the sea, inside a leaf, out past the Moon. It is aimed at families worldwide, with the first testers in the Philippines.
 
 ## Status (honest)
 - Early test version, in early access. Not yet open to the public as a paid product.
-- The public demo lesson is scripted, not live AI. A Claude-based AI teacher is in private testing.
+- The public demo lesson is scripted, not live AI. A Claude-based AI tutor is in private testing.
 - The worlds shown on the home page are previews of where the product is going; the demo lesson today is one trip.
 - The 3D characters are placeholders.
 

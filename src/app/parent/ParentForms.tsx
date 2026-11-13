@@ -27,7 +27,7 @@ export function ConsentForm() {
 export function WithdrawForm() {
   const [res, act, pending] = useActionState<ActionResult | null, FormData>(withdrawConsent as Act, null);
   return (
-    <form action={act} onSubmit={(e) => { if (!confirm("Withdraw your permission? The AI teacher will be turned off for your family.")) e.preventDefault(); }}>
+    <form action={act} onSubmit={(e) => { if (!confirm("Withdraw your permission? The AI tutor will be turned off for your family.")) e.preventDefault(); }}>
       <button className="ghost" type="submit" disabled={pending}>{pending ? "Working…" : "Withdraw permission"}</button>
       <Note r={res} />
     </form>

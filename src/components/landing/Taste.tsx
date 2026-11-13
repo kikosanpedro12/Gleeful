@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { AI_NOUN, NOUN } from "./copy";
 import { TASTE_ENDPOINT, TASTE_MAX_INPUT, TASTE_MAX_TURNS, type TasteRequest } from "@/lib/taste/protocol";
 
 /**
@@ -25,6 +26,7 @@ export default function Taste() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const id = useRef<string>("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const ctl = new AbortController();
@@ -39,9 +41,9 @@ export default function Taste() {
     return () => ctl.abort();
   }, []);
 
-  async function ask(e: React.FormEvent) {
-    e.preventDefault();
-    const q = text.trim();
+  /** One path for Enter, the Ask button and a tap on a question idea (an idea sends at once: one tap, no extra step). */
+  async function send(raw: string) {
+    const q = raw.trim();
     if (!q || busy || left <= 0 || notice === "over" || notice === "busy") return;
     setBusy(true);
     setNotice(null);
@@ -60,52 +62,57 @@ export default function Taste() {
         setNotice(err.error === "rate_limited" ? "trouble" : err.error === "taste_over" ? "over" : "busy");
       } else setNotice("trouble");
     } catch { setNotice("trouble"); }
-    finally { setBusy(false); }
+    finally { setBusy(false); inputRef.current?.focus({ preventScroll: true }); }
   }
+  const onSubmit = (e: React.FormEvent) => { e.preventDefault(); void send(text); };
 
   const finished = left <= 0 || notice === "over" || notice === "busy";
   const last = [...lines].reverse().find((l) => l.role === "teacher");
+  const asked = busy ? text.trim() : [...lines].reverse().find((l) => l.role === "visitor")?.text;
 
   return (
     <section id="taste" className="lp-section lp-taste" aria-labelledby="taste-h">
       <div className="lp-wrap lp-wrap-narrow">
         {mode === "live" ? (
           <>
-            <p className="lp-tag lp-tag-live" data-testid="taste-live"><span aria-hidden className="lp-dot" /> Live AI teacher</p>
-            <h2 id="taste-h" className="lp-h2">Ask the teacher one thing.</h2>
-            <p className="lp-lede">You get {TASTE_MAX_TURNS} questions. It is an AI, so answers can be wrong; check anything important with a grown-up. Please don't type names, addresses or other private details.</p>
+            <p className="lp-tag lp-tag-live" data-testid="taste-live"><span aria-hidden className="lp-dot" /> Live {AI_NOUN}</p>
+            <h2 id="taste-h" className="lp-h2">Ask the {NOUN} one thing.</h2>
+            <p className="lp-lede">You get {TASTE_MAX_TURNS} questions. It&apos;s an AI, so it can be wrong: check anything important with a grown-up. Please don&apos;t type names, addresses or other private details.</p>
 
             <div className="lp-host" aria-live="polite" aria-atomic="true">
-              {last ? <p className="lp-host-say" data-testid="taste-reply">{last.text}</p> : <p className="lp-host-say lp-host-wait">Hi! I'm the Gleeful teacher. What are you curious about?</p>}
+              {asked && <p className="lp-host-q">You asked: {asked}</p>}
+              {busy ? <p className="lp-host-say lp-host-wait" data-testid="taste-thinking">Thinking…</p>
+                : last ? <p className="lp-host-say" data-testid="taste-reply">{last.text}</p>
+                : <p className="lp-host-say lp-host-wait">Hi! I&apos;m the Gleeful {NOUN}. What are you curious about?</p>}
             </div>
 
             {finished ? (
               <div className="lp-taste-done" data-testid="taste-done">
-                {notice === "busy" || notice === "over" ? <p>The teacher has answered all it can for now. Come back soon, or try the scripted demo lesson.</p>
+                {notice === "busy" || notice === "over" ? <p>The {NOUN} has answered all it can for now. Come back soon, or try the scripted demo lesson.</p>
                   : <p>That was your taste. The full lesson takes the whole class somewhere to look closer.</p>}
                 <a className="lp-btn lp-btn-main" href="/learn">Try the demo lesson</a>
               </div>
             ) : (
-              <form className="lp-taste-form" onSubmit={ask}>
+              <form className="lp-taste-form" onSubmit={onSubmit}>
                 <div className="lp-chips" role="group" aria-label="Question ideas">
-                  {IDEAS.map((i) => <button key={i} type="button" className="lp-chip" onClick={() => setText(i)}>{i}</button>)}
+                  {IDEAS.map((i) => <button key={i} type="button" className="lp-chip" onClick={() => { setText(i); void send(i); }} disabled={busy}>{i}</button>)}
                 </div>
                 <label className="lp-sr" htmlFor="taste-q">Your question</label>
                 <div className="lp-taste-row">
                   <input id="taste-q" className="lp-taste-input" type="text" inputMode="text" autoComplete="off" autoCapitalize="sentences" enterKeyHint="send"
-                    maxLength={TASTE_MAX_INPUT} value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a question" disabled={busy} />
+                    ref={inputRef} maxLength={TASTE_MAX_INPUT} value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a question" disabled={busy} />
                   <button className="lp-btn lp-btn-main" type="submit" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
                 </div>
                 <p className="lp-taste-meta">{left} {left === 1 ? "question" : "questions"} left</p>
-                {notice === "trouble" && <p className="lp-taste-err" role="status">I couldn't reach the teacher just then. Wait a moment and try again, or try the <a href="/learn">scripted demo lesson</a>.</p>}
+                {notice === "trouble" && <p className="lp-taste-err" role="status">I couldn&apos;t reach the {NOUN} just then. Wait a moment and try again, or try the <a href="/learn">scripted demo lesson</a>.</p>}
               </form>
             )}
           </>
         ) : (
           <>
             <p className="lp-tag" data-testid="taste-preview">Preview · a recorded sample, not live</p>
-            <h2 id="taste-h" className="lp-h2">Ask the teacher one thing.</h2>
-            <p className="lp-lede">When the live AI teacher is switched on, you can ask it up to {TASTE_MAX_TURNS} questions right here. It isn't on right now, so here is a recorded example of the kind of answer to expect.</p>
+            <h2 id="taste-h" className="lp-h2">Ask the {NOUN} one thing.</h2>
+            <p className="lp-lede">When the live {AI_NOUN} is switched on, you can ask it up to {TASTE_MAX_TURNS} questions right here. It isn&apos;t on right now, so here is a recorded example of the kind of answer to expect.</p>
             <div className="lp-host">
               <p className="lp-host-q">“Why is Mars red?”</p>
               <p className="lp-host-say">Mars is covered in dust and rock that contain iron, and iron that has rusted looks red. Want to go and look at it up close?</p>

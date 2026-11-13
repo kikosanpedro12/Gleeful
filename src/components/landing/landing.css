@@ -57,6 +57,10 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 
 /* ------------------------------------------------------------------ hero */
 .lp-hero { position: relative; }
+/* The sticky stage has a -100svh bottom margin, which lets it overshoot the hero and paint over the next section.
+   Clip it at the hero edge (clip, not hidden: hidden would break sticky). Later sections also stack above it. */
+@supports (overflow: clip) { .lp-hero { overflow: clip; } }
+.lp-section, .lp-foot { position: relative; z-index: 2; }
 .lp-stage { display: none; position: sticky; top: 0; height: 100vh; height: 100svh; margin-bottom: -100vh; margin-bottom: -100svh; z-index: 0; overflow: hidden; background: var(--sun); }
 .lp-hero.is-loading .lp-stage, .lp-hero.is-live .lp-stage { display: block; }
 .lp-canvas, .lp-canvas > div, .lp-stage canvas { width: 100% !important; height: 100% !important; display: block; }
@@ -99,11 +103,13 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-section { padding: clamp(72px, 11vw, 136px) 0; }
 .lp-wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(18px, 4vw, 40px); }
 .lp-wrap-narrow { max-width: 760px; }
-.lp-h2 { margin: 0 0 18px; font-family: var(--display); font-weight: 750; font-size: clamp(var(--t3), 5vw, var(--t5)); line-height: 1.05; letter-spacing: -0.035em; max-width: 18ch; }
-.lp-lede { margin: 0 0 40px; font-size: var(--t1); max-width: 52ch; }
+.lp-h2 { margin: 0 0 20px; font-family: var(--display); font-weight: 750; font-size: clamp(var(--t3), 5vw, var(--t5)); line-height: 1.05; letter-spacing: -0.035em; max-width: 18ch; }
+.lp-lede { margin: 0 0 clamp(28px, 4vw, 44px); font-size: var(--t1); line-height: 1.5; max-width: 52ch; }
+.lp-section p { text-wrap: pretty; }
+.lp-h2, .lp-headline, .lp-faq summary { text-wrap: balance; }
 
 .lp-how { background: var(--cloud); }
-.lp-steps { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px; }
+.lp-steps { list-style: none; margin: clamp(32px, 5vw, 56px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px; }
 .lp-steps li { border-top: 4px solid var(--night); padding-top: 18px; }
 .lp-step-n { display: block; font-family: var(--display); font-weight: 800; font-size: var(--t5); line-height: 1; color: var(--lagoon); margin-bottom: 14px; }
 .lp-steps h3 { margin: 0 0 8px; font-family: var(--display); font-weight: 680; font-size: var(--t1); letter-spacing: -0.02em; line-height: 1.2; }
@@ -125,14 +131,16 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 @media (max-width: 860px) { .lp-lists { grid-template-columns: 1fr; } .lp-list-soon { border-left: 0; border-top: 3px dashed var(--sun); padding: 28px 0 0; } }
 
 .lp-pricing { background: var(--sun); }
-.lp-plans { display: grid; grid-template-columns: 1fr 1.2fr; gap: 22px; align-items: stretch; max-width: 900px; }
-.lp-plan { border-radius: 28px; padding: 30px 30px 34px; background: var(--cloud); }
-.lp-plan h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: var(--t2); }
-.lp-plan p { margin: 8px 0 0; }
-.lp-price { font-weight: 700; }
-.lp-price span { font-family: var(--display); font-weight: 800; font-size: var(--t5); letter-spacing: -0.04em; margin-right: 6px; }
-.lp-plan-family { background: var(--night); color: #fff; transform: rotate(-1.2deg); --focus: var(--sun); }
-@media (max-width: 700px) { .lp-plans { grid-template-columns: 1fr; } .lp-plan-family { transform: none; } }
+.lp-plans { display: grid; grid-template-columns: 1fr 1.15fr; gap: 24px; align-items: stretch; max-width: 900px; padding: 10px 8px 14px; }
+.lp-plan { border-radius: 28px; padding: 32px clamp(22px, 4vw, 34px) 36px; background: var(--cloud); }
+.lp-plan h3 { margin: 0 0 14px; font-family: var(--display); font-weight: 700; font-size: var(--t2); }
+.lp-plan p { margin: 0; max-width: 34ch; }
+/* The price is one big line and "a month" sits under it, the same in both cards at every width. */
+.lp-plan .lp-price { margin: 0 0 14px; font-weight: 700; max-width: none; }
+.lp-amt { font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 9.5vw, var(--t5)); letter-spacing: -0.04em; line-height: 1; white-space: nowrap; }
+.lp-per { display: block; margin-top: 8px; font-size: var(--t0); }
+.lp-plan-family { background: var(--night); color: #fff; transform: rotate(-1.2deg); transform-origin: 50% 60%; --focus: var(--sun); }
+@media (max-width: 700px) { .lp-plans { grid-template-columns: 1fr; padding: 0; } .lp-plan-family { transform: none; } }
 
 .lp-faq { background: var(--cloud); }
 .lp-faq details { border-bottom: 2px solid rgba(20, 33, 61, .14); }
@@ -176,12 +184,14 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-host-say { margin: 0; font-family: var(--display); font-weight: 600; font-size: var(--t1); line-height: 1.35; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .lp-host-wait { opacity: .8; }
 .lp-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }
-.lp-chip { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, .45); background: transparent; color: inherit; font: inherit; font-size: var(--t-1); font-weight: 700; cursor: pointer; }
-.lp-chip:hover { background: rgba(255, 255, 255, .12); }
+.lp-chip { min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, .7); background: rgba(255, 255, 255, .06); color: inherit; font: inherit; font-size: var(--t-1); font-weight: 700; cursor: pointer; }
+.lp-chip:hover { background: rgba(255, 255, 255, .16); }
+.lp-chip:disabled { opacity: .5; cursor: not-allowed; }
 .lp-taste-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .lp-taste-input { flex: 1 1 260px; min-height: 56px; border-radius: 999px; border: 3px solid var(--sun); padding: 0 22px; font: inherit; font-size: max(16px, var(--t0)); background: #fff; color: var(--night); }
+.lp-taste-input::placeholder { color: #5b6479; opacity: 1; }
 .lp-taste-input:disabled { background: rgba(255, 255, 255, .6); }
-.lp-taste-meta { margin: 12px 0 0; font-size: var(--t-1); opacity: .8; }
+.lp-taste-meta { margin: 14px 0 0; font-size: var(--t-1); opacity: .85; }
 .lp-taste-err { margin: 12px 0 0; font-weight: 700; color: var(--sun); }
 .lp-taste-err a { color: #fff; }
 .lp-taste-done p { margin: 0 0 18px; font-weight: 700; }

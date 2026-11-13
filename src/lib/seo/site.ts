@@ -79,9 +79,9 @@ export function sitemapEntries(siteUrl: string = SITE_URL, now: Date = new Date(
 }
 
 export const SITE_NAME = "Gleeful";
-export const SITE_TITLE = "Gleeful: a talking AI teacher for kids, in 3D worlds (early access)";
+export const SITE_TITLE = "Gleeful: a talking AI tutor for kids, in 3D worlds (early access)";
 export const SITE_DESCRIPTION =
-  "Gleeful is a talking teacher for kids from kindergarten to grade 12: your child asks out loud, and the teacher takes them into interactive 3D worlds to see the answer. Early access: the demo lesson is scripted; the live AI teacher is in private testing.";
+  "Gleeful is a talking tutor for kids from kindergarten to grade 12: your child asks out loud, and the tutor takes them into interactive 3D worlds to see the answer. Early access: the demo lesson is scripted; the live AI tutor is in private testing.";
 
 /** schema.org JSON-LD. Static facts only: no ratings, prices we do not charge yet, or features we have not shipped. */
 export function jsonLd(siteUrl: string = SITE_URL) {
@@ -99,7 +99,7 @@ export function jsonLd(siteUrl: string = SITE_URL) {
         description: SITE_DESCRIPTION,
         audience: { "@type": "EducationalAudience", educationalRole: "student", audienceType: "Children from kindergarten to grade 12, with a parent" },
         publisher: { "@id": `${siteUrl}/#org` },
-        releaseNotes: "Early access. A scripted demo lesson is public; the live AI teacher is in private testing.",
+        releaseNotes: "Early access. A scripted demo lesson is public; the live AI tutor is in private testing.",
       },
     ],
   };

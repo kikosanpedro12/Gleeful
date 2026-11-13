@@ -96,7 +96,7 @@ describe("llms.txt", () => {
 });
 
 describe("page titles do not overclaim (the public demo is scripted)", () => {
-  it("no title or description says the teacher is 'live' without saying it is private testing", async () => {
+  it("no title or description says the tutor is 'live' without saying it is private testing", async () => {
     const { SITE_TITLE, SITE_DESCRIPTION } = await import("@/lib/seo/site");
     const layout = readFileSync(new URL("../src/app/(marketing)/layout.tsx", import.meta.url), "utf8");
     for (const text of [SITE_TITLE, layout.match(/title: \{ absolute: "([^"]+)"/)?.[1] ?? ""]) {

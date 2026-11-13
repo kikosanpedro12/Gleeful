@@ -28,9 +28,9 @@ export interface Chapter {
 
 export const CHAPTERS: readonly Chapter[] = [
   {
-    id: "classroom", episode: "The classroom", subject: "Meet your teacher", preview: false,
-    headline: "An AI teacher your kid can talk to.",
-    strap: "Gleeful is an AI teacher who answers out loud, then takes your child to see it. Early access: try the scripted demo today.",
+    id: "classroom", episode: "The classroom", subject: "Meet your tutor", preview: false,
+    headline: "An AI tutor your kid can talk to.",
+    strap: "Gleeful is an AI tutor who answers out loud, then takes your child to see it. Early access: try the scripted demo today.",
     sky: "#FFB627", ink: "#14213D", plate: "#14213D", plateInk: "#FFFFFF",
   },
   {
@@ -66,7 +66,7 @@ export const CHAPTERS: readonly Chapter[] = [
   {
     id: "space", episode: "Out past the Moon", subject: "Space", preview: true,
     headline: "Where we're headed: any subject, kindergarten to grade 12.",
-    strap: "Your child asks. The teacher shows. You see what they really learned.",
+    strap: "Your child asks. The tutor shows. You see what they really learned.",
     sky: "#14213D", ink: "#FFFFFF", plate: "#FFB627", plateInk: "#14213D",
   },
 ];

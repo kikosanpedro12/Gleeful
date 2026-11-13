@@ -56,15 +56,22 @@ const scrollToChapter = async (page, id) => {
   const { page, errors, res } = await open("/");
   check("/ responds 200", res.status() === 200, `(${res.status()})`);
   const h1 = await page.$eval("h1", (e) => e.textContent);
-  check("hero headline is real HTML text", /AI teacher your kid can talk to/i.test(h1), `"${h1}"`);
+  check("hero headline is real HTML text", /AI tutor your kid can talk to/i.test(h1), `"${h1}"`);
   const robots = await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "");
   // Indexing follows SITE_INDEXING (src/lib/seo/site.ts): off by default, on only when Kiko turns it on.
   const indexing = process.env.SITE_INDEXING === "on";
   check(`/ robots meta follows SITE_INDEXING (${indexing ? "on" : "off"})`, indexing ? (/index/.test(robots) && !/noindex/.test(robots)) : /noindex/.test(robots), robots);
-  check("/ has a title and description", /AI teacher.*early access/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
+  check("/ has a title and description", /AI tutor.*early access/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
   check("demo CTA goes to /learn", (await page.$eval('[data-testid="cta-demo"]', (e) => e.getAttribute("href"))) === "/learn");
   check("no waitlist anywhere on the page", !(await page.evaluate(() => /waitlist/i.test(document.body.innerText))));
   check("prices are shown in US dollars", await page.evaluate(() => /US\$29/.test(document.body.innerText) && /US\$79/.test(document.body.innerText)));
+  const priceBad = await page.evaluate(() => [...document.querySelectorAll(".lp-plan")].map((card) => {
+    const c = card.getBoundingClientRect(); const amt = card.querySelector(".lp-amt").getBoundingClientRect(); const per = card.querySelector(".lp-per").getBoundingClientRect();
+    const together = per.top >= amt.bottom - 8; // "a month" sits under the price (the Family card is tilted a little, so allow a few px)
+    const inside = amt.left >= c.left && amt.right <= c.right + 1 && per.right <= c.right + 1;
+    return together && inside ? "" : `${card.querySelector("h3").textContent}: together=${together} inside=${inside}`;
+  }).filter(Boolean));
+  check("price and 'a month' stay together and inside their card", priceBad.length === 0, priceBad.join(" | "));
   const status = await page.$eval(".lp-status", (e) => e.textContent);
   check("hero says the demo is scripted", /scripted/i.test(status));
   check("every episode headline is in the page", (await page.$$eval(".lp-headline", (els) => els.length)) === 7);
@@ -125,6 +132,39 @@ const scrollToChapter = async (page, id) => {
   // WebGL performance warnings from swiftshader are noise; real errors are not.
   const real = errors.filter((e) => !/GPU stall|WebGL|swiftshader|GL_/i.test(e));
   check("no console or CSP errors in 3D mode", real.length === 0, real.slice(0, 3).join(" | "));
+  await page.close();
+}
+
+// 4b. With the 3D stage live, the "Ask the teacher" controls must be visible and usable (the sticky stage once painted over them).
+{
+  const { page, errors, posts } = await open("/?3d=1", { stub: true });
+  await page.waitForFunction(() => document.querySelector('[data-testid="hero"]')?.getAttribute("data-mode") === "live", { timeout: 45000 }).catch(() => {});
+  await page.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
+  await page.$eval("#taste", (e) => e.scrollIntoView({ behavior: "instant", block: "center" })).catch(() => {});
+  await sleep(1500);
+  const hit = await page.evaluate(() => {
+    const out = {};
+    for (const [name, sel] of [["field", "#taste-q"], ["chip", ".lp-chip"], ["ask button", '#taste button[type="submit"]']]) {
+      const el = document.querySelector(sel);
+      if (!el) { out[name] = "missing"; continue; }
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      out[name] = top && (top === el || el.contains(top)) && r.width > 40 && r.height > 40 ? "ok" : `covered by ${top?.className || top?.tagName}`;
+    }
+    return out;
+  });
+  check("3D live: the question field, chips and Ask button are really on top and visible", Object.values(hit).every((v) => v === "ok"), JSON.stringify(hit));
+  await page.screenshot({ path: `${OUT}${TAG}-taste-3d.png` });
+  await page.click(".lp-chip");
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 10000 }).catch(() => {});
+  check("tapping a question idea sends it at once", posts.count === 1 && (await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes("answer 1"), `(${posts.count} sent)`);
+  await page.click("#taste-q");
+  await page.type("#taste-q", "a typed question");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 2"), { timeout: 10000 }).catch(() => {});
+  check("pressing Enter sends the typed question", posts.count === 2 && (await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes("answer 2"), `(${posts.count} sent)`);
+  const real = errors.filter((e) => !/GPU stall|WebGL|swiftshader|GL_|Failed to load resource/i.test(e));
+  check("no console or CSP errors with the live taste over the 3D stage", real.length === 0, real.slice(0, 3).join(" | "));
   await page.close();
 }
 

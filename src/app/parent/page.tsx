@@ -35,7 +35,7 @@ export default async function ParentPage() {
           <h2>Permission</h2>
           {data.consent ? (
             <>
-              <p data-testid="consent-given">You gave permission on <b>{new Date(data.consent.acceptedAt).toLocaleDateString()}</b>. The AI teacher can answer your children&apos;s messages while you are signed in on this device.</p>
+              <p data-testid="consent-given">You gave permission on <b>{new Date(data.consent.acceptedAt).toLocaleDateString()}</b>. The AI tutor can answer your children&apos;s messages while you are signed in on this device.</p>
               <WithdrawForm />
             </>
           ) : (
