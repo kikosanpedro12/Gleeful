@@ -34,7 +34,7 @@ function model(content: unknown, opts: { status?: number; usage?: { input_tokens
 let logs: [string, Record<string, string | number>][];
 function deps(fetchImpl: ReturnType<typeof model>, over: Partial<Deps> = {}): Deps {
   logs = [];
-  return makeDeps({ env: { apiKey: KEY, disabled: false }, usage: new MemoryUsageStore(), fetchImpl: fetchImpl as unknown as typeof fetch, now: () => Date.UTC(2026, 10, 13, 12, 0, 0), log: (e, f) => logs.push([e, f]), ...over });
+  return makeDeps({ env: { apiKey: KEY, disabled: false }, parent: async () => ({ id: "parent_1", consented: true }), usage: new MemoryUsageStore(), fetchImpl: fetchImpl as unknown as typeof fetch, now: () => Date.UTC(2026, 10, 13, 12, 0, 0), log: (e, f) => logs.push([e, f]), ...over });
 }
 const call = async (d: Deps, body: unknown = req(), headers: Record<string, string> = {}) => handleBrain(http(body, headers), d);
 const json = async (r: Response) => (await r.json()) as Record<string, unknown>;
@@ -176,7 +176,7 @@ describe("brain route: limits", () => {
     const usage = new MemoryUsageStore();
     const f = model([text("Hello there")]);
     const d = deps(f, { usage, ipLimiter: new RateLimiter(1e9, 60_000), sessionLimiter: new RateLimiter(1e9, 60_000) });
-    const u = (await usage.today("learner_1", "Asia/Manila", d.now()))!;
+    const u = (await usage.today("parent_1:learner_1", "Asia/Manila", d.now()))!;
     u.turns = LIMITS.dailyTurnsPerLearner - 1;
     expect((await call(d)).status).toBe(200);
     const res = await call(d, req({ sessionId: "other" }));
@@ -188,7 +188,7 @@ describe("brain route: limits", () => {
     const usage = new MemoryUsageStore();
     const d = deps(model(null, { status: 500 }), { usage });
     await call(d);
-    expect((await usage.today("learner_1", "Asia/Manila", d.now()))!.turns).toBe(1);
+    expect((await usage.today("parent_1:learner_1", "Asia/Manila", d.now()))!.turns).toBe(1);
   });
   it("global daily cap stops everyone", async () => {
     const usage = new MemoryUsageStore();
@@ -297,7 +297,7 @@ describe("brain route: model choice", () => {
     const f = model([text("Great question, let us think.")]);
     const d = deps(f, { usage, ipLimiter: new RateLimiter(1e9, 60_000), sessionLimiter: new RateLimiter(1e9, 60_000) });
     const deep = req({ input: { kind: "text", text: deepText } });
-    const u = (await usage.today("learner_1", "Asia/Manila", d.now()))!;
+    const u = (await usage.today("parent_1:learner_1", "Asia/Manila", d.now()))!;
     u.hardTurns = LIMITS.dailyHardTurnsPerLearner - 1;
     const first = await json(await call(d, deep));
     expect(first.model).toBe("hard");
@@ -474,9 +474,9 @@ describe("prompt injection and child privacy", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const info = vi.spyOn(console, "log").mockImplementation(() => {});
-    const d = makeDeps({ env: { apiKey: KEY, disabled: false }, usage: new MemoryUsageStore(), now: () => 0, fetchImpl: model([text("<<>> " + secret), tool("bash", {})]) as unknown as typeof fetch });
+    const d = makeDeps({ env: { apiKey: KEY, disabled: false }, parent: async () => ({ id: "parent_1", consented: true }), usage: new MemoryUsageStore(), now: () => 0, fetchImpl: model([text("<<>> " + secret), tool("bash", {})]) as unknown as typeof fetch });
     await call(d, req({ input: { kind: "text", text: secret } }));
-    await call(makeDeps({ env: { apiKey: KEY, disabled: false }, usage: new MemoryUsageStore(), now: () => 0, fetchImpl: model(null, { status: 500 }) as unknown as typeof fetch }), req({ input: { kind: "text", text: secret } }));
+    await call(makeDeps({ env: { apiKey: KEY, disabled: false }, parent: async () => ({ id: "parent_1", consented: true }), usage: new MemoryUsageStore(), now: () => 0, fetchImpl: model(null, { status: 500 }) as unknown as typeof fetch }), req({ input: { kind: "text", text: secret } }));
     const all = JSON.stringify([spy.mock.calls, err.mock.calls, info.mock.calls]);
     expect(all).not.toContain(secret);
     expect(all).not.toContain(KEY);
@@ -487,7 +487,7 @@ describe("prompt injection and child privacy", () => {
     const usage = new MemoryUsageStore();
     const d = deps(model([text("Hello there")], { usage: { input_tokens: 321, output_tokens: 45 } }), { usage });
     await call(d);
-    const u = (await usage.today("learner_1", "Asia/Manila", d.now()))!;
+    const u = (await usage.today("parent_1:learner_1", "Asia/Manila", d.now()))!;
     expect([u.turns, u.tokensIn, u.tokensOut]).toEqual([1, 321, 45]);
   });
 });

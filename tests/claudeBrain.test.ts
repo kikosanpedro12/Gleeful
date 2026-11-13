@@ -7,6 +7,7 @@ import { emptyProfile, type LearnerProfile } from "@/lib/learner/profile";
 import type { BrainContext, BrainInput, BrainReply } from "@/lib/brain/types";
 import type { BrainRequest } from "@/lib/brain/protocol";
 import { parseRequest } from "@/lib/brain/server/request";
+import { useReach } from "@/lib/brain/reach";
 
 function ctx(world: BrainContext["world"] = "mars", profile: LearnerProfile = emptyProfile(), session = 1): BrainContext {
   profile.sessions = session;
@@ -166,7 +167,7 @@ describe("FallbackBrain and createBrain", () => {
 });
 
 describe("ClaudeBrain: one capability check instead of a 503 on every page load", () => {
-  const probeOf = (configured: unknown, status = 200) => new Response(JSON.stringify({ configured }), { status });
+  const probeOf = (configured: unknown, status = 200, access: Record<string, unknown> = { signedIn: true, consented: true }) => new Response(JSON.stringify({ configured, ...access }), { status });
   const methods = (f: ReturnType<typeof fetchOf>) => f.mock.calls.map((c) => (c[1] as { method: string }).method);
   const pb = (f: ReturnType<typeof fetchOf>) => new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true });
 
@@ -193,6 +194,27 @@ describe("ClaudeBrain: one capability check instead of a 503 on every page load"
       await expect(pb(f).respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "brain_unconfigured", status: 503 });
       expect(methods(f)).toEqual(["GET", "POST"]);
     }
+    resetProbeCache();
+  });
+  it("configured but this visitor is anonymous: never POSTs, the script answers (sign_in_required)", async () => {
+    resetProbeCache();
+    const f = fetchOf(probeOf(true, 200, { signedIn: false, consented: false }));
+    await expect(pb(f).respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "sign_in_required", status: 401 });
+    expect(methods(f)).toEqual(["GET"]);
+    resetProbeCache();
+  });
+  it("signed in but no consent on file: never POSTs (consent_required)", async () => {
+    resetProbeCache();
+    const f = fetchOf(probeOf(true, 200, { signedIn: true, consented: false }));
+    await expect(pb(f).respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "consent_required", status: 403 });
+    expect(methods(f)).toEqual(["GET"]);
+    resetProbeCache();
+  });
+  it("the server later says sign-in is needed (session ended): the script answers and the screen stops claiming AI", async () => {
+    resetProbeCache();
+    const f = fetchOf(probeOf(true), new Response(JSON.stringify({ error: "sign_in_required" }), { status: 401 }));
+    await expect(pb(f).respond({ kind: "resume" }, ctx())).rejects.toMatchObject({ code: "sign_in_required", status: 401 });
+    expect(useReach.getState().ai).toBe(false);
     resetProbeCache();
   });
   it("probe is off by default (existing callers and tests unchanged)", async () => {

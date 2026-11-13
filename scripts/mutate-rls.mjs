@@ -10,6 +10,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MIG_DIR = path.join(ROOT, "supabase/migrations");
 const INIT = "20261112051808_init_learning_schema.sql";
 const KINDERGARTEN = "20261113071456_learners_allow_kindergarten.sql";
+const CONSENT = "20261113083000_parental_consent.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -35,6 +36,18 @@ const MUTANTS = [
   ["kindergarten still refused", "check (grade between 0 and 12)", "check (grade between 1 and 12)", null, KINDERGARTEN],
   ["grade range widened too far", "check (grade between 0 and 12)", "check (grade between 0 and 99)", null, KINDERGARTEN],
   ["brain_usage writable by parents", "grant select                 on table public.brain_usage     to authenticated;  -- server writes only", "grant select, insert, update on table public.brain_usage to authenticated;\ncreate policy \"oops\" on public.brain_usage for all to authenticated using (true) with check (true);"],
+  // parental_consents (20261113083000): every weakening must turn tests/db/consent.test.ts red.
+  ["consent readable by everyone", 'for select to authenticated using ((select auth.uid()) = parent_id);\ncreate policy "parents give own consent"', 'for select to authenticated using (true);\ncreate policy "parents give own consent"', null, CONSENT],
+  ["consent insertable for anyone", 'for insert to authenticated with check ((select auth.uid()) = parent_id);\ncreate policy "parents withdraw own consent"', 'for insert to authenticated with check (true);\ncreate policy "parents withdraw own consent"', null, CONSENT],
+  ["consent update grant widened to every column", "grant update (withdrawn_at) on table public.parental_consents to authenticated;  -- withdraw only", "grant update on table public.parental_consents to authenticated;", null, CONSENT],
+  ["consent deletable by parents", "grant select, insert on table public.parental_consents to authenticated;", "grant select, insert, delete on table public.parental_consents to authenticated;\ncreate policy \"oops\" on public.parental_consents for delete to authenticated using (true);", null, CONSENT],
+  ["RLS off on parental_consents", "alter table public.parental_consents enable row level security;", "", null, CONSENT],
+  ["anon keeps default access to consent", "revoke all on table public.parental_consents from public, anon, authenticated;", "revoke all on table public.parental_consents from public, authenticated;", null, CONSENT],
+  ["client can back-date agreeing", "create trigger parental_consents_force_accepted_at\n  before insert on public.parental_consents\n  for each row execute function private.force_accepted_at();", "", null, CONSENT],
+  ["client can un-withdraw or re-date withdrawing", "create trigger parental_consents_guard_update\n  before update on public.parental_consents\n  for each row execute function private.guard_consent_update();", "", null, CONSENT],
+  ["consent version not checked", "check (consent_text_version ~ '^[A-Za-z0-9._-]{1,32}$')", "check (true)", null, CONSENT],
+  ["duplicate active consent allowed", "create unique index parental_consents_one_active_per_version\n  on public.parental_consents (parent_id, consent_text_version) where withdrawn_at is null;", "", null, CONSENT],
+  ["withdrawal can precede agreeing", "constraint parental_consents_withdrawn_after_accepted check (withdrawn_at is null or withdrawn_at >= accepted_at)", "constraint parental_consents_withdrawn_after_accepted check (true)", null, CONSENT],
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";
 // Baseline: the unmutated migration must PASS, otherwise every mutant is "killed" for free.

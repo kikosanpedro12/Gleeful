@@ -86,8 +86,20 @@ describe("start screen and voice preview claim AI only when this visitor can rea
     expect(html).toMatch(/answers come from an AI \(Claude\)/);
     expect(heard()).toMatch(/I'm an AI teacher/);
   });
-  it("model build + key, gate off: discloses AI", async () => {
-    await probeBrain(probe({ configured: true, testerRequired: false }), "/api/brain", true);
+  it("model build + key, anonymous visitor, no passcode accepted: no AI claim (nobody reaches the AI anonymously)", async () => {
+    await probeBrain(probe({ configured: true, testerRequired: false, signedIn: false, consented: false }), "/api/brain", true);
+    NOT_AI(screen()); expect(heard()).not.toMatch(CLAIM);
+  });
+  it("model build + key, signed-in parent WITHOUT consent: no AI claim", async () => {
+    await probeBrain(probe({ configured: true, testerRequired: false, signedIn: true, consented: false }), "/api/brain", true);
+    NOT_AI(screen()); expect(heard()).not.toMatch(CLAIM);
+  });
+  it("model build + key, signed-in parent WITH consent: discloses AI", async () => {
+    await probeBrain(probe({ configured: true, testerRequired: false, signedIn: true, consented: true }), "/api/brain", true);
     expect(screen()).toMatch(/AI teachers/);
+  });
+  it("a parent who is signed in but the server says the model is not configured: no AI claim", async () => {
+    await probeBrain(probe({ configured: false, testerRequired: false, signedIn: true, consented: true }), "/api/brain", true);
+    NOT_AI(screen());
   });
 });

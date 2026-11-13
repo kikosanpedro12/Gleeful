@@ -17,10 +17,20 @@ import { buildSystem, buildUserMessage, isHardTurn, modelFor } from "./prompt";
 import { parseRequest } from "./request";
 import { buildReply } from "./sanitize";
 import type { BrainErrorCode, BrainResponse } from "../protocol";
+import { clientIp, crossOrigin, readBody } from "@/lib/http/request";
+export { clientIp, readBody };
 import { contextFor } from "@/lib/worlds/registry";
 import { toolsFor } from "@/lib/scene/commands";
 
+/** A signed-in parent as the route sees them. `consented` = current-wording consent is on file and not withdrawn. */
+export interface ParentAccess { id: string; consented: boolean }
+
 export interface Deps {
+  /**
+   * Who is signed in (verified server-side from the session cookie), or null. When absent, NO parent
+   * can use the model: only the private-test passcode can. Closed by default, on purpose.
+   */
+  parent?: (req: Request) => Promise<ParentAccess | null>;
   fetchImpl: typeof fetch;
   env: BrainEnv;
   now: () => number;
@@ -63,61 +73,6 @@ export function testerOk(expected: string | undefined, given: string | null): bo
   return timingSafeEqual(a, b);
 }
 
-export function clientIp(req: Request): string {
-  const first = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
-  return /^[0-9a-fA-F:.]{3,45}$/.test(first) ? first : "unknown";
-}
-
-/**
- * Same-origin only: a page on another site must not be able to spend our key.
- *
- * DECISION: a request with NEITHER Origin nor Sec-Fetch-Site is allowed. Every
- * browser sends at least one of them on a POST, so a cross-site web page cannot
- * omit both; only non-browser clients (curl, scripts) do, and they can forge
- * either header anyway. This check is CSRF protection for browsers, NOT a spend
- * control. Spend is controlled by the rate limits, the daily caps and the
- * Console spend limit.
- */
-function crossOrigin(req: Request): boolean {
-  const site = req.headers.get("sec-fetch-site");
-  if (site && site !== "same-origin" && site !== "none") return true;
-  const origin = req.headers.get("origin");
-  if (!origin) return false;
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
-  try { return new URL(origin).host !== host; } catch { return true; }
-}
-
-/**
- * Reads the body with a hard cap on BYTES (not characters) and a time limit, so a
- * chunked or slow-drip request cannot hold the function open or fill memory.
- */
-export async function readBody(req: Request, maxBytes: number, timeoutMs: number): Promise<{ ok: true; text: string } | { ok: false; status: 400 | 413 }> {
-  if (!req.body) return { ok: true, text: "" };
-  const reader = req.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; void reader.cancel().catch(() => {}); }, timeoutMs);
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) { void reader.cancel().catch(() => {}); return { ok: false, status: 413 }; }
-      chunks.push(value);
-    }
-  } catch {
-    return { ok: false, status: 400 };
-  } finally {
-    clearTimeout(timer);
-  }
-  if (timedOut) return { ok: false, status: 400 };
-  const all = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { all.set(c, off); off += c.byteLength; }
-  try { return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(all) }; } catch { return { ok: false, status: 400 }; }
-}
-
 /** Logged once per server instance; never includes the code or its length. */
 let warnedMisconfigured = false;
 export function warnTesterMisconfigured() {
@@ -136,8 +91,27 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   const now = d.now();
   const wait = d.ipLimiter.take(clientIp(req), now);
   if (wait) return fail(429, "rate_limited", { "retry-after": String(wait) });
-  // After the per-IP limit, so guesses are rate limited; before the body is read or anything is spent.
-  if (!testerOk(d.env.testerCode, req.headers.get(TESTER_HEADER))) return fail(403, "tester_required");
+  // ACCESS. Runs after the per-IP limit (so passcode guesses and session lookups are rate limited) and before
+  // the body is read or anything is spent. Nobody is anonymous here: either the private-test passcode, or a
+  // signed-in parent whose consent is on file. The budget owner is the verified identity, never a browser-chosen id.
+  const given = req.headers.get(TESTER_HEADER);
+  let owner: string;
+  if (d.env.testerCode && testerOk(d.env.testerCode, given)) {
+    owner = "tester";
+  } else {
+    let p: ParentAccess | null = null;
+    if (d.parent) {
+      try { p = await d.parent(req); } catch { d.log("auth_error", { kind: 1 }); }
+    }
+    if (p) {
+      if (!p.consented) return fail(403, "consent_required");
+      owner = p.id;
+    } else if (given || (d.env.testerCode && !d.parent)) {
+      return fail(403, "tester_required"); // a passcode was offered and is wrong, or this deployment is passcode-only
+    } else {
+      return fail(401, "sign_in_required");
+    }
+  }
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > LIMITS.maxBodyBytes) return fail(413, "too_large");
@@ -149,29 +123,35 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   if (!parsed.ok) return fail(400, "bad_request");
   const r = parsed.req;
 
-  const sWait = d.sessionLimiter.take(r.sessionId, now);
+  // Session and learner ids are chosen by the browser, so they are namespaced by the verified owner:
+  // nobody can burn another family's counters by guessing their ids, and rotating ids buys nothing.
+  const sessionKey = `${owner}:${r.sessionId}`;
+  const sWait = d.sessionLimiter.take(sessionKey, now);
   if (sWait) return fail(429, "rate_limited", { "retry-after": String(sWait) });
-  const done = d.sessionTotals.count(r.sessionId, now);
+  const done = d.sessionTotals.count(sessionKey, now);
   if (done === null) return fail(503, "global_limit"); // table full of live sessions: refuse new ones (never evict a live one)
   if (done >= LIMITS.perSessionTotal) return fail(429, "daily_limit");
 
   const ip = clientIp(req);
-  const usage = await d.usage.today(r.learnerId, r.tz, now);
+  const usage = await d.usage.today(`${owner}:${r.learnerId}`, r.tz, now);
   const ipDay = await d.usage.ipToday(ip, now);
-  if (!usage || !ipDay) return fail(503, "global_limit"); // fail closed when a table is full of live keys
-  if (usage.turns >= LIMITS.dailyTurnsPerLearner || ipDay.turns >= LIMITS.dailyTurnsPerIp) return fail(429, "daily_limit");
+  const parentDay = await d.usage.parentToday(owner, now);
+  if (!usage || !ipDay || !parentDay) return fail(503, "global_limit"); // fail closed when a table is full of live keys
+  if (usage.turns >= LIMITS.dailyTurnsPerLearner || ipDay.turns >= LIMITS.dailyTurnsPerIp || parentDay.turns >= LIMITS.dailyTurnsPerParent) return fail(429, "daily_limit");
   const global = await d.usage.globalToday(now);
   if (global.turns >= LIMITS.dailyTurnsGlobal) return fail(503, "global_limit");
 
-  // Sonnet needs ALL budgets: this learner's, this client address's (learnerId is browser-chosen, so rotating it must not help) and the deployment's.
+  // Sonnet needs ALL budgets: this learner's, this parent's (a verified id, so rotating learnerId must not help), this client address's and the deployment's.
   const hard = isHardTurn(r)
     && usage.hardTurns < LIMITS.dailyHardTurnsPerLearner
+    && parentDay.hardTurns < LIMITS.dailyHardTurnsPerParent
     && ipDay.hardTurns < LIMITS.dailyHardTurnsPerIp
     && global.hardTurns < LIMITS.dailyHardTurnsGlobal;
   await d.usage.reserve(usage, hard);
   await d.usage.reserveIp(ip, now, hard);
+  await d.usage.reserveParent(owner, now, hard);
   await d.usage.reserveGlobal(now, hard);
-  d.sessionTotals.add(r.sessionId, now);
+  d.sessionTotals.add(sessionKey, now);
 
   const ctx = contextFor(r.world);
   let up;

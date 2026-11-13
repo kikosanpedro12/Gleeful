@@ -49,5 +49,5 @@ export interface BrainResponse {
 export type BrainErrorCode =
   | "brain_disabled" | "brain_unconfigured" | "forbidden_origin" | "unsupported_media"
   | "too_large" | "bad_request" | "rate_limited" | "daily_limit" | "global_limit"
-  | "tester_required"
+  | "tester_required" | "sign_in_required" | "consent_required"
   | "upstream_failed" | "upstream_timeout" | "upstream_busy" | "bad_model_output";

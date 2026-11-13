@@ -3,7 +3,7 @@
  *
  * Gleeful is a children's product, so the rule is: only the public landing page (/)
  * and the privacy notice (/privacy) may be indexed. Anything a family or child uses after
- * that (/learn, /parent, /tester, /api) is disallowed in robots.txt AND sent with
+ * that (/learn, /parent, /sign-in, /auth, /tester, /api) is disallowed in robots.txt AND sent with
  * `X-Robots-Tag: noindex` (next.config.mjs), because robots.txt alone is a
  * request, not a control. No child data or session id ever appears in a URL.
  *
@@ -35,7 +35,7 @@ export const PUBLIC_PATHS: readonly string[] = ["/", "/privacy"];
 
 /** Never indexed, always disallowed. Keep in sync with next.config.mjs (tested). */
 /** /learn is the lesson app itself (a child uses it); it is not a page for search engines. */
-export const PRIVATE_PREFIXES: readonly string[] = ["/api", "/learn", "/parent", "/tester"];
+export const PRIVATE_PREFIXES: readonly string[] = ["/api", "/auth", "/learn", "/parent", "/sign-in", "/tester"];
 
 export function isPrivatePath(pathname: string): boolean {
   const p = pathname.toLowerCase().replace(/\/+$/, "") || "/";

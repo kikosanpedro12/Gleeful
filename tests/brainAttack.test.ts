@@ -18,7 +18,7 @@ const http = (body: unknown, headers: Record<string, string> = {}) =>
   new Request("https://gleeful.test/api/brain", { method: "POST", headers: { "content-type": "application/json", host: "gleeful.test", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) });
 const mock = (content: unknown) => vi.fn(async () => new Response(JSON.stringify({ content, usage: { input_tokens: 1, output_tokens: 1 } })));
 function deps(f: ReturnType<typeof mock>, over: Partial<Deps> = {}): Deps {
-  return makeDeps({ env: { apiKey: KEY, disabled: false }, usage: new MemoryUsageStore(), fetchImpl: f as unknown as typeof fetch, now: () => NOW, log: () => {}, ...over });
+  return makeDeps({ env: { apiKey: KEY, disabled: false }, parent: async () => ({ id: "parent_1", consented: true }), usage: new MemoryUsageStore(), fetchImpl: f as unknown as typeof fetch, now: () => NOW, log: () => {}, ...over });
 }
 
 describe("ATTACK: rate-limit bypass (cost exposure)", () => {
@@ -154,7 +154,7 @@ describe("ATTACK: prompt injection and privacy", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const secret = "my-secret-name-is-zorblax";
-    const mk = (fn: () => Promise<Response>) => makeDeps({ env: { apiKey: KEY, disabled: false }, usage: new MemoryUsageStore(), fetchImpl: fn as unknown as typeof fetch, now: () => NOW });
+    const mk = (fn: () => Promise<Response>) => makeDeps({ env: { apiKey: KEY, disabled: false }, parent: async () => ({ id: "parent_1", consented: true }), usage: new MemoryUsageStore(), fetchImpl: fn as unknown as typeof fetch, now: () => NOW });
     const body = base({ input: { kind: "text", text: secret } });
     await handleBrain(http(body, { "x-forwarded-for": "1.1.1.1" }), mk(async () => { throw new Error(`boom ${KEY} ${secret}`); }));
     await handleBrain(http(body, { "x-forwarded-for": "1.1.1.2" }), mk(async () => new Response(`{"error":"${secret}"}`, { status: 400 })));

@@ -206,3 +206,28 @@ html:has(.parent), body:has(.parent), html:has(.tester), body:has(.tester) { ove
 .tester form { display:flex; flex-direction:column; gap:10px; }
 .tester label { font-weight:800; }
 .tester .ok { color:var(--board-deep); font-weight:800; }
+
+/* ---------------------------------------------------------------- parent sign-in (/sign-in) */
+.auth { max-width:440px; margin:0 auto; padding:max(32px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(60px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); display:flex; flex-direction:column; gap:14px; line-height:1.5; }
+.auth h1 { margin:0; font-size:var(--t-xl); }
+.auth p { margin:0; color:var(--ink-2); }
+.auth a { color:var(--board); font-weight:800; display:inline-flex; align-items:center; min-height:44px; }
+.auth a.primary { justify-content:center; color:#fff; }
+.auth .warn { background:#fff3cd; border-radius:10px; padding:10px 12px; color:var(--ink); }
+.auth .ok { color:var(--board-deep); font-weight:800; }
+.auth-form { display:flex; flex-direction:column; gap:10px; }
+.auth-form label { font-weight:800; }
+.auth-form input { min-height:44px; padding:8px 12px; border-radius:12px; border:2px solid #cdbf9f; font:inherit; background:#fff; }
+.auth-tabs { display:flex; gap:8px; }
+.auth-tabs button { flex:1; min-height:44px; border-radius:var(--pill); background:#fff; border:2px solid #cdbf9f; font-weight:800; }
+.auth-tabs button[aria-pressed="true"] { background:var(--board); color:#fff; border-color:var(--board); }
+.auth-form .primary, .auth-form .ghost { min-height:44px; }
+html:has(.auth), body:has(.auth) { overflow:auto; height:auto; }
+.parent .consent, .parent .learner-form { display:flex; flex-direction:column; gap:8px; background:var(--paper); border-radius:14px; padding:12px 14px; margin:10px 0; }
+.parent .learner-form fieldset { border:0; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.parent input:not([type="checkbox"]), .parent select { min-height:44px; padding:8px 12px; border-radius:12px; border:2px solid #cdbf9f; font:inherit; background:#fff; }
+.parent label { font-weight:800; }
+.parent .check { display:flex; gap:10px; align-items:flex-start; min-height:44px; }
+.parent .check input { width:24px; height:24px; margin-top:2px; flex:none; }
+.parent .primary, .parent .ghost, .parent .danger { min-height:44px; }
+.parent .ok { color:var(--board-deep); font-weight:800; }

@@ -123,8 +123,36 @@ const scrollToChapter = async (page, id) => {
   check("/learn is noindex", /noindex/.test(robots), robots);
   await page.close();
   const p = await open("/parent");
-  check("/parent links back to /learn", !!(await p.page.$('a[href="/learn"]')));
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) check("/parent sends a signed-out visitor to /sign-in", /\/sign-in\?next=%2Fparent|\/sign-in\?next=\/parent/.test(p.page.url()), p.page.url());
+  else check("/parent links back to /learn", !!(await p.page.$('a[href="/learn"]')));
   await p.page.close();
+}
+
+// 6. Parent accounts. With no Supabase settings (how the smoke test runs) accounts are OFF: honest page, nothing breaks, the AI is closed to anonymous callers.
+{
+  const accountsOff = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const { page, errors, res } = await open("/sign-in");
+  check("/sign-in responds 200", res.status() === 200);
+  check("/sign-in is noindex", /noindex/.test(await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "")));
+  if (accountsOff) {
+    check("/sign-in says accounts are not switched on (no dead form)", !!(await page.$('[data-testid="signin-unavailable"]')) && !(await page.$('[data-testid="auth-email"]')));
+  } else {
+    check("/sign-in shows the email form", !!(await page.$('[data-testid="auth-email"]')));
+    const tall = await page.$$eval(".auth button, .auth input, .auth a.primary", (els) => els.filter((e) => e.getBoundingClientRect().height < 43).map((e) => e.outerHTML.slice(0, 60)));
+    check("sign-in controls are at least 44px tall", tall.length === 0, tall.join(" | "));
+  }
+  check("no console or CSP errors on /sign-in", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await page.screenshot({ path: `${OUT}${TAG}-signin.png` });
+  await page.close();
+
+  const api = await fetch(ORIGIN + "/api/brain");
+  const cap = await api.json();
+  check("GET /api/brain reports nobody is signed in", cap.signedIn === false && cap.consented === false, JSON.stringify(cap));
+  const post = await fetch(ORIGIN + "/api/brain", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+  check("anonymous POST /api/brain never reaches the model", [401, 403, 503].includes(post.status), `(${post.status})`);
+  const bad = await fetch(ORIGIN + "/auth/callback?code=abc&next=https://evil.example", { redirect: "manual" });
+  const where = bad.headers.get("location") || "";
+  check("a bad sign-in link goes back to /sign-in, never off-site", bad.status === 303 && new URL(where, ORIGIN).origin === ORIGIN && /\/sign-in/.test(where), `(${bad.status} ${where})`);
 }
 
 await browser.close();

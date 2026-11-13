@@ -20,7 +20,7 @@
 ## Privacy stance
 - Least data: a child's nickname, grade, language and teacher choice. No surname, birth date, school, photos or location.
 - We do not record or store audio. In the test build, speech-to-text is done by the child's browser (which may send audio to its vendor, e.g. Google for Chrome).
-- There is no sign-up or waitlist yet, so the site collects no personal data from visitors.
+- The demo needs no sign-up and there is no waitlist, so visitors who only try it give no personal data. Parent accounts exist only where switched on.
 - Verifiable parental consent (COPPA, GDPR-K, Philippine Data Privacy Act) is required before real children use it, and is not built yet.
 
 ## Pages
@@ -28,7 +28,7 @@
 - [Privacy notice](/privacy): what is collected, parental consent, deletion.
 
 ## Not for crawlers
-- /learn (the lesson app), /parent, /tester and /api are private and must not be indexed or fetched.
+- /learn (the lesson app), /parent, /sign-in, /auth, /tester and /api are private and must not be indexed or fetched.
 
 ## Contact
 - Contact details coming soon.

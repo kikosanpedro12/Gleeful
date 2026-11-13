@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { refreshSession } from "@/lib/supabase/refresh";
 
 /**
  * Per-request Content Security Policy with a fresh nonce (Next.js "proxy",
@@ -41,7 +42,12 @@ export function buildCsp(nonce: string, opts: { dev: boolean; https: boolean }) 
   ].join("; ");
 }
 
-export function proxy(request: NextRequest) {
+/** Only these paths need a fresh session; every other page is public and skips the work. */
+const AUTH_PATHS = /^\/(parent|sign-in|auth|api\/brain)(\/|$)/;
+
+export async function proxy(request: NextRequest) {
+  // Refresh first: it may update the request's cookies, and the headers below are copied from the request afterwards.
+  const refreshed = AUTH_PATHS.test(request.nextUrl.pathname) ? await refreshSession(request) : null;
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const https = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
   const csp = buildCsp(nonce, { dev: process.env.NODE_ENV === "development", https });
@@ -50,6 +56,10 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
+  if (refreshed) {
+    for (const c of refreshed.cookies) response.cookies.set(c.name, c.value, c.options);
+    for (const [k, v] of Object.entries(refreshed.headers)) response.headers.set(k, v);
+  }
   return response;
 }
 

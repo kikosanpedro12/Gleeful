@@ -40,6 +40,13 @@ export const LIMITS = {
   dailyHardTurnsPerIp: 40,
   /** All turns per client address per day (also not resettable by rotating learnerId). */
   dailyTurnsPerIp: 1500,
+  /**
+   * Per signed-in parent (keyed on the verified auth user id, which a client cannot choose or rotate).
+   * Every family member's learners share it. Above one family's real use, far below abuse.
+   * The private-test passcode holders share one "tester" bucket with the same ceilings.
+   */
+  dailyTurnsPerParent: 1200,
+  dailyHardTurnsPerParent: 60,
   /** Whole-deployment ceilings per day. A stand-in for the Console spend limit, never a replacement. */
   dailyTurnsGlobal: 5000,
   dailyHardTurnsGlobal: 300,
@@ -64,10 +71,9 @@ export interface BrainEnv {
   /** Set BRAIN_DISABLED=1 to stop all model calls at once (clients fall back to the script). */
   disabled: boolean;
   /**
-   * Private-test passcode (BRAIN_TESTER_CODE). When set, every POST must carry it in the
-   * `x-gleeful-tester` header or it is refused with 403 before any model call. A stopgap that
-   * lets a real key sit behind a public URL during a private test, NOT a replacement for
-   * parent sign-in. Use 16+ random characters.
+   * Private-test passcode (BRAIN_TESTER_CODE). A POST that carries it in the `x-gleeful-tester`
+   * header is allowed without parent sign-in (as the shared "tester" principal). Anyone without
+   * it needs a signed-in parent with current consent. Use 16+ random characters.
    */
   testerCode?: string;
   /**

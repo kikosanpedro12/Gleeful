@@ -102,11 +102,19 @@ export interface UsageStore {
   ipToday(ip: string, nowMs: number): Promise<DayCount | null>;
   reserveGlobal(nowMs: number, hard: boolean): Promise<void>;
   reserveIp(ip: string, nowMs: number, hard: boolean): Promise<void>;
+  /**
+   * Per signed-in parent (verified auth user id, or "tester"), UTC day. This is the
+   * budget that rotating a browser-chosen learnerId or sessionId cannot reset.
+   * null = table full of live parents (fail closed).
+   */
+  parentToday(parentId: string, nowMs: number): Promise<DayCount | null>;
+  reserveParent(parentId: string, nowMs: number, hard: boolean): Promise<void>;
 }
 
 export class MemoryUsageStore implements UsageStore {
   private byLearner = new Map<string, Usage>();
   private byIp = new Map<string, { day: string; turns: number; hardTurns: number }>();
+  private byParent = new Map<string, { day: string; turns: number; hardTurns: number }>();
   private global = { day: "", turns: 0, hardTurns: 0 };
   constructor(private maxKeys: number = LIMITS.maxTrackedKeys) {}
 
@@ -140,28 +148,37 @@ export class MemoryUsageStore implements UsageStore {
   async globalToday(nowMs: number) { const g = this.globalDay(nowMs); return { turns: g.turns, hardTurns: g.hardTurns }; }
   async reserveGlobal(nowMs: number, hard: boolean) { const g = this.globalDay(nowMs); g.turns++; if (hard) g.hardTurns++; }
 
-  private ipEntry(ip: string, nowMs: number, create: boolean) {
+  /** Per-key UTC-day counter in a bounded map. Never evicts a live key; a new key is refused (null) when the table is full. */
+  private dayEntry(m: Map<string, { day: string; turns: number; hardTurns: number }>, key: string, nowMs: number, create: boolean) {
     const day = dayKey(nowMs, "UTC");
-    const e = this.byIp.get(ip);
+    const e = m.get(key);
     if (e) {
       if (e.day !== day) { e.day = day; e.turns = 0; e.hardTurns = 0; }
       return e;
     }
     if (!create) return null;
-    if (this.byIp.size >= this.maxKeys) {
-      for (const [k, v] of this.byIp) if (v.day !== day) this.byIp.delete(k);
-      if (this.byIp.size >= this.maxKeys) return null;
+    if (m.size >= this.maxKeys) {
+      for (const [k, v] of m) if (v.day !== day) m.delete(k);
+      if (m.size >= this.maxKeys) return null;
     }
     const fresh = { day, turns: 0, hardTurns: 0 };
-    this.byIp.set(ip, fresh);
+    m.set(key, fresh);
     return fresh;
   }
   async ipToday(ip: string, nowMs: number): Promise<DayCount | null> {
-    const e = this.ipEntry(ip, nowMs, true);
+    const e = this.dayEntry(this.byIp, ip, nowMs, true);
     return e ? { turns: e.turns, hardTurns: e.hardTurns } : null;
   }
   async reserveIp(ip: string, nowMs: number, hard: boolean) {
-    const e = this.ipEntry(ip, nowMs, false);
+    const e = this.dayEntry(this.byIp, ip, nowMs, false);
+    if (e) { e.turns++; if (hard) e.hardTurns++; }
+  }
+  async parentToday(parentId: string, nowMs: number): Promise<DayCount | null> {
+    const e = this.dayEntry(this.byParent, parentId, nowMs, true);
+    return e ? { turns: e.turns, hardTurns: e.hardTurns } : null;
+  }
+  async reserveParent(parentId: string, nowMs: number, hard: boolean) {
+    const e = this.dayEntry(this.byParent, parentId, nowMs, false);
     if (e) { e.turns++; if (hard) e.hardTurns++; }
   }
 }

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleBrain, makeDeps, testerOk, TESTER_HEADER } from "@/lib/brain/server/handler";
 import { MemoryUsageStore } from "@/lib/brain/server/limits";
-import { readEnv } from "@/lib/brain/server/config";
+import { LIMITS, readEnv } from "@/lib/brain/server/config";
 import { ClaudeBrain, resetProbeCache } from "@/lib/brain/claudeBrain";
 import { FallbackBrain } from "@/lib/brain/fallbackBrain";
 import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
@@ -24,10 +24,12 @@ const deps = (f: ReturnType<typeof upstream>, testerCode?: string) =>
   makeDeps({ env: { apiKey: "test-key-not-real", disabled: false, testerCode }, usage: new MemoryUsageStore(), fetchImpl: f as unknown as typeof fetch, log: () => {} });
 
 describe("server: tester passcode gate", () => {
-  it("off when BRAIN_TESTER_CODE is unset (unchanged behaviour)", async () => {
+  it("closed by default: no passcode set and no parent sign-in means nobody reaches the model (401, nothing spent)", async () => {
     const f = upstream();
-    expect((await handleBrain(http(), deps(f))).status).toBe(200);
-    expect(f).toHaveBeenCalledTimes(1);
+    const res = await handleBrain(http(), deps(f));
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "sign_in_required" });
+    expect(f).not.toHaveBeenCalled();
   });
   it("no header → 403 tester_required, and the model is never called", async () => {
     const f = upstream();
@@ -90,6 +92,101 @@ describe("server: tester passcode gate", () => {
   });
 });
 
+/** Parent sign-in: the other way in. The parent comes from the verified session (injected here), never from the request body. */
+describe("server: signed-in parents", () => {
+  const parentDeps = (f: ReturnType<typeof upstream>, p: { id: string; consented: boolean } | null | "throws", testerCode?: string) =>
+    makeDeps({
+      env: { apiKey: "test-key-not-real", disabled: false, testerCode }, usage: new MemoryUsageStore(), fetchImpl: f as unknown as typeof fetch, log: () => {},
+      parent: async () => { if (p === "throws") throw new Error("auth down"); return p; },
+    });
+  const as = (learnerId: string, sessionId = "sess_1", headers: Record<string, string> = {}) =>
+    new Request("https://gleeful.test/api/brain", { method: "POST", headers: { "content-type": "application/json", host: "gleeful.test", "x-forwarded-for": "203.0.113.9", ...headers }, body: JSON.stringify({ ...req, learnerId, sessionId }) });
+
+  it("a signed-in parent with consent reaches the model", async () => {
+    const f = upstream();
+    expect((await handleBrain(http(), parentDeps(f, { id: "p-1", consented: true }))).status).toBe(200);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+  it("anonymous (no session): 401 sign_in_required, nothing spent", async () => {
+    const f = upstream();
+    const res = await handleBrain(http(), parentDeps(f, null));
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error: string }).error).toBe("sign_in_required");
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("signed in but consent missing or withdrawn: 403 consent_required, nothing spent", async () => {
+    const f = upstream();
+    const res = await handleBrain(http(), parentDeps(f, { id: "p-1", consented: false }));
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe("consent_required");
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("the session lookup failing is a refusal, never an open door or a 500", async () => {
+    const f = upstream();
+    const res = await handleBrain(http(), parentDeps(f, "throws"));
+    expect(res.status).toBe(401);
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("a stale or wrong passcode in the browser does not lock out a signed-in parent", async () => {
+    const f = upstream();
+    expect((await handleBrain(http({ [TESTER_HEADER]: "stale-code" }), parentDeps(f, { id: "p-1", consented: true }, CODE))).status).toBe(200);
+  });
+  it("a wrong passcode with no session is told so (403 tester_required); the right one needs no session", async () => {
+    const f = upstream();
+    expect((await handleBrain(http({ [TESTER_HEADER]: "guess" }), parentDeps(f, null, CODE))).status).toBe(403);
+    expect(f).not.toHaveBeenCalled();
+    expect((await handleBrain(http({ [TESTER_HEADER]: CODE }), parentDeps(f, null, CODE))).status).toBe(200);
+  });
+  it("a passcode alone never unlocks consent: with a session lacking consent and no passcode, it stays shut", async () => {
+    const f = upstream();
+    expect((await handleBrain(http(), parentDeps(f, { id: "p-1", consented: false }, CODE))).status).toBe(403);
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  // THE LAUNCH BLOCKER: the browser picks learnerId and sessionId. Rotating them must not buy more spend.
+  it("rotating learnerId and sessionId does not reset a parent's daily budget", async () => {
+    const f = upstream();
+    const usage = new MemoryUsageStore();
+    const d = makeDeps({ env: { apiKey: "test-key-not-real", disabled: false }, usage, fetchImpl: f as unknown as typeof fetch, log: () => {}, parent: async () => ({ id: "p-1", consented: true }), now: () => Date.UTC(2026, 10, 13, 12) });
+    // (reserveParent only counts a parent already seen, so one real call first)
+    await handleBrain(as("fresh-learner-0", "fresh-session-0"), d);
+    for (let i = 0; i < LIMITS.dailyTurnsPerParent; i++) await usage.reserveParent("p-1", d.now(), false);
+    const res = await handleBrain(as("fresh-learner-1", "fresh-session-1"), d);
+    expect(res.status).toBe(429);
+    expect(((await res.json()) as { error: string }).error).toBe("daily_limit");
+  });
+  it("another parent is unaffected by that parent's budget, and cannot burn it by guessing ids", async () => {
+    const f = upstream();
+    const usage = new MemoryUsageStore();
+    const now = () => Date.UTC(2026, 10, 13, 12);
+    const dA = makeDeps({ env: { apiKey: "test-key-not-real", disabled: false }, usage, fetchImpl: f as unknown as typeof fetch, log: () => {}, parent: async () => ({ id: "p-A", consented: true }), now });
+    const dB = { ...dA, parent: async () => ({ id: "p-B", consented: true }) };
+    await handleBrain(as("shared-learner-id"), dA);
+    await handleBrain(as("shared-learner-id"), dB);
+    const a = (await usage.today("p-A:shared-learner-id", "Asia/Manila", now()))!;
+    const b = (await usage.today("p-B:shared-learner-id", "Asia/Manila", now()))!;
+    expect(a.turns).toBe(1);
+    expect(b.turns).toBe(1);
+    expect((await usage.parentToday("p-A", now()))!.turns).toBe(1);
+    expect((await usage.parentToday("p-B", now()))!.turns).toBe(1);
+  });
+  it("the parent table is bounded and fails closed when full of live parents", async () => {
+    const usage = new MemoryUsageStore(3);
+    const t = Date.UTC(2026, 10, 13, 12);
+    for (let i = 0; i < 3; i++) expect(await usage.parentToday(`p-${i}`, t)).not.toBeNull();
+    expect(await usage.parentToday("p-new", t)).toBeNull();
+    expect((await usage.parentToday("p-0", t))).not.toBeNull(); // a live one is never evicted
+  });
+  it("the sonnet (hard) budget is per parent too", async () => {
+    const usage = new MemoryUsageStore();
+    const t = Date.UTC(2026, 10, 13, 12);
+    await usage.parentToday("p-1", t);
+    for (let i = 0; i < LIMITS.dailyHardTurnsPerParent; i++) await usage.reserveParent("p-1", t, true);
+    expect((await usage.parentToday("p-1", t))!.hardTurns).toBe(LIMITS.dailyHardTurnsPerParent);
+    expect((await usage.parentToday("p-2", t))!.hardTurns).toBe(0);
+  });
+});
+
 describe("browser: passcode storage and header", () => {
   let store: Record<string, string>;
   beforeEach(() => {
@@ -100,7 +197,8 @@ describe("browser: passcode storage and header", () => {
   afterEach(() => { vi.unstubAllGlobals(); resetProbeCache(); });
   const ctx = (): BrainContext => { const p = emptyProfile(); return { world: "mars", teacher: "leo", teacherName: "Leo", profile: p, session: 1, record: () => {} }; };
   const fetchOf = (...rs: Response[]) => { const q = [...rs]; return vi.fn(async (_u: unknown, _i?: unknown) => (q.shift() ?? q[0]).clone()); };
-  const probe = (testerRequired: boolean) => new Response(JSON.stringify({ configured: true, testerRequired }), { status: 200 });
+  const probe = (testerRequired: boolean, access: { signedIn: boolean; consented: boolean } = { signedIn: false, consented: false }) =>
+    new Response(JSON.stringify({ configured: true, testerRequired, ...access }), { status: 200 });
   const ok = () => new Response(JSON.stringify({ segments: [{ say: "Hi!" }], model: "default" }), { status: 200 });
 
   it("stores trimmed codes in this tab only, rejects empty or huge ones, and can forget", () => {
@@ -132,8 +230,14 @@ describe("browser: passcode storage and header", () => {
     await new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true }).respond({ kind: "text", text: "hi" }, ctx());
     expect((f.mock.calls[1][1] as { headers: Record<string, string> }).headers[TESTER_HEADER]).toBe(CODE);
   });
-  it("without the gate, no passcode header is sent even if one is stored", async () => {
-    const f = fetchOf(probe(false), ok());
+  it("a consented signed-in parent without a passcode in this tab: POSTs, with no passcode header", async () => {
+    const f = fetchOf(probe(true, { signedIn: true, consented: true }), ok());
+    await new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true }).respond({ kind: "text", text: "hi" }, ctx());
+    expect((f.mock.calls[1][1] as { method: string }).method).toBe("POST");
+    expect((f.mock.calls[1][1] as { headers: Record<string, string> }).headers[TESTER_HEADER]).toBeUndefined();
+  });
+  it("accounts only (no passcode accepted): a stored passcode is not sent", async () => {
+    const f = fetchOf(probe(false, { signedIn: true, consented: true }), ok());
     await new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true }).respond({ kind: "text", text: "hi" }, ctx());
     expect((f.mock.calls[1][1] as { headers: Record<string, string> }).headers[TESTER_HEADER]).toBeUndefined();
   });

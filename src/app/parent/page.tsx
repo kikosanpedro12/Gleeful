@@ -1,42 +1,60 @@
-"use client";
-import { useEffect, useState } from "react";
-import { skillStatus, skillLabel, type LearnerProfile } from "@/lib/learner/profile";
-import { learnerStore } from "@/lib/learner/store";
-import { LOOKS } from "@/lib/teacher/rig";
+import { redirect } from "next/navigation";
+import { accountsAvailable } from "@/lib/supabase/env";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { currentParentId } from "@/lib/auth/parent";
+import { loadParentData } from "@/lib/auth/parentData";
+import { MAX_LEARNERS_PER_PARENT } from "@/lib/auth/validate";
+import { gradeLabel } from "@/lib/learner/grades";
+import LocalHistory from "./LocalHistory";
+import { AddLearnerForm, ConsentForm, LearnerCard, WithdrawForm } from "./ParentForms";
 
-const KIND: Record<string, string> = { not_seen: "Not started", learning: "Still learning", needs_check: "Needs a check on another day", independent: "Did it on their own in a later session" };
-const CONTEXT: Record<string, string> = { taught: "during the lesson", recheck: "no-hint check, same session", later_check: "no-hint check, later session" };
+export const dynamic = "force-dynamic";
 
-/** Minimal parent view. Honest summary from recorded evidence only. */
-export default function ParentPage() {
-  const [p, setP] = useState<LearnerProfile | null>(null);
-  useEffect(() => { void learnerStore.load().then(setP); }, []);
-  if (!p) return null;
-  const skills = Array.from(new Set(p.attempts.map((a) => a.skill)));
+/**
+ * Parent area. Accounts off (no Supabase settings): the same device-only history as before, with an honest
+ * note. Accounts on: sign-in is required, then permission (consent), then the children's profiles.
+ */
+export default async function ParentPage() {
+  if (!accountsAvailable()) return <LocalHistory standalone />;
+
+  const supabase = await createServerSupabase();
+  const parentId = supabase ? await currentParentId(supabase) : null;
+  if (!supabase || !parentId) redirect("/sign-in?next=/parent");
+
+  const data = await loadParentData(supabase, parentId);
   return (
     <main className="parent">
       <a href="/learn">← Back to the classroom</a>
-      <h1>Parent view</h1>
-      <p className="warn">Test version. Where this history is stored: <b>{learnerStore.label}</b>. Lessons are scripted, not live AI.</p>
-      <p>Sessions started: <b>{p.sessions}</b>{p.teacher ? <> · Teacher: <b>{LOOKS[p.teacher].name}</b></> : null}</p>
-      <h2>What we have seen</h2>
-      {!skills.length && <p>No answers recorded yet.</p>}
-      {skills.map((skill) => {
-        const st = skillStatus(p.attempts, skill);
-        return (
-          <section key={skill} className="skill">
-            <h3>{skillLabel(skill)}</h3>
-            <p><b>{KIND[st.kind]}</b>{"detail" in st ? ` — ${st.detail}` : ""}</p>
-            <ul>
-              {p.attempts.filter((a) => a.skill === skill).map((a, i) => (
-                <li key={i}>{new Date(a.at).toLocaleString()} · {CONTEXT[a.context] ?? a.context} · {a.correct ? "correct" : "not correct"}{a.hintsUsed ? ` · ${a.hintsUsed} hint${a.hintsUsed > 1 ? "s" : ""}` : ""}</li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
-      <p className="fine">We record answers and hints, not audio. One correct answer with help is not counted as mastery. Only a no-hint check in a later session counts as doing it on their own.</p>
-      <button className="danger" onClick={() => { if (confirm("Delete all learning history on this device?")) { void learnerStore.deleteAll().then(() => learnerStore.load()).then(setP); } }}>Delete history</button>
+      <h1>Parent area</h1>
+      <form action="/auth/sign-out" method="post"><button className="ghost" type="submit">Sign out</button></form>
+
+      {!data.ok ? (
+        <p className="warn" role="alert" data-testid="parent-not-ready">Accounts are switched on, but the family database isn&apos;t ready yet, so children and permission can&apos;t be saved. Nothing is wrong with your account. Please try again later.</p>
+      ) : (
+        <>
+          <h2>Permission</h2>
+          {data.consent ? (
+            <>
+              <p data-testid="consent-given">You gave permission on <b>{new Date(data.consent.acceptedAt).toLocaleDateString()}</b>. The AI teacher can answer your children&apos;s messages while you are signed in on this device.</p>
+              <WithdrawForm />
+            </>
+          ) : (
+            <ConsentForm />
+          )}
+
+          <h2>Your children</h2>
+          {data.learners.length === 0 && <p>No children added yet.</p>}
+          {data.learners.map((l) => (
+            <div key={l.id}>
+              <h3>{l.nickname} · {gradeLabel(l.grade)}</h3>
+              <LearnerCard id={l.id} nickname={l.nickname} grade={l.grade} teacher={l.preferred_teacher} />
+            </div>
+          ))}
+          {data.learners.length < MAX_LEARNERS_PER_PARENT && <AddLearnerForm canAdd={data.consent !== null} />}
+        </>
+      )}
+
+      <LocalHistory standalone={false} />
     </main>
   );
 }
