@@ -6,7 +6,7 @@ const STEPS = [
   { title: "Your child asks", body: "Out loud or typed, in their own words. Anything from volcanoes to long division." },
   { title: `The ${NOUN} shows it`, body: `It walks, points and draws on the board, then takes the class somewhere to look closer.` },
   { title: "Your child explores", body: "Tap, pick up and spin things. Answer questions, and get a hint when stuck." },
-  { title: "You see what stuck", body: "The parent view separates answers given with help from answers given a day later, alone." },
+  { title: "You see what stuck", body: "The parent view separates answers given with help from answers given a day later, alone. In this early version it is saved on the device you used." },
 ];
 
 const TODAY = [
@@ -23,7 +23,7 @@ const BEFORE_LAUNCH = [
 ];
 
 const FAQ = [
-  { q: `Is the ${NOUN} really AI?`, a: `The demo lesson you can try today is scripted, so you can feel the experience. The live ${AI_NOUN}, built on Anthropic's Claude, is in private testing. When it is switched on, the “Ask the ${NOUN}” box on this page lets you ask it up to three questions; when it is off, that box shows a labelled recorded sample. Every build tells you which one you're talking to.` },
+  { q: `Is the ${NOUN} really AI?`, a: `Yes. The “Ask the ${NOUN}” box on this page is the real AI, built on Anthropic's Claude: ask it up to three short questions. The full demo lesson you can open today is scripted, so you can feel the whole experience, and the complete live lessons are in private testing. If the box is ever paused, it shows a labelled recorded sample instead. Every build tells you which one you're talking to.` },
   { q: "What ages is it for?", a: "Kindergarten to grade 12. You set your child's grade (kindergarten is grade 0 in our records), and lessons are pitched to it. Today's demo is one scripted lesson." },
   { q: "Do we need to install anything?", a: "No. It runs in the browser on phones, tablets and laptops. On older devices the trips show as still pictures, and the lesson works the same." },
   { q: "Does it replace school?", a: "No. Gleeful is for curiosity and practice at home, alongside school and alongside you." },
@@ -122,7 +122,7 @@ export default function Landing() {
         <section id="try" className="lp-section lp-join" aria-labelledby="join-h">
           <div className="lp-wrap lp-wrap-narrow">
             <h2 id="join-h" className="lp-h2">Come and see it.</h2>
-            <p className="lp-lede">The demo lesson is open now: no sign-up, nothing to install. It&apos;s scripted, so you can feel the experience. The live {AI_NOUN} is still in private testing.</p>
+            <p className="lp-lede">The demo lesson is open now: no sign-up, nothing to install. It&apos;s scripted, so you can feel the experience. Want the real AI? Ask the {NOUN} a question below. Full live lessons are in private testing.</p>
             <div className="lp-ctas">
               <a className="lp-btn lp-btn-main" href="/learn" data-testid="cta-demo-final">Try the demo lesson</a>
             </div>

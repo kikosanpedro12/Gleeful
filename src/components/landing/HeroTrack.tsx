@@ -116,7 +116,7 @@ export default function HeroTrack() {
                   <a className="lp-btn lp-btn-main" href="/learn" data-testid="cta-demo">Try the demo lesson</a>
                   <a className="lp-btn lp-btn-alt" href="#how" data-testid="cta-how">How it works</a>
                 </div>
-                <p className="lp-status">Early access. The demo is one scripted lesson; the live AI tutor is in private testing. The other worlds here are previews. Scroll to fly.</p>
+                <p className="lp-status">Early access. The demo lesson is scripted; the Ask box below is the real AI; full live lessons are in private testing. The other worlds here are previews. Scroll to fly.</p>
               </>
             )}
             {i === CHAPTERS.length - 1 && (

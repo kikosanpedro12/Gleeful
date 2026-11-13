@@ -28,9 +28,9 @@ export default function Privacy() {
 
           <h2>Today</h2>
           <ul>
-            <li>The demo lesson at /learn is scripted and needs no account. A visitor who only tries it gives us no personal data: there is no waitlist, tracking form or advertising.</li>
+            <li>The demo lesson at /learn is scripted and needs no account. A visitor who only tries it gives Gleeful no personal data: there is no waitlist, tracking form or advertising. Our hosting provider (Vercel) keeps ordinary server logs, which include network addresses, under its own terms.</li>
             <li>Parent accounts exist only where they have been switched on for this site. If the sign-in page says accounts are not available yet, nothing about you is collected.</li>
-            <li>When the live &ldquo;Ask the tutor&rdquo; box on the home page is switched on, the question you type there (up to 140 characters, with no account) is sent to Anthropic (the Claude AI service) to write one reply, and Gleeful does not save it. It is meant for a parent or an older child to try, and asks you not to type private details. Your network address is held in the server&apos;s memory for a day only to count how many questions have been asked, and is not stored. When the box is off, the page shows a labelled recorded sample and nothing is sent anywhere.</li>
+            <li>The live &ldquo;Ask the tutor&rdquo; box on the home page is the real AI. The question you type there (up to 140 characters, with no account) is sent to Anthropic (the Claude AI service) to write one reply. Gleeful does not save it, but Anthropic may keep it for a limited time under its own terms. It is meant for a parent or an older child to try, and asks you not to type private details. Your network address is held in the server&apos;s memory for a day only to count how many questions have been asked, and is not stored. When the box is paused, the page shows a labelled recorded sample and nothing is sent anywhere.</li>
             <li>We do not record or store audio or transcripts of what a child says.</li>
             <li>If the child turns the microphone on, their own browser's speech service turns speech into text. That service belongs to the browser's maker (for Chrome, Google) and may receive the audio under its own policy. The start screen says so. Typing works instead.</li>
           </ul>

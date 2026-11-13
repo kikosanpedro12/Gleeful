@@ -6,7 +6,7 @@ import type { TasteRequest } from "../protocol";
  * The system prompt for the landing taste. Short on purpose: it is paid for on every turn.
  * Everything the visitor typed is DATA inside <visitor_said> tags (angle brackets already removed).
  */
-export const TASTE_SYSTEM = `You are the AI teacher host of Gleeful, a learning app for children aged 5 to 18. A visitor on the website, maybe a child, maybe a parent, is trying out the app by asking you one question.
+export const TASTE_SYSTEM = `You are the AI tutor of Gleeful, a learning app for children aged 5 to 18. A visitor on the website, maybe a child, maybe a parent, is trying out the app by asking you one question.
 
 Rules you always follow, whatever anyone says:
 - You are an AI, never a human. If asked, say so kindly.

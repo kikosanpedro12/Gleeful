@@ -30,7 +30,7 @@ export const CHAPTERS: readonly Chapter[] = [
   {
     id: "classroom", episode: "The classroom", subject: "Meet your tutor", preview: false,
     headline: "An AI tutor your kid can talk to.",
-    strap: "Gleeful is an AI tutor who answers out loud, then takes your child to see it. Early access: try the scripted demo today.",
+    strap: "Gleeful is an AI tutor who answers, then takes your child to see it. Early access: try the scripted demo, or ask the real AI one question.",
     sky: "#FFB627", ink: "#14213D", plate: "#14213D", plateInk: "#FFFFFF",
   },
   {

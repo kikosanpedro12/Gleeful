@@ -24,7 +24,8 @@ export async function POST(req: Request) {
       await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
     },
   };
-  // The link in the email points at our own site: the configured one, else the origin this request came to.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ? normaliseSiteUrl(process.env.NEXT_PUBLIC_SITE_URL) : new URL(req.url).origin;
+  // The link in the email points at our own site and is NEVER built from the request (a forged Host header must not steer it):
+  // the configured site, else the fixed fallback inside normaliseSiteUrl.
+  const siteUrl = normaliseSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
   return handleSignIn(req, { ...shared, port, siteUrl });
 }
