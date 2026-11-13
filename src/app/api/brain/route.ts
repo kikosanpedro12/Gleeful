@@ -23,5 +23,6 @@ export async function POST(req: Request) {
  */
 export async function GET() {
   const env = readEnv();
-  return Response.json({ configured: Boolean(env.apiKey) && !env.disabled }, { headers: { "cache-control": "no-store" } });
+  // testerRequired is one more boolean (no hint about the code), so a browser without the code skips the POST.
+  return Response.json({ configured: Boolean(env.apiKey) && !env.disabled, testerRequired: Boolean(env.testerCode) }, { headers: { "cache-control": "no-store" } });
 }

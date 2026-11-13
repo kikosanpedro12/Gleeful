@@ -1,3 +1,4 @@
+import { MODEL_BUILD } from "@/lib/brain/mode";
 import type { TeacherId } from "@/lib/teacher/rig";
 import { useSession } from "@/lib/session/store";
 import { loadVoices, ttsAvailable, voiceFor } from "./speech";
@@ -26,9 +27,11 @@ export function stopPreview() {
 export async function playPreview(id: TeacherId, onGesture: () => void) {
   stopPreview();
   await loadVoices();
+  // Scripted builds never claim AI (the badge says "not AI"); model builds disclose it.
+  const ai = MODEL_BUILD ? " I'm an AI teacher." : "";
   const text = id === "leo"
-    ? "Hi, I'm Leo! I'm an AI teacher. Let's explore things together."
-    : "Hi, I'm Mia! I'm an AI teacher. I can't wait to learn with you.";
+    ? `Hi, I'm Leo!${ai} Let's explore things together.`
+    : `Hi, I'm Mia!${ai} I can't wait to learn with you.`;
   useSession.setState({ previewing: id });
   onGesture();
   const start = () => {

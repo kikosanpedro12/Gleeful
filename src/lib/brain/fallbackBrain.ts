@@ -1,7 +1,7 @@
 import type { Brain, BrainContext, BrainInput, BrainReply } from "./types";
 
 /** Codes that will not fix themselves in seconds: stop asking the server for a while. */
-const SKIP_CODES = new Set(["brain_disabled", "brain_unconfigured", "daily_limit", "global_limit", "forbidden_origin", "bad_request"]);
+const SKIP_CODES = new Set(["brain_disabled", "brain_unconfigured", "daily_limit", "global_limit", "forbidden_origin", "bad_request", "tester_required"]);
 const SKIP_MS = 5 * 60_000;
 
 /**

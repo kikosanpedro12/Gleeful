@@ -12,7 +12,8 @@ export default function Space() {
   const group = useRef<THREE.Group>(null);
   const planet = useRegister("destination");
   const ball = useRef<THREE.Mesh>(null);
-  const planetKey = useSession((s) => (s.transit ? WORLDS[s.transit.to].planet : undefined)) ?? "mars";
+  // Flying out: the planet ahead. Flying home: the planet we are leaving.
+  const planetKey = useSession((s) => (s.transit ? WORLDS[s.transit.to].planet ?? WORLDS[s.transit.from].planet : undefined)) ?? "mars";
   const tex = useCanvasTexture(PLANET_TEXTURES[planetKey], 1024, 512, [planetKey]);
   const geo = useMemo(() => {
     const r = rng(7);

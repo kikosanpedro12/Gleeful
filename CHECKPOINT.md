@@ -3,6 +3,14 @@
 **Product name: Gleeful** (decided 13 Nov 2026). **Stage A (the scripted "wow" slice) is built and browser-tested.** **Stage B (Claude brain) is built and tested against a mocked API only** (13 Nov); Stage E (Supabase wiring) is not built. See BUILD_PLAN.md.
 
 ## Verified by running it
+- **Phone-test polish round (13 Nov, from Kiko's Honor X9b screenshots):**
+  - Honest copy: scripted builds never call the teacher an AI (greeting, voice preview, start screen, header); model builds still disclose it. Tested (tests/honesty.test.ts + journey).
+  - Board words sit above the teacher's head in portrait and landscape (board raised, text in the top band, camera at head height).
+  - The trip home is a real flight (lift-off flash, rug in space, Mars shrinking, walls folding back up), not a blank screen. Reduced motion: still a short fade. Journey checks both.
+  - Mars: the camera leads each walk from the side, so the child sees the teacher's face; the helmet has a glowing rim so it reads at phone size.
+  - Bottom of the screen: the type field closes after sending, a fixed three-slot dock (Stop · mic · keyboard, 48–66 px targets, safe-area aware), captions in a named speech bubble up to 3 lines; no state pill.
+  - Teacher feel: a "got it" nod the moment the child stops talking, hand to chin if thinking takes a while (visual only, never fake speech, excluded from the latency metric), leans in while listening; mic glow follows the child's voice; a "thinking" bubble with dots; model builds say plainly when the AI can't be reached and the script takes over.
+  - Private tester passcode for the real brain (`BRAIN_TESTER_CODE`, `/tester`).
 - **Onboarding:** pick Leo or Mia. Each waves and says hello in a male or female browser voice.
 - **The trip:**
   - Classroom walls peel away, stars stream past, Mars grows, and a warm flash brings a landing on the Martian surface.
@@ -74,7 +82,7 @@
 ## Exact next actions
 1. Done 13 Nov: GitHub repo `kikosanpedro12/Gleeful` created and `main` pushed; Supabase project `gleeful` (ref `ptuglrngmovoryqqmtsw`, ap-southeast-1, Postgres 17, Data API on, auto-expose off, auto-RLS on) created. The GitHub auto-deploy needs Supabase Pro (Branching), so it is NOT used: the migration was applied by hand in the SQL Editor on 13 Nov and verified through the connector (4 tables, RLS on, security advisor shows only Supabase's own `public.rls_auto_enable()` helper, performance advisor only INFO notes). Process for every future schema change: tests + mutate + tester/reviewer PASS, then Claude sends the new migration file and Kiko pastes it into the SQL Editor. Only ever touch project ref `ptuglrngmovoryqqmtsw` for Gleeful (the Supabase connector holds one organization at a time; 1Autism is a different org). Before launch: set Site URL, redirect URLs, SMTP and rate limits in the dashboard (config.toml is not applied to production). Open: revoke public EXECUTE on `rls_auto_enable()` (confirm it does not break auto-RLS first); add covering indexes for the four composite foreign keys once there is real data.
 2. Done 13 Nov: Vercel project `gleeful` in its own free Hobby team `Gleeful` (separate from the 1Autism PH team and its members), connected to `kikosanpedro12/Gleeful` `main`; every push to main deploys. Live scripted build: https://gleeful-six.vercel.app (no env vars set, no API key, model brain off). Hobby is for non-commercial use: move to Pro before launch. Founder next: the phone test (docs/DEVICE_CHECKLIST.md).
-3. Builder + founder: Stage B is built (see SECURITY.md "Stage B"). Remaining: put the key in Vercel only with a LOW Console limit for a private phone test, run the Haiku 5.5 vs Sonnet 5.5 teaching comparison on the real API, then parent sign-in + server-side ownership check before any public traffic. The server must set `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
+3. Builder + founder: Stage B is built (see SECURITY.md "Stage B"). Remaining: put the key AND `BRAIN_TESTER_CODE` in Vercel (plus `NEXT_PUBLIC_BRAIN=model`) with a LOW Console limit for a private phone test, open `/tester` once per tab, run the Haiku 5.5 vs Sonnet 5.5 teaching comparison on the real API, then parent sign-in + server-side ownership check before any public traffic. The server must set `brain_usage.day` in the family's time zone (the database default is UTC, which would reset limits at 08:00 PH time). Consider a cap on learners per parent.
 4. Builder: Stage C second subject, Gaddi's repeated division / equal groups.
 5. Builder: launch cost cuts (pre-recorded voice cache, STT only while the child talks, own relay before LiveKit) — the pricing depends on them.
 6. Founder + builder: Stage E remaining: dashboard Auth settings, `SupabaseLearnerStore`, parent sign-in (project, schema and advisors are done).
@@ -84,7 +92,7 @@
 - [ ] Separate production workspace + key from dev.
 - [ ] Claude API key `AI-Teacher-Brain` (workspace ai-teacher, created 2026-11-13, 90-day expiry → ~2027-02-11). Scheduled reminder fires 2027-02-04 to rotate it.
 - [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
-- [ ] **BLOCKER for any public traffic: parent sign-in + usage limits in `brain_usage`.** Until then anyone can rotate address/session/learner ids and bypass every per-user cap (proven in `tests/brainAttack.test.ts`); the Console spend limit is the only hard ceiling, so keep it low and share the Vercel link with nobody.
+- [ ] **BLOCKER for any public traffic: parent sign-in + usage limits in `brain_usage`.** For the PRIVATE test only, set `BRAIN_TESTER_CODE` in Vercel (16+ random characters) together with the key: without the code nothing reaches the model (see SECURITY.md). Until then anyone can rotate address/session/learner ids and bypass every per-user cap (proven in `tests/brainAttack.test.ts`); the Console spend limit is the only hard ceiling, so keep it low and share the Vercel link with nobody.
 - [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo $29 / 10 h, Family $79 / 40 h; one price worldwide).
 
 ## Before real children or payments (not started)

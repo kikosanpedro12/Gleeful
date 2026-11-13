@@ -7,7 +7,9 @@ import "server-only";
  * Child speech is never logged. The only logged fields are error kinds and
  * HTTP status codes.
  */
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { BrainEnv } from "./config";
+import { TESTER_HEADER } from "../tester";
 import { LIMITS } from "./config";
 import { callAnthropic, UpstreamError } from "./anthropic";
 import { RateLimiter, SessionCounter, type UsageStore } from "./limits";
@@ -45,6 +47,21 @@ export function makeDeps(partial: Pick<Deps, "env" | "usage"> & Partial<Deps>): 
 const HEADERS = { "content-type": "application/json", "cache-control": "no-store", "x-content-type-options": "nosniff" } as const;
 const fail = (status: number, error: BrainErrorCode, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify({ error }), { status, headers: { ...HEADERS, ...extra } });
+
+/** The header that carries the private-test passcode (one name, shared with the browser side). */
+export { TESTER_HEADER };
+
+/**
+ * Constant-time passcode check. Both sides are hashed first so the comparison
+ * takes the same time whatever the lengths, and a wrong guess reveals nothing.
+ */
+export function testerOk(expected: string | undefined, given: string | null): boolean {
+  if (!expected) return true; // gate off
+  if (!given) return false;
+  const a = createHash("sha256").update(expected, "utf8").digest();
+  const b = createHash("sha256").update(given.slice(0, 200), "utf8").digest();
+  return timingSafeEqual(a, b);
+}
 
 export function clientIp(req: Request): string {
   const first = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
@@ -110,6 +127,8 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   const now = d.now();
   const wait = d.ipLimiter.take(clientIp(req), now);
   if (wait) return fail(429, "rate_limited", { "retry-after": String(wait) });
+  // After the per-IP limit, so guesses are rate limited; before the body is read or anything is spent.
+  if (!testerOk(d.env.testerCode, req.headers.get(TESTER_HEADER))) return fail(403, "tester_required");
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > LIMITS.maxBodyBytes) return fail(413, "too_large");

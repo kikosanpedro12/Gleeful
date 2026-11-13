@@ -10,7 +10,7 @@ export interface TranscriptLine { id: number; role: "child" | "teacher"; text: s
 export interface Directive { id: number; turnId: number; command: SceneCommand }
 
 /** A trip between worlds. `t0` is performance.now() when it began. */
-export interface Transit { from: WorldId; to: WorldId; t0: number; style: "space_flight" | "fade" }
+export interface Transit { from: WorldId; to: WorldId; t0: number; style: "space_flight" | "space_return" | "fade" }
 
 export interface SessionStore {
   mode: "live" | "demo" | null;

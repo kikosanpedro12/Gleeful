@@ -97,6 +97,25 @@ describe("session controller", () => {
     expect(s().conv.state).toBe("speaking");
   });
 
+  it("going home from a planet is a return flight, not a blank fade, and lands in class", async () => {
+    const { session, s, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["openWorld", { world: "mars" }]], false);
+    session.transitEvent("arrived");
+    p.ev.onAudioStop("r1");
+    p.reply("a1");
+    session.sendText("back to class");
+    p.reply("r2", [["openWorld", { world: "classroom" }]], false);
+    expect(s().transit).toMatchObject({ from: "mars", to: "classroom", style: "space_return" });
+    // No mid-flight line on the way home (the outbound cruise line is about the planet ahead).
+    session.transitEvent("cruise");
+    p.ev.onAudioStop("r2");
+    expect(p.events.map((e) => e.kind)).not.toContain("transit_cruise");
+    session.transitEvent("arrived");
+    expect(s().world).toBe("classroom");
+    expect(s().transit).toBeNull();
+  });
+
   it("a stale cruise line is dropped once we have landed", async () => {
     const { session, s, p } = await load();
     session.sendText("mars");

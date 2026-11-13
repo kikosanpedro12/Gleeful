@@ -50,6 +50,20 @@ export default function Director({ flash, reducedMotion }: { flash: React.RefObj
         if (!f.cruise && p > 0.3) { f.cruise = true; session.transitEvent("cruise"); }
         fx.shown = p < 0.84 ? tr.from : tr.to;
         if (p >= 0.84) { fx.open = 0; fx.space = 0; }
+      } else if (style === "space_return") {
+        // Mirror of the outbound trip, shorter: a warm flash lifts us off the planet, we are
+        // on the rug in space with the classroom walls folded away, the planet shrinks behind,
+        // then the walls fold back up around us and we are home.
+        const off = 0.12; // flash peak: hidden swap from the planet to space
+        flashColor = WORLDS[tr.from].background;
+        flashO = smooth(0, off, p) * (1 - smooth(off, off + 0.12, p));
+        const inSpace = p >= off;
+        fx.shown = inSpace ? tr.to : tr.from;
+        fx.space = inSpace ? 1 - smooth(0.74, 0.92, p) : 0;
+        fx.open = inSpace ? 1 - smooth(0.6, 0.94, p) : 0;
+        fx.approach = inSpace ? 0.85 * (1 - smooth(off, 0.62, p)) : 0;
+        fx.travel = inSpace ? smooth(off, 0.3, p) * (1 - smooth(0.55, 0.75, p)) : 0;
+        fx.shot = !inSpace ? WORLDS[tr.from].framing : p < 0.86 ? "space" : WORLDS[tr.to].framing;
       } else {
         flashColor = WORLDS[tr.to].background;
         flashO = smooth(0, 0.45, p) * (1 - smooth(0.55, 1, p));

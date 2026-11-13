@@ -76,6 +76,7 @@ export class TeacherAnimator {
   private queue: { turnId: number; command: SceneCommand }[] = [];
   private active: Active | null = null;
   private yaw = 0;
+  private thoughtTurn = -1;
   private lastTurn = -1;
   private lastState: TeacherState = "offline";
   private stateTime = 0;
@@ -110,6 +111,11 @@ export class TeacherAnimator {
     this.lookObject = null;
   }
 
+  /** Where the teacher is walking to, or null when standing (the camera leads the walk). */
+  walkTarget(): THREE.Vector3 | null {
+    return this.active?.kind === "walk" ? this.active.to : null;
+  }
+
   /** Play a gesture right now, outside the conversation (onboarding preview). */
   gestureNow(gesture: Gesture) {
     this.active = { kind: "gesture", gesture, t: 0, turnId: this.lastTurn };
@@ -137,6 +143,9 @@ export class TeacherAnimator {
       this.lastTurn = f.turnId;
     }
     if (f.state !== this.lastState) {
+      // The child just finished talking: a small nod says "got it" straight away,
+      // before any answer exists. A visual acknowledgement, never fake speech.
+      if (f.state === "thinking" && !this.active) this.active = { kind: "gesture", gesture: "nod", t: 0.5, turnId: f.turnId };
       this.lastState = f.state;
       this.stateTime = 0;
     }
@@ -223,9 +232,16 @@ export class TeacherAnimator {
     } else if (f.state === "listening") {
       // Small nods that follow the child's voice.
       const inL = THREE.MathUtils.clamp(f.inputLevel * 8, 0, 1);
-      add("head", Math.sin(t * 3.1) * 0.035 * (0.4 + inL) * m, 0, 0);
+      add("head", Math.sin(t * 3.1) * 0.035 * (0.4 + inL) * m, 0, 0.07);
+      // Lean in and tilt the head: visibly listening, not waiting.
+      add("spine", 0.07, 0, 0);
     } else if (f.state === "thinking") {
       add("head", Math.sin(t * 1.3) * 0.02, 0, 0);
+      // Still thinking after a beat: hand to chin, once per turn.
+      if (this.stateTime > 1.1 && !this.active && this.thoughtTurn !== f.turnId) {
+        this.thoughtTurn = f.turnId;
+        this.active = { kind: "gesture", gesture: "think", t: 0, turnId: f.turnId };
+      }
     }
     if (this.react > 0) {
       // Interrupted: stop, straighten, attend.
@@ -346,7 +362,8 @@ export class TeacherAnimator {
     rig.helmet.visible = f.helmet;
 
     // --- telemetry ---------------------------------------------------------------------
-    if (this.announced !== f.turnId && (f.state === "speaking" || this.active)) {
+    // The "got it" nod and hand-to-chin while thinking are not the answer, so they never count as first animation.
+    if (this.announced !== f.turnId && (f.state === "speaking" || (this.active && f.state !== "thinking"))) {
       this.announced = f.turnId;
       f.onFirstAnimation(f.turnId);
     }

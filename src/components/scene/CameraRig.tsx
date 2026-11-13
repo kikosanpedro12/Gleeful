@@ -11,7 +11,7 @@ import { actors } from "./TeacherActor";
  * Shots: classroom (close, warm), space (wider, the planet behind the teacher),
  * mars (a little higher and wider so the landscape reads).
  */
-const pos = new THREE.Vector3(), look = new THREE.Vector3();
+const pos = new THREE.Vector3(), look = new THREE.Vector3(), dir = new THREE.Vector3(), side = new THREE.Vector3();
 
 export default function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
   const { camera, size } = useThree();
@@ -39,10 +39,25 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
       pos.set(1.1, 1.55, portrait ? 5.0 : 4.1);
       look.set(-0.9, 1.6, -4);
     } else if (fx.shot === "outdoor") {
-      pos.set(tx * 0.75 + 0.2, ty + 1.65, tz + (portrait ? 4.1 : 3.7));
-      look.set(tx * 0.9, ty + 1.05, tz - 1.6);
+      const to = s.teacher ? actors[s.teacher]?.animator.walkTarget() : null;
+      if (to && t && Math.hypot(to.x - tx, to.z - tz) > 0.6) {
+        // Lead the walk from the front and to one side: the child sees the teacher's
+        // face while she talks, and where she is going, instead of her back.
+        dir.set(to.x - tx, 0, to.z - tz).normalize();
+        side.set(-dir.z, 0, dir.x);
+        if (side.z < 0) side.negate(); // stay on the camera's side of the path
+        // Mostly from the side and a little ahead: her face turns to the child while she
+        // talks, and there is room in the frame in the direction she is walking.
+        const ahead = portrait ? 0.9 : 1.3, out = portrait ? 3.4 : 4.4, lead = portrait ? 0.5 : 1.6;
+        pos.set(tx + dir.x * ahead + side.x * out, ty + 1.55, tz + dir.z * ahead + side.z * out);
+        look.set(tx + dir.x * lead, ty + 1.05, tz + dir.z * lead);
+      } else {
+        pos.set(tx * 0.75 + 0.2, ty + 1.65, tz + (portrait ? 4.1 : 3.7));
+        look.set(tx * 0.9, ty + 1.05, tz - 1.6);
+      }
     } else {
-      pos.set(tx * (portrait ? 0.5 : 0.35), 1.45, (portrait ? 4.1 : 4.0) + (tz + 0.8) * 0.35);
+      // Camera near head height, so the board's words sit clearly above the teacher's head.
+      pos.set(tx * (portrait ? 0.5 : 0.35), portrait ? 1.62 : 1.66, (portrait ? 4.1 : 4.0) + (tz + 0.8) * 0.35);
       look.set(tx * (portrait ? 0.85 : 0.6), portrait ? 1.0 : 1.05, tz);
     }
     // Snap on a world swap (hidden by the flash) so the camera never sweeps across a new world.

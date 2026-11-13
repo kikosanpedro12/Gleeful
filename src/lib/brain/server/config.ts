@@ -63,6 +63,13 @@ export interface BrainEnv {
   apiKey: string | undefined;
   /** Set BRAIN_DISABLED=1 to stop all model calls at once (clients fall back to the script). */
   disabled: boolean;
+  /**
+   * Private-test passcode (BRAIN_TESTER_CODE). When set, every POST must carry it in the
+   * `x-gleeful-tester` header or it is refused with 403 before any model call. A stopgap that
+   * lets a real key sit behind a public URL during a private test, NOT a replacement for
+   * parent sign-in. Use 16+ random characters.
+   */
+  testerCode?: string;
 }
 
 export function readEnv(env: Record<string, string | undefined> = process.env): BrainEnv {
@@ -70,5 +77,6 @@ export function readEnv(env: Record<string, string | undefined> = process.env): 
   return {
     apiKey: env.ANTHROPIC_API_KEY?.trim() || undefined,
     disabled: flag === "1" || flag === "true" || flag === "yes",
+    testerCode: env.BRAIN_TESTER_CODE?.trim() || undefined,
   };
 }

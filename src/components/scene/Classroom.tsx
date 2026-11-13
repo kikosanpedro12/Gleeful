@@ -18,13 +18,16 @@ function Board() {
     ctx.textBaseline = "middle";
     const font = (n: number) => `600 ${n}px "Comic Sans MS", "Chalkboard SE", "Segoe Print", sans-serif`;
     // Wrap onto up to two lines, then shrink to fit (canvas text only, never HTML).
+    // Text sits in the upper part of the board and in a narrower column, so it stays
+    // readable above the teacher's head and inside a narrow phone frame.
+    const maxW = w * 0.66, top = h * 0.3;
     let size = 92;
     let lines = [text];
-    const fits = () => lines.every((l) => ctx.measureText(l).width <= w * 0.88) && lines.length * size * 1.15 <= h * 0.85;
+    const fits = () => lines.every((l) => ctx.measureText(l).width <= maxW) && lines.length * size * 1.15 <= h * 0.6;
     ctx.font = font(size);
     while (!fits() && size > 30) {
       const words = text.split(" ");
-      if (words.length > 1 && ctx.measureText(text).width > w * 0.88) {
+      if (words.length > 1 && ctx.measureText(text).width > maxW) {
         let best = 1, bestW = Infinity;
         for (let i = 1; i < words.length; i++) {
           const m = Math.max(ctx.measureText(words.slice(0, i).join(" ")).width, ctx.measureText(words.slice(i).join(" ")).width);
@@ -36,10 +39,10 @@ function Board() {
       size -= 6;
       ctx.font = font(size);
     }
-    lines.forEach((l, i) => ctx.fillText(l, w / 2, h / 2 + (i - (lines.length - 1) / 2) * size * 1.15));
+    lines.forEach((l, i) => ctx.fillText(l, w / 2, top + (i - (lines.length - 1) / 2) * size * 1.15));
   }, 1024, 512, [text]);
   return (
-    <group ref={ref} position={[0.25, 1.72, -2.94]}>
+    <group ref={ref} position={[0.25, 2.12, -2.94]}>
       <mesh position={[0, 0, -0.02]} castShadow>
         <boxGeometry args={[2.9, 1.5, 0.06]} />
         <meshStandardMaterial color="#b98a5a" roughness={0.7} />
@@ -222,8 +225,8 @@ export default function Classroom() {
       </group>
       {/* Back wall, hinged at its base */}
       <group ref={back} position={[0, 0, -3]}>
-        <mesh position={[0, 2, 0]}>
-          <planeGeometry args={[12, 4]} />
+        <mesh position={[0, 3, 0]}>
+          <planeGeometry args={[12, 6]} />
           <meshStandardMaterial color="#f3e7d3" roughness={1} side={THREE.DoubleSide} />
         </mesh>
         <mesh position={[0, 0.5, 0.01]}>
@@ -238,14 +241,14 @@ export default function Classroom() {
         <Window x={-1.95} />
       </group>
       <group ref={left} position={[-4.5, 0, 0]}>
-        <mesh position={[0, 2, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <planeGeometry args={[10, 4]} />
+        <mesh position={[0, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[10, 6]} />
           <meshStandardMaterial color="#efe1ca" roughness={1} side={THREE.DoubleSide} />
         </mesh>
       </group>
       <group ref={right} position={[4.5, 0, 0]}>
-        <mesh position={[0, 2, 0]} rotation={[0, -Math.PI / 2, 0]}>
-          <planeGeometry args={[10, 4]} />
+        <mesh position={[0, 3, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <planeGeometry args={[10, 6]} />
           <meshStandardMaterial color="#efe1ca" roughness={1} side={THREE.DoubleSide} />
         </mesh>
       </group>

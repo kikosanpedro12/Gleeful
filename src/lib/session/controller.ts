@@ -17,7 +17,7 @@ import { contextFor, WORLDS, type WorldId } from "@/lib/worlds/registry";
 const RESPONSE_TIMEOUT_MS = 12000;
 const RESULTS_KEY = "aiteacher.latency.v1";
 const MAX_MIN = Number(process.env.NEXT_PUBLIC_MAX_SESSION_MINUTES || 15);
-export const TRANSIT_MS = { space_flight: 9000, fade: 1400 } as const;
+export const TRANSIT_MS = { space_flight: 9000, space_return: 6000, fade: 1400 } as const;
 export const REDUCED_TRANSIT_MS = 900;
 
 export type ProviderFactory = (ev: VoiceEvents, info: SessionInfo) => VoiceProvider;
@@ -243,7 +243,10 @@ class SessionController {
   private beginTransit(to: WorldId) {
     if (this.s.transit) return;
     const from = this.s.world;
-    const style = WORLDS[to].transit === "space_flight" && from === "classroom" ? "space_flight" : "fade";
+    // Out to a planet: the full flight. Back home from a planet: a shorter flight in reverse
+    // (lift off, Mars shrinks behind, the classroom closes around us). Anything else: a fade.
+    const style = WORLDS[to].transit === "space_flight" && from === "classroom" ? "space_flight"
+      : WORLDS[from].transit === "space_flight" && to === "classroom" ? "space_return" : "fade";
     const t0 = performance.now();
     this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null });
     // The 3D director normally lands the trip. If it can't (no WebGL, lost

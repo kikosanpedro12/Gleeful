@@ -135,3 +135,32 @@ describe("teacher animator: worlds", () => {
     expect(rig.root.position.x).toBeCloseTo(3, 3);
   });
 });
+
+describe("teacher animator: turn-taking you can see", () => {
+  it("a 'got it' nod the moment the child stops talking, then hand to chin if it takes a while", () => {
+    const { anim, step, animated } = setup();
+    step({ state: "listening", turnId: 1 }, 5);
+    step({ state: "thinking", turnId: 1 }, 2);
+    expect(anim.debug.gesture).toBe("nod");
+    step({ state: "thinking", turnId: 1 }, 90);
+    expect(anim.debug.gesture).toBe("think");
+    // These are acknowledgements, not the answer: they must not count as first animation (latency honesty).
+    expect(animated).toEqual([]);
+  });
+  it("leans in while listening", () => {
+    const { rig, step } = setup();
+    step({ state: "idle", turnId: 1 }, 40);
+    const idle = rig.joints.spine.rotation.x;
+    step({ state: "listening", turnId: 1 }, 40);
+    expect(rig.joints.spine.rotation.x).toBeGreaterThan(idle + 0.03);
+  });
+  it("exposes where it is walking so the camera can lead the walk", () => {
+    const { anim, step, push } = setup();
+    expect(anim.walkTarget()).toBeNull();
+    push(1, { name: "moveTeacherTo", spot: "board_side" });
+    step({ state: "speaking", turnId: 1 }, 2);
+    expect(anim.walkTarget()?.x).toBeCloseTo(-1.35);
+    step({ state: "speaking", turnId: 1 }, 400);
+    expect(anim.walkTarget()).toBeNull();
+  });
+});

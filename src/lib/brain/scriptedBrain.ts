@@ -88,7 +88,7 @@ export class ScriptedBrain implements Brain {
       ] };
     }
     return { segments: [
-      S(`Hi! I'm ${n}, your AI teacher.`, A("gesture", { gesture: "wave" })),
+      S(`Hi! I'm ${n}. Let's learn something amazing today.`, A("gesture", { gesture: "wave" })),
       S("What are we learning today?", choices(["mars", "I have homework about Mars"], ["red", "Why is Mars red?"])),
     ] };
   }

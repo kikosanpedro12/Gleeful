@@ -61,6 +61,8 @@ await page.waitForSelector('[data-testid="demo-badge"]', { timeout: 10000 });
 check("scripted mode labelled on screen", true);
 const g = await waitFor((d) => d.state === "speaking");
 check("Leo greets", !!g);
+const greetCap = await page.$eval('[data-testid="caption"]', (e) => e.textContent || "").catch(() => "");
+check("scripted greeting never calls the teacher an AI", !/\bAI\b/.test(greetCap), JSON.stringify(greetCap));
 // Honest labelling: the smoke server never has a model key, so whichever brain is built, the script answered and the badge must say so.
 const badge = await page.$eval('[data-testid="demo-badge"]', (e) => e.textContent || "");
 check("badge says scripted when the script answered (never claims AI)", /Scripted|not AI/i.test(badge), JSON.stringify(badge));
@@ -133,10 +135,13 @@ const stopped = await waitFor((d) => d.state === "idle" && d.mouth < 0.02 && !d.
 check("Stop mid-walk: speech, mouth and walking all stop", !!stopped);
 // Ask again properly.
 const choicesNow = (await st()).choices;
-await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.includes("⌨")); b?.click(); });
+await click('[data-testid="type-toggle"]');
 await page.waitForSelector('[data-testid="text-input"]', { timeout: 3000 });
 await page.type('[data-testid="text-input"]', "let's see the crater");
 await page.keyboard.press("Enter");
+check("type field closes after sending (screen goes back to the teacher)", !(await page.$('[data-testid="text-input"]')));
+const walkingThere = await waitFor((d) => d.walking, 10000);
+if (walkingThere) { await sleep(1200); await shot("12a-walk"); }
 const atCrater = await waitFor((d) => d.pointing === "crater", 25000);
 check("typed request → walks to crater and points", !!atCrater, `(choices before: ${choicesNow.join(",")})`);
 await sleep(800);
@@ -145,6 +150,15 @@ await shot("12-crater");
 const back = await waitFor((d) => d.choices.includes("back") && d.state === "idle", 25000);
 check("offers back to class", !!back);
 await click('[data-testid="choice-back"]');
+if (!RM) {
+  const flying = await waitFor((d) => d.transit && d.fx && d.fx.space > 0.6 && d.fx.shown === "classroom", 9000);
+  check("return trip flies home through space (no blank screen)", !!flying, flying ? `(open=${flying.fx.open.toFixed(2)})` : "");
+  await shot("12b-return");
+} else {
+  const sawSpace = await waitFor((d) => d.fx && d.fx.space > 0.05, 2500);
+  check("reduced motion: return trip is a short fade, no flight", !sawSpace);
+  await shot("12b-return");
+}
 const home = await waitFor((d) => d.world === "classroom" && !d.transit, 20000);
 check("back in the classroom", !!home);
 const recall = await waitFor((d) => d.question && d.state === "idle", 25000);
