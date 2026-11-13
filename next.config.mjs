@@ -16,12 +16,24 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+/**
+ * Private routes are never indexed, even if a crawler ignores robots.txt.
+ * Keep in sync with PRIVATE_PREFIXES in src/lib/seo/site.ts (tests/seo.test.ts checks it).
+ * While SITE_INDEXING is not "on", every route is noindex.
+ */
+export const PRIVATE_ROUTE_SOURCES = ["/api/:path*", "/parent/:path*", "/tester/:path*"];
+const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      ...PRIVATE_ROUTE_SOURCES.map((source) => ({ source, headers: noindex })),
+      ...(process.env.SITE_INDEXING === "on" ? [] : [{ source: "/:path*", headers: noindex }]),
+    ];
   },
 };
 export default nextConfig;

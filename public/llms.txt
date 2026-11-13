@@ -1,0 +1,30 @@
+# Gleeful
+
+> Gleeful is an early test of a talking teacher for children in grades 1 to 12. The teacher speaks with the child and takes them into interactive 3D worlds (the first sample world is a trip to Mars). It is aimed at families worldwide.
+
+## Status (honest)
+- Early test version. Not yet open to the public. There is no sign-up yet.
+- In the public test build, lessons are scripted, not live AI. A Claude-based AI teacher is in private testing.
+- The 3D characters are placeholders.
+
+## Who it is for
+- Children in grades 1 to 12, always under a parent's account. Children never have their own accounts.
+- Parents who want honest progress: the parent view separates help during a lesson from doing it alone in a later session.
+
+## Planned pricing (not yet charging)
+- Solo: US$29/month. Family: US$79/month. One price worldwide.
+- A 7-day free trial is planned. No free tier.
+
+## Privacy stance
+- Least data: a child's nickname, grade, language and teacher choice. No surname, birth date, school, photos or location.
+- We do not record or store audio. In the test build, speech-to-text is done by the child's browser (which may send audio to its vendor, e.g. Google for Chrome).
+- Verifiable parental consent (COPPA, GDPR-K, Philippine Data Privacy Act) is required before real children use it, and is not built yet.
+
+## Pages
+- [Home](/): the start screen of the test build.
+
+## Not for crawlers
+- /parent, /tester and /api are private and must not be indexed or fetched.
+
+## Contact
+- Contact details coming soon.

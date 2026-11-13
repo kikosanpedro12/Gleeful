@@ -59,6 +59,11 @@
   - this file rewritten.
 - Hardened-build tester round 4: **PASS WITH NOTES**, no security hole. Fixed: `__proto__` skill ids crashing /parent (app + DB check), choices lost after a failed mic tap, child stranded after Stop during arrival (new strand guard). Open low items: keyboard covering the rock at 1280×720, prefetch responses without CSP (Next default), unstyled Next error page under CSP.
 
+## Agent experience (13 Nov)
+- **Self-learning loop:** `docs/AGENT_LESSONS.md` (seeded with every recurring mistake so far, each tied to a test or check) is read first by builder, tester and reviewer. Tester and reviewer end each report with new **Lessons**; `/retro` folds them in and turns repeats into tests or /security-check steps. This is written memory plus enforcement, not model training.
+- **Agents side by side:** own ports (3111 main, 3222 tester, 3333+ builders), never `pkill` others' servers, second builder in its own clone.
+- **Crawlers:** robots.txt, sitemap.xml, `/llms.txt`, JSON-LD, Open Graph/Twitter cards and a share image are in. `/api`, `/parent`, `/tester` are always noindex. **Indexing is OFF** until `SITE_INDEXING=on` is set in Vercel, which should wait for a public landing page and parental consent. Next: build the landing page.
+
 ## Blockers for the founder
 1. **Real-phone test.** Needs an HTTPS deploy (Vercel) or a tunnel. Run docs/DEVICE_CHECKLIST.md.
 2. **Domains** (gleeful.ai / getgleeful.com — not yet checked); GitHub repo and Supabase project exist. Name screen 2026-11-13: Wander, Fieldtrip, Elsewhere, OhWow, Joyspark, Awestruck blocked; Gleeful clean on a quick USPTO + Google check (classes 9, 41). Attorney clearance and filing before public launch. Then pin the CI actions to SHAs.

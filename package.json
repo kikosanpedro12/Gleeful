@@ -13,7 +13,8 @@
     "audit": "npm audit --audit-level=high",
     "ci": "npm run typecheck && npm test && npm run check:secrets && npm run build",
     "build:test": "NEXT_PUBLIC_TEST_HOOKS=1 next build",
-    "mutate": "node scripts/mutate-rls.mjs"
+    "mutate": "node scripts/mutate-rls.mjs",
+    "stop": "node scripts/stop-server.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "9.8.2",

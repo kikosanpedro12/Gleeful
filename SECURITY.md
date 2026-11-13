@@ -44,6 +44,8 @@ Today (before Stage E), attempts live only in the browser's localStorage. The pa
 | Pinned dependencies, exact lockfile, `npm ci --ignore-scripts`, audit, Dependabot | `package.json`, `.npmrc`, CI | CI |
 | Test hooks need a test build (`NEXT_PUBLIC_TEST_HOOKS=1`, never set for deployment) and `?test=1` | `src/components/scene/shared.tsx` | Review |
 | Input caps (typed text 500 chars, board 60, choice labels 48) | controller, commands | Unit tests |
+| Crawlers: `/api`, `/parent`, `/tester` disallowed in robots.txt and sent `X-Robots-Tag: noindex`; whole site noindex until `SITE_INDEXING=on`; sitemap lists public pages only; no child data or session ids in URLs | `src/lib/seo/site.ts`, `next.config.mjs` | `tests/seo.test.ts`, /security-check step 7 |
+| JSON-LD is the only `dangerouslySetInnerHTML`: server-built constants, `<`, `>`, `&` escaped so it cannot close its tag; carries the CSP nonce | `src/lib/seo/JsonLd.tsx` | `tests/seo.test.ts`, /security-check grep |
 
 ## Keys
 - `NEXT_PUBLIC_*` values ship to every browser. Only the Supabase URL and the **publishable** key go there. They are safe only because of RLS.

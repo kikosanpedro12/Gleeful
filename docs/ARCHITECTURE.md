@@ -66,3 +66,13 @@ browser  ClaudeBrain ──POST /api/brain──▶  route.ts → handler.ts    
 - **Env:** `ANTHROPIC_API_KEY` (server only), `BRAIN_DISABLED=1` (kill switch), `NEXT_PUBLIC_BRAIN=model` (build-time opt-in, not a secret). See `.env.example`.
 - **Limits live in memory per WARM server instance** (`limits.ts`, behind a `UsageStore` interface so `brain_usage` can replace it). On serverless every instance has its own copy and a cold start clears it, so the real ceiling is (instances × the caps): a brake, not a ceiling. **The Console spend limit is the only real ceiling until `brain_usage` is wired in.** The route sets `maxDuration = 20`.
 - **The on-screen badge tells the truth about the last turn:** it reads "AI teacher · test build" only when the model actually answered; a fallback to the script shows "Scripted lesson · not AI yet" (the provider reports `brain.kind` after each turn).
+
+## Discoverability (search engines and AI crawlers)
+One policy file, `src/lib/seo/site.ts` (tested in `tests/seo.test.ts`):
+- **Public:** `/` (the start screen) and `/llms.txt` (plain-language summary for AI agents: what Gleeful is, honest status, planned pricing, privacy stance). Listed in `sitemap.xml`.
+- **Private, always:** `/api`, `/parent`, `/tester`. Disallowed in `robots.txt` AND sent with `X-Robots-Tag: noindex, nofollow, noarchive` (next.config.mjs), since robots.txt is only a request.
+- **Switch:** indexing is OFF unless the build has `SITE_INDEXING=on`. While off, robots.txt disallows everything and every route is noindex. Turn it on only with a public landing page and parental consent in place.
+- `robots.txt` names the welcomed crawlers (Googlebot, Bingbot, GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended).
+- Metadata: title, description, canonical, Open Graph and Twitter cards; a generated share image (`src/app/opengraph-image.tsx`, text and shapes only). Site origin from `NEXT_PUBLIC_SITE_URL` (https only), fallback `https://gleeful-six.vercel.app`.
+- schema.org JSON-LD (Organization + SoftwareApplication, `applicationCategory: EducationalApplication`) via `src/lib/seo/JsonLd.tsx`, carrying the CSP nonce. No ratings, offers or claims we cannot back.
+- Next: a real public landing page (owned by the UI work on `page.tsx`); then add it to `PUBLIC_PATHS`.
