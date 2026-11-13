@@ -39,3 +39,6 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 - Assignment uploads (Stage F): a private Storage bucket with paths `{parent_id}/{learner_id}/…`, owner-only storage policies, file type and size limits, and malware/scan considerations.
 - Learner summaries for the Claude brain's context (Stage B/E).
 - Consent records (before real children).
+
+## Consent table (13 Nov, committed, NOT applied live)
+`20261113083000_parental_consent.sql` adds `public.parental_consents` (parent_id, consent_text_version, accepted_at, withdrawn_at). Owner-only RLS; insert + select + update(withdrawn_at) only for `authenticated`; timestamps forced by triggers (`private.force_accepted_at`, `private.guard_consent_update`, both SECURITY INVOKER); unique active row per parent per version. Apply after `20261113071456_learners_allow_kindergarten.sql`. Tested in `tests/db/consent.test.ts` and 10 mutants in `npm run mutate`.

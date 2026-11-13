@@ -96,3 +96,11 @@ Built and tested against a **mocked** API (tests/brainServer.test.ts, tests/clau
 
 ## Reporting
 Private project. Report issues to the founder directly; do not open public issues with details.
+
+## Parent sign-in (13 Nov)
+- Session in cookies via @supabase/ssr; server code trusts only `getClaims/getUser`, never the client session. Only the publishable key is accepted (a secret/service_role key is rejected on purpose); the app has no use for one.
+- `next` redirect param passes `safeNext()` (own pages only). Callback failures all look identical (no account enumeration). No emails or tokens in logs.
+- Sign-in attempts have a per-address in-memory brake: a brake only (per warm instance); Supabase's own Auth rate limits are the ceiling.
+- `/api/brain` spending requires a signed-in parent WITH consent on file, or the tester passcode. Budgets are per auth user id, per address and per deployment, and fail closed when a table is full. Rotating IPs no longer bypasses the cap.
+- Consent is a versioned record (`parental_consents`): owner-only RLS, database-set timestamps, withdraw-only for clients, no deletes, one active row per version, no SECURITY DEFINER. 28 mutation-test mutants cover it.
+- Not done: a lawyer must confirm the consent wording and flow (COPPA / PH Data Privacy Act) before real children use it.

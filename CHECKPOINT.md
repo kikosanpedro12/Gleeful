@@ -105,3 +105,8 @@
 
 ## Before real children or payments (not started)
 See the SECURITY.md checklist: consent (COPPA, GDPR-K, Philippine Data Privacy Act), retention, vendor terms for speech, a content-safety test set, incident process, and an independent review.
+
+## Parent sign-in (13 Nov, built; not yet live)
+Built and gate-green (CI, 28/28 mutants killed, journey smoke 36/36 desktop + phone, landing smoke 30/30): `/sign-in` (magic link OR email + password), `/auth/callback`, `/auth/sign-in`, `/auth/sign-out`, `/parent` (learners grade 0-12, consent give/withdraw). `/api/brain` now spends only for a signed-in parent with consent on file (per-parent budget by auth user id + per-address + per-deployment ceilings, fail closed) or a BRAIN_TESTER_CODE holder; this closes the rotation-bypass launch blocker. With no Supabase env the app still works and /sign-in says "not available yet".
+Kiko must do by hand: (1) paste `20261113071456_learners_allow_kindergarten.sql` then `20261113083000_parental_consent.sql` into the Gleeful SQL Editor (in that order); (2) Supabase Auth settings: Site URL = the live site, Redirect URLs include `<site>/auth/callback`, Email provider on (magic link + password), set SMTP (default mail is heavily rate-limited), keep email confirmation on; (3) set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL in Vercel (publishable key only, never service_role).
+Still open: privacy contact email placeholder; real-API run of the Claude brain; payments.
