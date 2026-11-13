@@ -215,7 +215,7 @@ const scrollToChapter = async (page, id) => {
   await over.page.click('#taste button[type="submit"]');
   await over.page.waitForSelector('[data-testid="taste-done"]', { timeout: 10000 }).catch(() => {});
   const doneText = await over.page.$eval('[data-testid="taste-done"]', (e) => e.textContent).catch(() => "");
-  check("when the daily budget is used up the box says so honestly (no fake answer)", /resting|come back/i.test(doneText) && !(await over.page.$('[data-testid="taste-reply"]')), doneText);
+  check("when the daily budget is used up the box says so honestly (no fake answer)", /come back soon/i.test(doneText) && !(await over.page.$('[data-testid="taste-reply"]')), doneText);
   await over.page.close();
 }
 

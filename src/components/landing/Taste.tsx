@@ -81,7 +81,7 @@ export default function Taste() {
 
             {finished ? (
               <div className="lp-taste-done" data-testid="taste-done">
-                {notice === "busy" ? <p>The teacher is resting for now. Come back soon, or try the scripted demo lesson.</p>
+                {notice === "busy" || notice === "over" ? <p>The teacher has answered all it can for now. Come back soon, or try the scripted demo lesson.</p>
                   : <p>That was your taste. The full lesson takes the whole class somewhere to look closer.</p>}
                 <a className="lp-btn lp-btn-main" href="/learn">Try the demo lesson</a>
               </div>
