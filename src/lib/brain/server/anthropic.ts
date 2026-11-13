@@ -16,7 +16,10 @@ export async function callAnthropic(args: {
   model: string;
   system: string;
   user: string;
-  tools: unknown[];
+  /** Omit (or pass an empty list) for a call that must not be able to use tools at all. */
+  tools?: unknown[];
+  /** Reply cap. Defaults to the lesson cap; the anonymous landing taste passes a much smaller one. */
+  maxTokens?: number;
 }): Promise<UpstreamResult> {
   // One timer covers the request AND reading the response body.
   const ctl = new AbortController();
@@ -31,11 +34,10 @@ export async function callAnthropic(args: {
         headers: { "content-type": "application/json", "x-api-key": args.apiKey, "anthropic-version": ANTHROPIC_VERSION },
         body: JSON.stringify({
           model: args.model,
-          max_tokens: LIMITS.maxOutputTokens,
+          max_tokens: args.maxTokens ?? LIMITS.maxOutputTokens,
           system: [{ type: "text", text: args.system, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: args.user }],
-          tools: args.tools,
-          tool_choice: { type: "auto" },
+          ...(args.tools?.length ? { tools: args.tools, tool_choice: { type: "auto" } } : {}),
         }),
       });
     } catch (e) {
