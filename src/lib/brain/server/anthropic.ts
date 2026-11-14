@@ -5,7 +5,7 @@ import { LIMITS } from "./config";
 export const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 export const ANTHROPIC_VERSION = "2023-06-01";
 
-export interface UpstreamResult { content: unknown; usage: { input: number; output: number } }
+export interface UpstreamResult { content: unknown; usage: { input: number; output: number }; stopReason?: string }
 export class UpstreamError extends Error {
   constructor(public kind: "timeout" | "busy" | "failed", public status?: number) { super(kind); }
 }
@@ -51,9 +51,9 @@ export async function callAnthropic(args: {
     } catch (e) {
       throw new UpstreamError(aborted(e) ? "timeout" : "failed", res.status);
     }
-    const o = json as { content?: unknown; usage?: { input_tokens?: unknown; output_tokens?: unknown } };
+    const o = json as { content?: unknown; stop_reason?: unknown; usage?: { input_tokens?: unknown; output_tokens?: unknown } };
     const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
-    return { content: o?.content, usage: { input: n(o?.usage?.input_tokens), output: n(o?.usage?.output_tokens) } };
+    return { content: o?.content, stopReason: typeof o?.stop_reason === "string" ? o.stop_reason.slice(0, 32) : undefined, usage: { input: n(o?.usage?.input_tokens), output: n(o?.usage?.output_tokens) } };
   } finally {
     clearTimeout(timer);
   }

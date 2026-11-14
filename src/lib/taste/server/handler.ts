@@ -95,23 +95,31 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   await d.usage.reserveGlobal(now, false);
   d.sessions.add(sessionKey, now);
 
-  let up;
-  try {
-    up = await callAnthropic({
-      fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: TASTE_MODEL,
-      system: TASTE_SYSTEM, user: buildTasteUser(r), maxTokens: TASTE_LIMITS.maxOutputTokens,
-      // no `tools`: the request carries none, so the model cannot call anything
-    });
-  } catch (e) {
-    const err = e instanceof UpstreamError ? e : new UpstreamError("failed");
-    d.log("upstream_error", { kind: err.kind, status: err.status ?? 0 });
-    if (err.kind === "timeout") return fail(504, "upstream_timeout");
-    if (err.kind === "busy") return fail(503, "upstream_busy", { "retry-after": "5" });
-    return fail(502, "upstream_failed");
+  // One automatic retry if the model returned nothing usable (the visitor never sees a blank-answer error for that).
+  let reply: string | null = null;
+  for (let attempt = 0; attempt < 2 && !reply; attempt++) {
+    let up;
+    try {
+      up = await callAnthropic({
+        fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: TASTE_MODEL,
+        system: TASTE_SYSTEM, user: buildTasteUser(r), maxTokens: TASTE_LIMITS.maxOutputTokens,
+        // no `tools`: the request carries none, so the model cannot call anything
+      });
+    } catch (e) {
+      const err = e instanceof UpstreamError ? e : new UpstreamError("failed");
+      d.log("upstream_error", { kind: err.kind, status: err.status ?? 0 });
+      if (err.kind === "timeout") return fail(504, "upstream_timeout");
+      if (err.kind === "busy") return fail(503, "upstream_busy", { "retry-after": "5" });
+      return fail(502, "upstream_failed");
+    }
+    reply = cleanReply(up.content);
+    if (!reply) {
+      // Types and counts only, never the visitor's words or the model's.
+      const types = Array.isArray(up.content) ? up.content.slice(0, 6).map((b) => String((b as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
+      d.log("bad_model_output", { attempt: attempt + 1, blocks: types, stop: up.stopReason ?? "?", out: up.usage.output });
+    }
   }
-
-  const reply = cleanReply(up.content);
-  if (!reply) { d.log("bad_model_output", { n: 1 }); return fail(502, "bad_model_output"); }
+  if (!reply) return fail(502, "bad_model_output");
   const body: TasteResponse = { reply, turnsLeft: Math.max(0, TASTE_LIMITS.perSessionTurns - (done + 1)) };
   return new Response(JSON.stringify(body), { status: 200, headers: HEADERS });
 }
