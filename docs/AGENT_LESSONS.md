@@ -54,6 +54,13 @@ Rules for entries:
 - **Shared "last answered" state set by cancelled/slow async runs** → badge kind follows the latest turn only (FallbackBrain sequence) → `tests/claudeBrain.test.ts`; a test must never enshrine a behaviour that contradicts the honesty rule.
 - **`compileAsync` polls forever after context loss** → use sync `gl.compile` and skip when the context is lost.
 
+## Media and new vendors
+- **Async fetch before playback with no stale guard** (voice lab: a slow first tap could start sound after the listener moved on) → bump a request id in stop()/play() and bail after every await.
+- **Blind-test UI let a listener rate a voice that never played** → rating enabled only after the slot has actually started.
+- **Page copy said "sends nothing" after a fetch was added** → `tests/voiceLab.test.ts` checks the page's copy against its fetch use.
+- **A new vendor key needs four things in the same change**: secret-scan regex, `.env.example`, ASSET_LICENSES row, SECURITY.md section.
+- **Counter refunds after an await must use the bucket captured before it** (day rollover).
+
 ## Styling
 - **Bare element selectors in globals.css leak across surfaces** (a lesson-icon `svg { width:1.35em; path fill:none }` rule blanked the landing illustrations) → scope app styles under `.app`, landing styles under `.lp`; never style a bare element globally except resets → `npm run smoke:landing` ("poster mode shows the still illustrations").
 

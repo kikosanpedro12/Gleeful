@@ -23,5 +23,6 @@
 | Concept video avatar (Ready Player Me via met4citizen/TalkingHead) | CC BY-NC 4.0 | Non-commercial. Do not extract or reuse. |
 | Concept video Mars globe texture (Solar System Scope) | CC BY 4.0 | Usable with credit, but not used here. |
 | TEACHER_DUO_REFERENCE.png | AI-generated concept art for this project | Visual direction only; not a rigged asset. |
+| Deepgram Aura-2 text-to-speech (service) | /api/tts, voice-lab test slots | Live API calls, no files stored. Free $200 credit account created by the founder 14 Nov 2026 | Deepgram Terms of Service (service use; confirm output-use and data-retention terms before the product voice goes to children) | To confirm |
 
 Rule: nothing gets added to `public/` or the bundle without a row here first.

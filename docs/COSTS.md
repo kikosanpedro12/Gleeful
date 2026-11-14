@@ -50,3 +50,7 @@ Console: workspace `ai-teacher` has a $20/month dev spend limit (2026-11-12). Ra
 - Per-child daily turn cap and per-lesson time cap, enforced on the server.
 - Monthly spend limit set in the Claude Console.
 - `max_tokens` capped per reply.
+
+
+## Deepgram Aura-2 text-to-speech (14 Nov, from review-site prices, verify on Deepgram's page)
+About $30 per million characters pay-as-you-go (Aura-1 about half), so roughly $1.60 per live hour at ~54,000 characters per hour. Free $200 credit, no card: that covers roughly 6.6 million characters (about 120 hours of speech) for testing and the private MVP phase. Spend is braked by `/api/tts` (daily character ceiling). Cached lines still apply: fixed lines should be pre-recorded once, not spoken live.

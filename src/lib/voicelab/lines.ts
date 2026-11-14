@@ -12,22 +12,28 @@ export const LINES = [
   "Nice thinking! Can you tell me why, in your own words?",
 ] as const;
 
+import type { TtsVoice } from "@/lib/tts/voices";
 export type Teacher = "leo" | "mia";
-export type EngineId = "browser" | "kokoro-a" | "kokoro-b";
+export type EngineId = "browser" | "kokoro-a" | "dg-1" | "dg-2" | "dg-3" | "dg-4";
 
 export interface Engine {
   id: EngineId;
   /** Revealed only after the listener has rated everything. */
   name: string;
-  /** Kokoro preset voice behind the clip, or null for the device voice. */
+  /** The voice behind the clip (Kokoro or Deepgram preset), or the device voice. */
   detail: (t: Teacher) => string;
   clip: (t: Teacher, line: number) => string | null;
+  /** Deepgram Aura-2 voice (spoken live through /api/tts, passcode needed), or null. */
+  voice?: (t: Teacher) => TtsVoice;
 }
 
 export const ENGINES: Engine[] = [
   { id: "browser", name: "This phone's built-in voice (what the app uses today)", detail: () => "browser speech", clip: () => null },
   { id: "kokoro-a", name: "Kokoro, voice 1 (open source, server)", detail: (t) => (t === "leo" ? "am_michael" : "af_heart"), clip: (t, i) => `/voice-lab/${t}-a-${i + 1}.mp3` },
-  { id: "kokoro-b", name: "Kokoro, voice 2 (open source, server)", detail: (t) => (t === "leo" ? "am_adam" : "af_bella"), clip: (t, i) => `/voice-lab/${t}-b-${i + 1}.mp3` },
+  { id: "dg-1", name: "Deepgram Aura-2, voice 1 (paid API)", detail: (t) => (t === "leo" ? "apollo" : "amalthea"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-apollo-en" : "aura-2-amalthea-en") },
+  { id: "dg-2", name: "Deepgram Aura-2, voice 2 (paid API)", detail: (t) => (t === "leo" ? "aries" : "thalia"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-aries-en" : "aura-2-thalia-en") },
+  { id: "dg-3", name: "Deepgram Aura-2, voice 3 (paid API)", detail: (t) => (t === "leo" ? "arcas" : "luna"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-arcas-en" : "aura-2-luna-en") },
+  { id: "dg-4", name: "Deepgram Aura-2, voice 4 (paid API)", detail: (t) => (t === "leo" ? "atlas" : "aurora"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-atlas-en" : "aura-2-aurora-en") },
 ];
 
 export type Rating = "great" | "ok" | "robotic";

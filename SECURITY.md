@@ -118,5 +118,11 @@ Private project. Report issues to the founder directly; do not open public issue
 ## Widgets and voice lab (14 Nov)
 - New wire input `widget` (number line / fraction bars): value and optional target are parsed by `parseValue` (numbers and fractions only, bounded), refused during transit. The `target` is **client-asserted**: the prompt says "the app reports this matches", and a widget input never records evidence, escalates the model or spends extra (test in `tests/widgets.test.ts`). A tampered client can only get a wrong "that's right" for itself.
 - `showWidget`/`hideWidget` are validated commands (bounded specs, no strings, one per reply); the spec is validated again server-side. CSP unchanged.
-- `/voice-lab` is a private route (noindex, in PRIVATE_PREFIXES, llms.txt and layout metadata). It has no passcode: it serves only 20 bundled Kokoro sample clips and sends nothing.
+- `/voice-lab` is a private route (noindex, in PRIVATE_PREFIXES, llms.txt and layout metadata). The page itself has no passcode and saves nothing of the listener's ratings; the Kokoro clips are bundled static files. The Deepgram slots send the five sample lines to Deepgram through the passcode-gated /api/tts.
 - Honesty filter: the code-side "no re-intro" strip applies only to teacher-started lines (transit, world ready, resume), so a child asking "are you a robot?" always gets the AI answer (tests in `tests/uxRound.test.ts`).
+
+## Text-to-speech route `/api/tts` (14 Nov)
+- Deepgram Aura-2 behind a server route; `DEEPGRAM_API_KEY` is server-only (`import "server-only"`), never `NEXT_PUBLIC_*`. Closed by default: needs the private-test passcode (`BRAIN_TESTER_CODE`, 16+ chars, same gate as /api/brain) and a key; otherwise 503.
+- Order: same-origin check → config → per-address rate limit (20/min, before the passcode so guesses are limited) → passcode → body (2 KB cap, 3 s) → voice must be in the allowlist (`src/lib/tts/voices.ts`) and text ≤ 300 chars → daily character ceiling (default 60,000, hard cap 300,000, per warm instance) → upstream call (10 s, 2 MB cap).
+- The browser cannot choose the model, endpoint or encoding. Text is never logged. Real ceiling: Deepgram's prepaid credit (free $200, no card on file); keep no card until launch.
+- Tests: `tests/tts.test.ts`.

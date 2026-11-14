@@ -20,7 +20,7 @@ const PATTERNS = [
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "private key"],
   [/postgres(ql)?:\/\/[^:\s]+:[^@\s]+@/, "database URL with password"],
 ];
-const PUBLIC_SECRET = /NEXT_PUBLIC_[A-Z0-9_]*(SECRET|SERVICE|PRIVATE|ANTHROPIC|OPENAI|PASSWORD|TOKEN|SB_SECRET)/;
+const PUBLIC_SECRET = /NEXT_PUBLIC_[A-Z0-9_]*(SECRET|SERVICE|PRIVATE|ANTHROPIC|OPENAI|DEEPGRAM|API_KEY|PASSWORD|TOKEN|SB_SECRET)/;
 
 const hits = [];
 function walk(dir) {
