@@ -206,12 +206,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline:3px solid v
 @media (max-width:600px) { .dev { top:auto; bottom:210px; max-height:38vh; } }
 
 /* ---------------------------------------------------------------- parent + tester pages */
-.parent, .tester { max-width:720px; margin:0 auto; padding:max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(60px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); overflow:auto; height:100%; line-height:1.5; }
+.parent, .tester { max-width:720px; margin:0 auto; padding:max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(60px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); overflow:visible; height:auto; line-height:1.5; }
 .parent .warn { background:#fff3cd; border-radius:10px; padding:10px 12px; }
 .parent .skill { background:var(--paper); border-radius:14px; padding:4px 14px 8px; margin:10px 0; }
 .parent .danger { background:#c0392b; color:#fff; border-radius:var(--pill); padding:10px 18px; font-weight:800; }
 .parent a { color:var(--board); font-weight:800; }
-html:has(.parent), body:has(.parent), html:has(.tester), body:has(.tester) { overflow:auto; height:auto; }
+html:has(.parent), body:has(.parent), html:has(.tester), body:has(.tester) { overflow:visible; height:auto; overscroll-behavior:auto; }
 .tester { max-width:440px; display:flex; flex-direction:column; gap:14px; padding-top:max(32px, env(safe-area-inset-top)); }
 .tester h1 { margin:0; font-size:var(--t-xl); }
 .tester p { margin:0; color:var(--ink-2); }
@@ -234,7 +234,7 @@ html:has(.parent), body:has(.parent), html:has(.tester), body:has(.tester) { ove
 .auth-tabs button { flex:1; min-height:44px; border-radius:var(--pill); background:#fff; border:2px solid #cdbf9f; font-weight:800; }
 .auth-tabs button[aria-pressed="true"] { background:var(--board); color:#fff; border-color:var(--board); }
 .auth-form .primary, .auth-form .ghost { min-height:44px; }
-html:has(.auth), body:has(.auth) { overflow:auto; height:auto; }
+html:has(.auth), body:has(.auth) { overflow:visible; height:auto; overscroll-behavior:auto; }
 .parent .consent, .parent .learner-form { display:flex; flex-direction:column; gap:8px; background:var(--paper); border-radius:14px; padding:12px 14px; margin:10px 0; }
 .parent .learner-form fieldset { border:0; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
 .parent input:not([type="checkbox"]), .parent select { min-height:44px; padding:8px 12px; border-radius:12px; border:2px solid #cdbf9f; font:inherit; background:#fff; }
@@ -246,7 +246,9 @@ html:has(.auth), body:has(.auth) { overflow:auto; height:auto; }
 
 /* ------------------------------------------------------------ voice lab (private side page) */
 .vlab { max-width:720px; margin:0 auto; padding:max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(60px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); line-height:1.45; display:flex; flex-direction:column; gap:14px; }
-html:has(.vlab), body:has(.vlab) { overflow:auto; height:auto; }
+/* Plain page scrolling (the viewport scrolls, not nested html/body scrollers): the nested form did not scroll on a real Android phone. */
+html:has(.vlab), body:has(.vlab) { overflow:visible; height:auto; min-height:100%; overscroll-behavior:auto; }
+.vlab { touch-action:pan-y; }
 .vlab h1 { margin:0; font-size:var(--t-xl); }
 .vlab h2 { margin:0 0 8px; font-size:var(--t-m); }
 .vlab p { margin:0; color:var(--ink-2); }
