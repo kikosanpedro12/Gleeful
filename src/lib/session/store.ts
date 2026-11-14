@@ -5,6 +5,7 @@ import type { TurnResult } from "@/lib/telemetry/latency";
 import type { ConnectionStatus, UsageDelta } from "@/lib/voice/provider";
 import type { TeacherId } from "@/lib/teacher/rig";
 import type { WorldId } from "@/lib/worlds/registry";
+import type { WidgetSpec } from "@/lib/widgets/spec";
 
 export interface TranscriptLine { id: number; role: "child" | "teacher"; text: string; turnId: number }
 export interface Directive { id: number; turnId: number; command: SceneCommand }
@@ -34,6 +35,8 @@ export interface SessionStore {
   boardText: string;
   choices: Choice[];
   question: { id: string; world: WorldId } | null;
+  /** The teaching widget on screen (number line, fraction bars), if the teacher showed one. `id` changes for each new one. */
+  widget: { id: number; spec: WidgetSpec } | null;
   /** Object the teacher has invited the child to tap. */
   invite: string | null;
   /** Object currently picked up for inspection. */
@@ -68,6 +71,7 @@ export const initialStore = (): SessionStore => ({
   boardText: "Ask me anything!",
   choices: [],
   question: null,
+  widget: null,
   invite: null,
   inspecting: null,
   results: [],

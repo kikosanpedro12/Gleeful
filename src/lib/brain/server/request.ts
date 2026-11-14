@@ -3,6 +3,7 @@ import "server-only";
 import { ID_RE, SNAKE_RE, type BrainRequest, type WireInput, type WireSkillStatus } from "../protocol";
 import { LIMITS } from "./config";
 import { cleanText } from "@/lib/scene/commands";
+import { parseValue, WIDGET_KINDS } from "@/lib/widgets/spec";
 import { contextFor, isWorldId, WORLDS, type WorldId } from "@/lib/worlds/registry";
 
 const SKILL_RE = /^(?=.{3,80}$)[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,3}$/;
@@ -84,6 +85,13 @@ function parseInput(v: unknown, ctx: ReturnType<typeof contextFor>): WireInput |
       const q = ctx.world === "transit" ? undefined : WORLDS[ctx.world].questions[v.questionId];
       if (!q || !q.options.some((o) => o.id === v.optionId)) return null;
       return { kind: "answer", questionId: v.questionId, optionId: v.optionId };
+    }
+    case "widget": {
+      if (ctx.world === "transit") return null;
+      if (typeof v.widget !== "string" || !(WIDGET_KINDS as readonly string[]).includes(v.widget)) return null;
+      if (parseValue(v.value) === null) return null;
+      if (v.target !== undefined && parseValue(v.target) === null) return null;
+      return { kind: "widget", widget: v.widget as (typeof WIDGET_KINDS)[number], value: String(v.value).trim(), ...(v.target !== undefined ? { target: String(v.target).trim() } : {}) };
     }
     default: return null;
   }

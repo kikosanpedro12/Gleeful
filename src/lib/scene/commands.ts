@@ -3,6 +3,7 @@
  * request these prepared operations, with ids that the CURRENT world declares.
  * Nothing model-written is executed as code; no remote URLs are accepted.
  */
+import { parseWidget, WIDGET_KINDS, type WidgetSpec } from "@/lib/widgets/spec";
 import { isWorldId, WORLD_IDS, type CommandContext, type WorldId } from "@/lib/worlds/registry";
 
 export const GESTURES = ["wave", "nod", "thumbs_up", "shrug", "think", "open_hands"] as const;
@@ -18,7 +19,9 @@ export type SceneCommand =
   | { name: "openWorld"; world: WorldId }
   | { name: "offerChoices"; choices: Choice[] }
   | { name: "askQuestion"; questionId: string }
-  | { name: "inviteTap"; target: string };
+  | { name: "inviteTap"; target: string }
+  | { name: "showWidget"; spec: WidgetSpec }
+  | { name: "hideWidget" };
 
 export type ParseResult = { ok: true; command: SceneCommand } | { ok: false; error: string };
 
@@ -82,6 +85,13 @@ export function parseSceneCommand(name: unknown, args: unknown, ctx: CommandCont
       }
       return { ok: true, command: { name, choices } };
     }
+    case "showWidget": {
+      if (ctx.world === "transit") return { ok: false, error: "no widgets while travelling" };
+      const w = parseWidget(args);
+      return w.ok ? { ok: true, command: { name, spec: w.spec } } : { ok: false, error: w.error };
+    }
+    case "hideWidget":
+      return { ok: true, command: { name } };
     default:
       return { ok: false, error: `unknown command ${name.slice(0, 40)}` };
   }
@@ -111,6 +121,21 @@ export function toolsFor(ctx: CommandContext) {
   if (ctx.interactive.length) tools.push(tool("inviteTap", "Highlight an object and invite the child to tap and inspect it.", { target: { type: "string", enum: ctx.interactive } }, ["target"]));
   if (ctx.questions.length) tools.push(tool("askQuestion", "Ask a prepared, checkable question.", { questionId: { type: "string", enum: ctx.questions } }, ["questionId"]));
   if (ctx.world === "classroom") tools.push(tool("writeOnBoard", "Write a short phrase (max 60 chars) on the board.", { text: { type: "string" } }, ["text"]));
+  if (ctx.world !== "transit") {
+    tools.push(tool("showWidget",
+      "Show a teaching aid on screen: a number line (child taps a tick) or fraction bars (child shades parts of the FIRST bar; later bars are fixed references). Use it for number, fraction and decimal ideas instead of describing them. Give `target` (number line) or `target_num`/`target_den` (fraction bars) only when you want the child to find or build that value; the app then tells you whether the child matched it.",
+      {
+        widget: { type: "string", enum: [...WIDGET_KINDS] },
+        min: { type: "number" }, max: { type: "number" }, step: { type: "number", description: "tick spacing; (max - min) must be 1 to 24 whole steps" },
+        format: { type: "string", enum: ["integer", "decimal", "fraction"] },
+        denominator: { type: "integer", description: "for format fraction: 2 to 12" },
+        marks: { type: "array", items: { type: "number" }, description: "up to 6 fixed labelled dots" },
+        target: { type: "number", description: "number line: the value for the child to tap (must sit on a tick)" },
+        bars: { type: "array", items: { type: "object", properties: { parts: { type: "integer" }, shaded: { type: "integer" } }, required: ["parts"] }, description: "1 to 4 bars; up to 12 parts each" },
+        target_num: { type: "integer" }, target_den: { type: "integer" },
+      }, ["widget"]));
+    tools.push(tool("hideWidget", "Take the teaching aid off the screen.", {}, []));
+  }
   if (ctx.world !== "transit") tools.push(tool("openWorld", "Travel to a prepared world.", { world: { type: "string", enum: WORLD_IDS.filter((w) => w !== ctx.world) } }, ["world"]));
   return tools;
 }

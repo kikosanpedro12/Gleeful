@@ -14,6 +14,8 @@ import { listenOnce, recognitionAvailable, ttsAvailable, voiceFor, loadVoices } 
  * pointing/walking land on the words that mention them.
  */
 const THINK_MS = 250; // small, deliberate: scripted replies are instant
+/** A mid-flight remark is only worth saying while we are still flying, and only if it arrives promptly. */
+export const CRUISE_LATE_MS = 5000;
 
 interface Run { id: string; cancelled: boolean; timers: ReturnType<typeof setTimeout>[]; started: boolean }
 
@@ -102,6 +104,13 @@ export class ScriptedProvider implements VoiceProvider {
         // Honest labelling: report who answered even if this reply is no longer wanted.
         this.ev.onBrainKind?.(this.brain.kind);
         if (run.cancelled || this.run !== run) return;
+        // Teacher-initiated lines have a moment. An AI reply that arrives after it is dropped, not spoken
+        // ("we're flying!" once we have landed, or a welcome to a world we have already left).
+        if (this.isLate(input, performance.now() - startedAt)) {
+          this.run = undefined;
+          this.ev.onReplyDropped?.(id, "late");
+          return;
+        }
         const wait = Math.max(0, THINK_MS - (performance.now() - startedAt));
         run.timers.push(setTimeout(() => this.playSegments(run, reply.segments, 0), wait));
       })
@@ -110,6 +119,13 @@ export class ScriptedProvider implements VoiceProvider {
         this.run = undefined;
         this.ev.onResponseFailed(id, "the lesson had a problem");
       });
+  }
+
+  private isLate(input: BrainInput, elapsedMs: number): boolean {
+    const w = this.info.world();
+    if (input.kind === "transit_cruise") return w !== "transit" || elapsedMs > CRUISE_LATE_MS;
+    if (input.kind === "world_ready") return w !== input.world;
+    return false;
   }
 
   // ---------------------------------------------------------------- output

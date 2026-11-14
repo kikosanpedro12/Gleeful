@@ -34,6 +34,8 @@ export interface VoiceEvents {
   onUsage(u: UsageDelta): void;
   /** Who actually answered the last turn: the model, or the built-in script (a fallback counts as scripted). */
   onBrainKind?(kind: "scripted" | "model"): void;
+  /** A teacher-initiated reply arrived after its moment and was discarded unspoken. */
+  onReplyDropped?(id: string, reason: "late"): void;
   onError(message: string): void;
 }
 

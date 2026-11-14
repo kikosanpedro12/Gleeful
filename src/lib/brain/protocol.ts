@@ -19,6 +19,8 @@ export type WireInput =
   | { kind: "tap"; target: string }
   | { kind: "choice"; id: string; label: string }
   | { kind: "answer"; questionId: string; optionId: string }
+  /** The child set a teaching widget (number line / fraction bars). `target` is what the brain asked for, if anything. */
+  | { kind: "widget"; widget: "number_line" | "fraction_bars"; value: string; target?: string }
   | { kind: "resume" };
 
 export type WireSkillStatus = "not_seen" | "learning" | "needs_check" | "independent";

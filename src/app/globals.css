@@ -44,6 +44,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline:3px solid v
 .chip.demo { background:var(--sun); }
 .chip.sim { background:#ffe0c9; color:#7a2e12; }
 .chip.name { color:var(--board-deep); }
+.chip.badge { display:inline-flex; align-items:center; gap:4px; min-height:44px; padding:6px 8px 6px 14px; color:var(--ink); cursor:pointer; }
+.chip.badge.ai { background:rgba(255,250,241,.94); }
+.chip.badge .sim-tag { color:#7a2e12; }
+.chip.badge .i { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:rgba(0,0,0,.12); font-size:.78rem; font-weight:900; font-style:italic; flex-shrink:0; }
+.badge-info { position:absolute; left:14px; top:64px; z-index:5; background:var(--paper); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.2); max-width:min(320px, calc(100vw - 28px)); }
+.badge-info p { margin:0; line-height:1.38; }
 .ghost { background:rgba(255,250,241,.94); border-radius:var(--pill); padding:9px 16px; font-weight:800; color:var(--ink); box-shadow:var(--lift); transition:transform .12s, box-shadow .12s; }
 .ghost:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(120,90,50,.18); }
 .ghost.small { padding:8px 14px; font-size:var(--t-s); }
@@ -237,3 +243,64 @@ html:has(.auth), body:has(.auth) { overflow:auto; height:auto; }
 .parent .check input { width:24px; height:24px; margin-top:2px; flex:none; }
 .parent .primary, .parent .ghost, .parent .danger { min-height:44px; }
 .parent .ok { color:var(--board-deep); font-weight:800; }
+
+/* ------------------------------------------------------------ voice lab (private side page) */
+.vlab { max-width:720px; margin:0 auto; padding:max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(60px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); line-height:1.45; display:flex; flex-direction:column; gap:14px; }
+html:has(.vlab), body:has(.vlab) { overflow:auto; height:auto; }
+.vlab h1 { margin:0; font-size:var(--t-xl); }
+.vlab h2 { margin:0 0 8px; font-size:var(--t-m); }
+.vlab p { margin:0; color:var(--ink-2); }
+.vlab button { min-height:48px; border-radius:var(--pill); padding:8px 16px; background:rgba(255,250,241,.94); box-shadow:var(--lift); font-weight:800; }
+.vlab button.on { background:var(--board); color:#fff; }
+.vlab-who { display:flex; gap:8px; flex-wrap:wrap; }
+.vlab-line { background:var(--paper); border:2px solid var(--edge); border-radius:16px; padding:12px; }
+.vlab-slots { display:flex; flex-direction:column; gap:10px; }
+.vlab-slot { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.vlab-play { display:inline-flex; align-items:center; gap:8px; min-width:112px; }
+.vlab-play b { width:28px; height:28px; border-radius:50%; background:var(--sun); color:var(--ink); display:grid; place-items:center; }
+.vlab-rate { display:flex; gap:6px; flex-wrap:wrap; }
+.vlab-rate button { padding:6px 12px; font-size:var(--t-s); }
+.vlab-rate button.on.great { background:var(--board); }
+.vlab-rate button.on.ok { background:#8a6d1f; }
+.vlab-rate button.on.robotic { background:var(--coral-deep); }
+.vlab-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.vlab .primary { background:var(--coral); color:#fff; }
+.vlab .primary:disabled { opacity:.55; }
+.vlab-reveal { width:100%; color:var(--board-deep); font-weight:700; }
+.vlab-result { background:var(--paper-2); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.vlab-result ul { margin:0; padding-left:18px; }
+.vlab-note { color:var(--coral-deep); font-weight:700; }
+.vlab-fine { color:var(--ink-2); }
+
+/* ------------------------------------------------------------ teaching widgets (number line, fraction bars) */
+.widget { position:relative; background:rgba(255,250,241,.97); border-radius:22px; padding:12px 14px 12px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); }
+.widget-close { position:absolute; top:4px; right:4px; width:40px; height:40px; z-index:1; background:transparent; box-shadow:none; }
+.widget-body { display:flex; flex-direction:column; gap:8px; padding-right:30px; }
+.widget-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.widget-actions .ghost { min-height:44px; min-width:48px; padding:0 14px; }
+.widget-actions .primary { min-height:44px; padding:0 18px; margin-left:auto; }
+.widget svg.nl { width:100%; height:auto; max-height:132px; touch-action:manipulation; cursor:pointer; overflow:visible; }
+.widget svg.nl:focus-visible { outline:3px solid var(--coral); outline-offset:2px; border-radius:8px; }
+.widget svg.nl rect { stroke:none; }
+.widget svg.nl text { stroke:none; }
+.nl-line { stroke:var(--ink); stroke-width:3; stroke-linecap:round; }
+.nl-tick { stroke:var(--ink); stroke-width:2; }
+.nl-label { font-size:13px; font-weight:800; fill:var(--ink); }
+.nl-mark { fill:var(--board); stroke:#fff; stroke-width:2; }
+.nl-mark-label { font-size:13px; font-weight:800; fill:var(--board-deep); }
+.nl-pick { fill:var(--coral); stroke:#fff; stroke-width:3; }
+.nl-pick-label { font-size:15px; font-weight:900; fill:var(--coral-deep); }
+.fb { display:flex; flex-direction:column; gap:8px; }
+.fb-row { display:flex; flex-direction:column; gap:2px; }
+.fb-row small { color:var(--ink-2); font-weight:700; }
+.fb-bar { display:flex; gap:3px; width:100%; }
+.fb-part { flex:1; min-height:46px; border-radius:8px; border:2px solid var(--board-deep); background:#fff; padding:0; }
+.fb-part.ref { min-height:30px; display:block; }
+.fb-part.on { background:var(--sun); border-color:var(--coral-deep); }
+.fb-row.ref .fb-part.on { background:var(--glass); border-color:var(--board-deep); }
+@media (max-width:600px) {
+  .widget { padding:8px 10px; border-radius:18px; }
+  .fb-part { min-height:44px; }
+  .fb-part.ref { min-height:24px; }
+  .widget-actions .primary { flex:1; }
+}

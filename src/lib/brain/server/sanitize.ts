@@ -9,6 +9,7 @@ import type { Action, Segment } from "../types";
 import { cleanText, parseSceneCommand } from "@/lib/scene/commands";
 import { contextFor, WORLDS, type WorldId } from "@/lib/worlds/registry";
 import type { WireInput } from "../protocol";
+import { widgetToArgs } from "@/lib/widgets/spec";
 
 /**
  * Anything that looks like a link or address is removed. We never speak or show one.
@@ -52,6 +53,13 @@ export function sanitizeSay(v: unknown, max: number = LIMITS.maxSayChars): strin
 const NARRATION = /\b(the|this) (child|kid|learner|student|user)\b|\bI should\b|\b(system prompt|the record|listed facts|my instructions|tool call)\b|\bsession \d+\b/i;
 export function looksLikeNarration(text: string): boolean { return NARRATION.test(text); }
 
+/**
+ * The teacher introduces themself once, at the start of a session. Later replies (a line mid-flight, an arrival,
+ * a nudge) sometimes open with "Hi, I'm Leo, an AI teacher..." again; strip that opening sentence in code.
+ */
+const INTRO = /^\s*(?:(?:hi|hello|hey)(?: there)?[,!.\s]+)?(?:i'?m|i am|my name is|this is)\s+(?:leo|mia)\b[^.!?]*[.!?]+\s*/i;
+export function stripIntro(text: string): string { return text.replace(INTRO, "").trim(); }
+
 export interface Block { type?: unknown; text?: unknown; name?: unknown; input?: unknown }
 
 export function buildReply(blocks: unknown, world: WorldId | "transit", input: WireInput): { segments: Segment[]; dropped: number } | null {
@@ -63,6 +71,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
   let total = 0;
   let travelling = false;
   let interactive = 0;
+  let widgets = 0;
 
   const attach = (a: Action) => {
     if (total >= LIMITS.maxActionsPerReply) { dropped++; return; }
@@ -79,7 +88,8 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
     const b = raw as Block;
     if (!b || typeof b !== "object") { dropped++; continue; }
     if (b.type === "text") {
-      const say = sanitizeSay(b.text);
+      let say = sanitizeSay(b.text);
+      if (say && input.kind !== "session_start") say = stripIntro(say) || null;
       if (!say || looksLikeNarration(say)) { dropped++; continue; }
       if (segments.length >= LIMITS.maxSegments) { dropped++; continue; }
       segments.push({ say, actions: segments.length === 0 ? pending.splice(0) : [] });
@@ -102,6 +112,12 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
         const kept = cmd.choices.flatMap((c) => { const label = sanitizeSay(c.label, 48); return label ? [{ id: c.id, label }] : []; });
         if (!kept.length) { dropped++; continue; }
         cmd.choices = kept;
+      }
+      if (cmd.name === "showWidget") {
+        if (widgets >= 1) { dropped++; continue; }
+        widgets++;
+        attach({ name: "showWidget", args: widgetToArgs(cmd.spec) });
+        continue;
       }
       const { name, ...args } = cmd;
       attach({ name, args });

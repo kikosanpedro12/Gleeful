@@ -134,7 +134,7 @@ class SessionController {
         if (this.strandTimer) clearTimeout(this.strandTimer);
         if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
         this.dispatch({ type: "DISCONNECTED" });
-        this.set({ listening: false, interim: "", choices: [], question: null, invite: null, inspecting: null, transit: null, world: "classroom" });
+        this.set({ listening: false, interim: "", choices: [], question: null, widget: null, invite: null, inspecting: null, transit: null, world: "classroom" });
         if (detail) this.set({ banner: { kind: "error", text: `${detail} Tap Start to reconnect.` } });
       }
     },
@@ -189,6 +189,7 @@ class SessionController {
       this.finalize(turnId);
     },
     onBrainKind: (kind) => this.set({ brainKind: kind }),
+    onReplyDropped: (id) => { this.responseTurn.delete(id); this.set({ staleDropped: this.s.staleDropped + 1 }); },
     onResponseFailed: (id, reason) => {
       const turnId = this.responseTurn.get(id);
       if (turnId === undefined || turnId !== this.s.conv.turnId) return;
@@ -226,6 +227,8 @@ class SessionController {
         case "offerChoices": this.set({ choices: c.choices, question: null }); this.rememberPrompt(); break;
         case "askQuestion": this.set({ question: { id: c.questionId, world: this.s.world }, choices: [] }); this.rememberPrompt(); break;
         case "inviteTap": this.set({ invite: c.target }); this.rememberPrompt(); break;
+        case "showWidget": this.set({ widget: { id: ++this.seq, spec: c.spec } }); break;
+        case "hideWidget": this.set({ widget: null }); break;
         case "openWorld": this.beginTransit(c.world); break;
       }
       // Body/scene actions go to the animator queue (gesture, pointAt, moveTeacherTo, inviteTap).
@@ -249,7 +252,7 @@ class SessionController {
     const style = WORLDS[to].transit === "space_flight" && from === "classroom" ? "space_flight"
       : WORLDS[from].transit === "space_flight" && to === "classroom" ? "space_return" : "fade";
     const t0 = performance.now();
-    this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null });
+    this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null, widget: null });
     // The 3D director normally lands the trip. If it can't (no WebGL, lost
     // context, tab hidden), land it anyway so the lesson can't get stuck.
     if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
@@ -311,7 +314,7 @@ class SessionController {
     if (this.s.status !== "disconnected" || !teacher) return;
     this.set({
       banner: null, status: "connecting", transcript: [], usage: { ...emptyUsage }, directives: [],
-      boardText: "Ask me anything!", world: "classroom", transit: null, choices: [], question: null,
+      boardText: "Ask me anything!", world: "classroom", transit: null, choices: [], question: null, widget: null,
       invite: null, inspecting: null, listening: false, interim: "",
     });
     this.firstTurnDone = false;
@@ -395,6 +398,13 @@ class SessionController {
   }
 
   closeInspect() { this.set({ inspecting: null }); }
+
+  closeWidget() { this.set({ widget: null }); }
+
+  /** The child set the widget and told the teacher. The target the teacher asked for travels with it; code, not the model, compares them. */
+  widgetAnswer(widget: "number_line" | "fraction_bars", value: string, target: string | undefined, label: string) {
+    this.userInput({ kind: "widget", widget, value, ...(target !== undefined ? { target } : {}) }, label);
+  }
 
   /** Tap-to-talk. Tapping while the teacher talks interrupts him first. */
   talk() {

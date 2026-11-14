@@ -21,7 +21,7 @@ const securityHeaders = [
  * Keep in sync with PRIVATE_PREFIXES in src/lib/seo/site.ts (tests/seo.test.ts checks it).
  * While SITE_INDEXING is not "on", every route is noindex.
  */
-export const PRIVATE_ROUTE_SOURCES = ["/api/:path*", "/auth/:path*", "/learn/:path*", "/parent/:path*", "/sign-in/:path*", "/tester/:path*"];
+export const PRIVATE_ROUTE_SOURCES = ["/api/:path*", "/auth/:path*", "/learn/:path*", "/parent/:path*", "/sign-in/:path*", "/tester/:path*", "/voice-lab/:path*"];
 const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
 
 /** @type {import('next').NextConfig} */

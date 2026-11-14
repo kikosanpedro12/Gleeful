@@ -8,6 +8,7 @@ import { MODEL_BUILD } from "@/lib/brain/mode";
 import { probeBrain, useReach } from "@/lib/brain/reach";
 import { playPreview, stopPreview } from "@/lib/voice/preview";
 import { actors } from "./scene/TeacherActor";
+import WidgetPanel from "./WidgetPanel";
 
 const TEACHERS: TeacherId[] = ["leo", "mia"];
 
@@ -162,6 +163,7 @@ export default function Hud() {
   const teacher = useSession((s) => s.teacher);
   const [typing, setTyping] = useState(false);
   const [showWords, setShowWords] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const micRef = useVoiceGlow(listening);
@@ -186,7 +188,7 @@ export default function Hud() {
     }
     lastKind.current = brainKind;
   }, [brainKind, live, name, aiReach]);
-  useEffect(() => { if (!live) { setTyping(false); setShowWords(false); toldFallback.current = false; } }, [live]);
+  useEffect(() => { if (!live) { setTyping(false); setShowWords(false); setInfoOpen(false); toldFallback.current = false; } }, [live]);
 
   const lastTeacher = [...transcript].reverse().find((l) => l.role === "teacher");
   const submit = (e: React.FormEvent) => {
@@ -204,11 +206,17 @@ export default function Hud() {
     <div className={`hud ${teacher ?? ""}`}>
       <span id="tap-tag" className="tag" style={{ display: "none" }} aria-hidden>Tap to look closer</span>
       <header className="top">
-        {live && <span className="chip name wide-only">{brainKind === "model" ? `${name} · AI teacher` : name}</span>}
-        {live && (brainKind === "model"
-          ? <span className="chip demo" data-testid="demo-badge" title="This answer came from Claude, an AI. If it cannot be reached, a built-in script answers instead. Test build."><span className="wide-only">AI teacher · test build</span><span className="narrow-only">AI · test</span></span>
-          : <span className="chip demo" data-testid="demo-badge" title="Lessons are scripted for testing; not live AI yet"><span className="wide-only">Scripted lesson · not AI yet</span><span className="narrow-only">Scripted · not AI</span></span>)}
-        {live && notice && <span className="chip sim" data-testid="sim-badge" title={notice}><span className="wide-only">{notice}</span><span className="narrow-only">Simulation</span></span>}
+        {live && (
+          <button
+            className={`chip badge ${brainKind === "model" ? "ai" : "demo"}`} data-testid="demo-badge" aria-expanded={infoOpen} aria-controls="badge-info"
+            aria-label={`${name}: ${brainKind === "model" ? "AI" : "scripted, not AI"}. Tap for details.`}
+            onClick={() => setInfoOpen((v) => !v)}
+          >
+            <span>{name} · {brainKind === "model" ? "AI" : "Scripted, not AI"}</span>
+            {notice && <span className="sim-tag" data-testid="sim-badge"> · Simulation</span>}
+            <span className="i" aria-hidden>i</span>
+          </button>
+        )}
         <span className="grow" />
         {live && (
           <>
@@ -223,6 +231,16 @@ export default function Hud() {
         <div className={`banner ${banner.kind}`} role="status">
           {banner.text}
           <button aria-label="Dismiss" onClick={() => useSession.setState({ banner: null })}>{Icon.close}</button>
+        </div>
+      )}
+
+      {live && infoOpen && (
+        <div className="badge-info" id="badge-info" role="dialog" aria-label="About this lesson" data-testid="badge-info">
+          <p>{brainKind === "model"
+            ? `${name} is an AI teacher (Claude). Test build: AI can make mistakes, and if it can't be reached a built-in script answers instead.`
+            : `This part is a scripted lesson, not AI yet. ${name} only understands certain words.`}</p>
+          {notice && <p>{notice}</p>}
+          <button className="ghost small" onClick={() => setInfoOpen(false)}>Close</button>
         </div>
       )}
 
@@ -244,6 +262,7 @@ export default function Hud() {
             <div className="caption thinking" data-testid="thinking" aria-label={`${name} is thinking`}><b className="who">{name}</b><span className="dots" aria-hidden><i /><i /><i /></span></div>
           )}
           {listening && <div className="caption you" data-testid="interim"><b className="who">You</b><span className="say">{interim || "I'm listening. Tap the mic when you're done."}</span></div>}
+          <WidgetPanel />
           <QuestionCard />
           {choices.length > 0 && !busy && (
             <div className="choices" data-testid="choices">

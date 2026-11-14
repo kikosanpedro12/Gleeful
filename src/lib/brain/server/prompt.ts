@@ -8,6 +8,7 @@ import "server-only";
 import { ESCALATE_TO_HARD_MODEL, LIMITS, MODELS } from "./config";
 import type { BrainRequest, WireInput } from "../protocol";
 import { LOOKS } from "@/lib/teacher/rig";
+import { matches } from "@/lib/widgets/spec";
 import { contextFor, WORLDS, TRANSIT_TARGETS, type WorldId } from "@/lib/worlds/registry";
 
 export const SAFETY_RULES = `You are an AI teacher in a children's learning app, for ages 5 to 18 (kindergarten to grade 12). You speak aloud to a child, with a parent possibly nearby.
@@ -39,6 +40,7 @@ How you teach, like a real tutor:
 - If they say they don't get it, or their reply shows a gap, explain it a different way than before: a simpler example, a comparison to everyday life, or something they can see or tap here. Then check again.
 - After you re-explain, end with a short check such as "Does that make more sense now?" or "Which part should I explain again?".
 - If they say they understand, believe them, praise the effort, and move on. Do not keep checking the same idea.
+- For number, fraction and decimal ideas, use showWidget (a number line or fraction bars) instead of only describing them. The child works on it by tapping, and the app tells you what they set and whether it matches your target. Hide it with hideWidget when you move on. Show at most one widget per reply.
 - Ask about one idea at a time and keep it to one check per reply. A spoken check counts as your one question for that reply, so don't also call askQuestion or offerChoices.`;
 
 const line = (k: string, v: string) => `- ${k}: ${v}`;
@@ -80,6 +82,16 @@ function describeInput(input: WireInput, req: BrainRequest): string {
     case "world_ready": return `We just arrived in ${WORLDS[input.world].title}. Welcome the child and invite one action.`;
     case "tap": return `The child tapped: ${input.target}. React to what they found.`;
     case "choice": return `The child chose the option "${input.id}" with the label <child_said>${input.label}</child_said>. Continue from there.`;
+    case "widget": {
+      const what = input.widget === "number_line" ? "number line" : "fraction bars";
+      const m = matches(input.value, input.target);
+      const next = m === null
+        ? " React to what they did and ask one short question about what they notice."
+        : m
+          ? ` That is CORRECT: it matches the target (${input.target}). Celebrate briefly, then ask them to say why in their own words.`
+          : ` That is NOT correct: the target was ${input.target}. Do not say the answer. Give a short hint, then invite them to try again on the ${what}.`;
+      return `The child set the ${what} to ${input.value}.${next}`;
+    }
     case "answer": {
       const q = req.world === "transit" ? undefined : WORLDS[req.world].questions[input.questionId];
       const opt = q?.options.find((o) => o.id === input.optionId);
@@ -98,7 +110,9 @@ export function buildUserMessage(req: BrainRequest): string {
   const recent = req.history.length
     ? "Recent turns (oldest first):\n" + req.history.map((h) => (h.role === "child" ? `child: <child_said>${h.text}</child_said>` : `you: <earlier_teacher_line>${h.text}</earlier_teacher_line>`)).join("\n") + "\n\n"
     : "";
-  return `${recent}NOW: ${describeInput(req.input, req)}`;
+  // The child already knows who is talking: only the very first line of a session may introduce the teacher.
+  const noIntro = req.input.kind === "session_start" ? "" : " Do not introduce yourself or say your name again; the child already knows you.";
+  return `${recent}NOW: ${describeInput(req.input, req)}${noIntro}`;
 }
 
 /**

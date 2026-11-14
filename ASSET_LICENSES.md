@@ -13,6 +13,7 @@
 | Landing still illustrations (posters) | src/components/landing/Posters.tsx | Drawn in SVG for this project | Owned | Yes |
 | Unbounded (display typeface) | @fontsource-variable/unbounded 5.3.0 | Google Fonts via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |
 | Atkinson Hyperlegible (body typeface) | @fontsource/atkinson-hyperlegible 5.3.0 | Braille Institute via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |
+| Voice lab sample clips (20 short mp3s) | public/voice-lab/ | Generated offline 14 Nov 2026 with Kokoro-82M (kokoro-onnx v1.0 model files, voice presets am_michael, am_adam, af_heart, af_bella). Used only on the private /voice-lab comparison page | Model: Apache 2.0 | Yes (confirm voice-preset terms before shipping any as the product voice) |
 | Teacher voices | runtime | The user's browser / OS speech voices | Not shipped by us; device-dependent | Test only. Choose a licensed voice for production. |
 | Speech recognition | runtime | Browser Web Speech API (Chrome sends audio to Google to transcribe) | Google / browser terms | Test only. Review before real-child use. |
 

@@ -90,6 +90,40 @@ function QualityGuard({ onLow }: { onLow: () => void }) {
   return null;
 }
 
+/**
+ * Worlds that are not showing are hidden, and three.js skips hidden objects, so their shaders compile and their
+ * textures upload on the FIRST frame we arrive (a long stall: the blank orange frame on Mars). Once, shortly after
+ * the stage appears, show everything for the instant it takes to START compiling, then hide it again before any
+ * frame is drawn. compile() collects materials synchronously; only the wait for the GPU is asynchronous.
+ */
+function Prewarm() {
+  const { gl, scene, camera } = useThree();
+  const frames = useRef(0);
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current || ++frames.current < 20) return;
+    done.current = true;
+    try {
+      const hidden: THREE.Object3D[] = [];
+      const textures = new Set<THREE.Texture>();
+      scene.traverse((o) => {
+        if (o.visible) return;
+        hidden.push(o);
+        const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        for (const mat of Array.isArray(m) ? m : m ? [m] : []) for (const v of Object.values(mat)) if (v instanceof THREE.Texture) textures.add(v);
+      });
+      for (const o of hidden) o.visible = true;
+      let pending: Promise<unknown> | undefined;
+      try { pending = gl.compileAsync(scene, camera); } finally { for (const o of hidden) o.visible = false; }
+      pending?.catch(() => {});
+      for (const t of textures) { try { gl.initTexture(t); } catch {} }
+    } catch {
+      // Prewarming is an optimisation only; never let it break the lesson.
+    }
+  });
+  return null;
+}
+
 function TestHooks() {
   const { camera, size } = useThree();
   (window as any).__project = (name: string) => {
@@ -121,6 +155,7 @@ export default function Stage({ onQuality, flash }: { onQuality?: (q: "high" | "
       <Director flash={flash} reducedMotion={reduced} />
       <CameraRig reducedMotion={reduced} />
       <ScreenTag />
+      <Prewarm />
       {TEST_HOOKS && <TestHooks />}
       <QualityGuard onLow={() => { setLow(true); onQuality?.("low"); }} />
     </Canvas>

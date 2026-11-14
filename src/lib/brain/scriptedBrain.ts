@@ -1,6 +1,7 @@
 import type { Action, Brain, BrainContext, BrainInput, BrainReply, Segment } from "./types";
 import { WORLDS, type Question } from "@/lib/worlds/registry";
 import { skillStatus } from "@/lib/learner/profile";
+import { matches } from "@/lib/widgets/spec";
 
 /**
  * SCRIPTED lesson brain — NOT AI. A deterministic Mars field-trip lesson used
@@ -20,6 +21,8 @@ const INTENTS: [string, RegExp][] = [
   ["mountain", /\b(mountain|volcano|olympus)\b/i],
   ["air", /\b(air|breathe|breath|people|live|alive|astronaut|spacesuit|human)\b/i],
   ["rock", /\b(rock|stone)\b/i],
+  ["numberline", /number ?line/i],
+  ["fractions", /\b(fractions?|halves|half|quarters?)\b/i],
   ["mars", /\b(mars|planet|space)\b/i],
   ["yes", /^(yes|yeah|yep|ok|okay|sure|let'?s go|go)\b/i],
   ["hello", /\b(hello|hi|hey)\b/i],
@@ -52,6 +55,7 @@ export class ScriptedBrain implements Brain {
         return { segments: [this.nudge(ctx)] };
       case "tap": return this.tap(input.target, ctx);
       case "answer": return this.answer(input.questionId, input.optionId, ctx);
+      case "widget": return this.widget(input.value, input.target, ctx);
       case "choice": return this.intent(input.id, input.label, ctx);
       case "text": {
         if (this.pending) {
@@ -89,7 +93,7 @@ export class ScriptedBrain implements Brain {
     }
     return { segments: [
       S(`Hi! I'm ${n}. Let's learn something amazing today.`, A("gesture", { gesture: "wave" })),
-      S("What are we learning today?", choices(["mars", "I have homework about Mars"], ["red", "Why is Mars red?"])),
+      S("What are we learning today?", choices(["mars", "I have homework about Mars"], ["red", "Why is Mars red?"], ["fractions", "Try fraction bars"])),
     ] };
   }
 
@@ -100,6 +104,22 @@ export class ScriptedBrain implements Brain {
         return { segments: [S("Okay. I'm listening.", A("gesture", { gesture: "nod" }))] };
       case "hello":
         return { segments: [S(`Hi! I'm ${ctx.teacherName}.`, A("gesture", { gesture: "wave" })), this.nudge(ctx)] };
+      case "numberline":
+        if (ctx.world === "transit") break;
+        this.pending = null;
+        return { segments: [
+          S("Here's a number line from zero to one. It's cut into four equal steps.", A("gesture", { gesture: "open_hands" }),
+            A("showWidget", { widget: "number_line", min: 0, max: 1, step: 0.25, format: "fraction", denominator: 4, marks: [], target: 0.75 })),
+          S("Tap where three quarters is, then tell me."),
+        ] };
+      case "fractions":
+        if (ctx.world === "transit") break;
+        this.pending = null;
+        return { segments: [
+          S("Let's use fraction bars. The top bar is cut into four equal parts, and the bottom one shows one half.", A("gesture", { gesture: "open_hands" }),
+            A("showWidget", { widget: "fraction_bars", bars: [{ parts: 4, shaded: 0 }, { parts: 2, shaded: 1 }], target_num: 1, target_den: 2 })),
+          S("Tap parts of the top bar to shade the same amount as the bottom bar, then tell me."),
+        ] };
       case "mars":
       case "yes":
         if (onMars) return { segments: [S("We're on Mars right now! Look around.", A("gesture", { gesture: "open_hands" })), this.nudge(ctx)] };
@@ -154,6 +174,18 @@ export class ScriptedBrain implements Brain {
       S("Good question! In this early version my lesson is scripted, so I can only take you on the Mars trip for now.", A("gesture", { gesture: "shrug" })),
       this.nudge(ctx),
     ] };
+  }
+
+  private widget(value: string, target: string | undefined, ctx: BrainContext): BrainReply {
+    const m = matches(value, target);
+    if (m === true)
+      return { segments: [
+        S("Yes, that's it! You got it by looking carefully.", A("gesture", { gesture: "thumbs_up" })),
+        S("What next?", choices(["fractions", "Fraction bars"], ["numberline", "Number line"], ["mars", "Go to Mars"])),
+      ] };
+    if (m === false)
+      return { segments: [S("Not quite. Count the equal parts again, and try another spot.", A("gesture", { gesture: "think" }))] };
+    return { segments: [S("Nice! Take your time, and tell me when you're ready."), this.nudge(ctx)] };
   }
 
   private nudge(ctx: BrainContext): Segment {

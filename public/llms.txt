@@ -28,7 +28,7 @@
 - [Privacy notice](/privacy): what is collected, parental consent, deletion.
 
 ## Not for crawlers
-- /learn (the lesson app), /parent, /sign-in, /auth, /tester and /api are private and must not be indexed or fetched.
+- /learn (the lesson app), /parent, /sign-in, /auth, /tester, /voice-lab and /api are private and must not be indexed or fetched.
 
 ## Contact
 - Contact details coming soon.
