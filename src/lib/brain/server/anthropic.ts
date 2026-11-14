@@ -37,6 +37,9 @@ export async function callAnthropic(args: {
           max_tokens: args.maxTokens ?? LIMITS.maxOutputTokens,
           system: [{ type: "text", text: args.system, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: args.user }],
+          // Thinking tokens share max_tokens. With it on, replies hit the cap before the answer (stop: max_tokens).
+          // Haiku 5.5 accepts "disabled"; Sonnet 5.5 rejects it and takes "between_tools" (no up-front thinking).
+          thinking: { type: /sonnet/.test(args.model) ? "between_tools" : "disabled" },
           ...(args.tools?.length ? { tools: args.tools, tool_choice: { type: "auto" } } : {}),
         }),
       });
