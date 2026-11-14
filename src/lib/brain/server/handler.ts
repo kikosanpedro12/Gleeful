@@ -154,28 +154,33 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   d.sessionTotals.add(sessionKey, now);
 
   const ctx = contextFor(r.world);
-  let up;
-  try {
-    up = await callAnthropic({
-      fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: modelFor(hard),
-      system: buildSystem(r), user: buildUserMessage(r), tools: toolsFor(ctx),
-    });
-  } catch (e) {
-    const err = e instanceof UpstreamError ? e : new UpstreamError("failed");
-    d.log("upstream_error", { kind: err.kind, status: err.status ?? 0 });
-    if (err.kind === "timeout") return fail(504, "upstream_timeout");
-    if (err.kind === "busy") return fail(503, "upstream_busy", { "retry-after": "5" });
-    return fail(502, "upstream_failed");
+  // The model sometimes answers with actions only (no spoken sentence), or with a line the
+  // narration guard drops. One automatic retry, with a firm reminder, beats falling back to the script.
+  const REMIND = "\n\n(Reminder: your reply MUST include at least one short spoken sentence to the child, in the words a teacher would say out loud, before any tool calls.)";
+  let reply: ReturnType<typeof buildReply> = null;
+  for (let attempt = 0; attempt < 2 && !reply; attempt++) {
+    let up;
+    try {
+      up = await callAnthropic({
+        fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: modelFor(hard),
+        system: buildSystem(r), user: buildUserMessage(r) + (attempt ? REMIND : ""), tools: toolsFor(ctx),
+      });
+    } catch (e) {
+      const err = e instanceof UpstreamError ? e : new UpstreamError("failed");
+      d.log("upstream_error", { kind: err.kind, status: err.status ?? 0 });
+      if (err.kind === "timeout") return fail(504, "upstream_timeout");
+      if (err.kind === "busy") return fail(503, "upstream_busy", { "retry-after": "5" });
+      return fail(502, "upstream_failed");
+    }
+    await d.usage.addTokens(usage, up.usage.input, up.usage.output);
+    reply = buildReply(up.content, r.world, r.input);
+    if (!reply) {
+      // Shape only (block types, stop reason, token count), never the child's words or the model's.
+      const types = Array.isArray(up.content) ? up.content.slice(0, 8).map((x) => String((x as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
+      d.log("bad_model_output", { attempt: attempt + 1, model: hard ? 1 : 0, blocks: types, stop: up.stopReason ?? "?", out: up.usage.output });
+    }
   }
-  await d.usage.addTokens(usage, up.usage.input, up.usage.output);
-
-  const reply = buildReply(up.content, r.world, r.input);
-  if (!reply) {
-    // Shape only (block types, stop reason, token count), never the child's words or the model's.
-    const types = Array.isArray(up.content) ? up.content.slice(0, 8).map((x) => String((x as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
-    d.log("bad_model_output", { model: hard ? 1 : 0, blocks: types, stop: up.stopReason ?? "?", out: up.usage.output });
-    return fail(502, "bad_model_output");
-  }
+  if (!reply) return fail(502, "bad_model_output");
   if (reply.dropped) d.log("dropped_parts", { count: reply.dropped });
   const body: BrainResponse = { segments: reply.segments, model: hard ? "hard" : "default" };
   return new Response(JSON.stringify(body), { status: 200, headers: HEADERS });

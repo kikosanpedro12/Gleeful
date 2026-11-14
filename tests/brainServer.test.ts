@@ -410,6 +410,17 @@ describe("model output is untrusted", () => {
     const res = await call(deps(model(null, { raw: "{{not json" })));
     expect(res.status).toBe(502);
   });
+  it("route: a reply with actions only gets one automatic retry with a reminder, and the retry's speech is used", async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ content: [{ type: "thinking" }, tool("gesture", { gesture: "wave" })], usage: { input_tokens: 10, output_tokens: 10 } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ content: [text("Hi there!")], usage: { input_tokens: 10, output_tokens: 10 } }), { status: 200 }));
+    const res = await call(deps(f as never));
+    expect(res.status).toBe(200);
+    expect(f).toHaveBeenCalledTimes(2);
+    const second = JSON.parse((f.mock.calls[1][1] as { body: string }).body).messages[0].content as string;
+    expect(second).toMatch(/MUST include at least one short spoken sentence/);
+    expect(((await json(res)).segments as { say: string }[])[0].say).toBe("Hi there!");
+  });
   it("route: upstream failures map to safe codes and never leak the upstream body", async () => {
     const leak = vi.fn(async () => new Response("secret upstream detail sk-ant-xxxx", { status: 401 }));
     const r1 = await call(deps(leak as never));
