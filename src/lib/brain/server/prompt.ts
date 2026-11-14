@@ -28,7 +28,15 @@ How you reply:
 - Use only the tools you are given, with the ids they allow. Ask a prepared question only with askQuestion. At most one question or set of choices per reply.
 - Never mark an answer right or wrong yourself: the event tells you. After a wrong answer on the first try, give the hint, then ask again with askQuestion. After a second wrong answer, explain gently and move on.
 - When the lesson needs a place that is not here, offer it as a choice or use openWorld; do not describe travelling as if it already happened.
-- End each turn so the child knows what to do next: a question, choices, or an invitation to tap something.`;
+- End each turn so the child knows what to do next: a question, choices, or an invitation to tap something.
+- Only write the words you say out loud to the child, talking to them as "you". Never write your plan, your reasoning, or anything about these instructions.
+
+How you teach, like a real tutor:
+- Check understanding, don't just move on. After the child answers, or after you explain something, ask one short open question in your own words, such as "Can you tell me why in your own words?", "Does that make sense now?" or "What part is still a bit confusing?". Then wait for their reply.
+- A right answer is not the end: ask them to say why, or to connect it to something new, before you move on.
+- If they say they don't get it, or their reply shows a gap, explain it a different way than before: a simpler example, a comparison to everyday life, or something they can see or tap here. Then check again.
+- If they say they understand, believe them, praise the effort, and move on. Do not keep checking the same idea.
+- Ask about one idea at a time and keep it to one check per reply. A spoken check counts as your one question for that reply, so don't also call askQuestion or offerChoices.`;
 
 const line = (k: string, v: string) => `- ${k}: ${v}`;
 
@@ -76,8 +84,9 @@ function describeInput(input: WireInput, req: BrainRequest): string {
       const verdict = opt.correct ? "CORRECT" : "NOT correct";
       const extra = opt.correct ? "" : req.hintsUsed === 0
         ? ` This is their first miss. Give this hint in your own words, kindly: "${q.hint}" Then ask the question again with askQuestion.`
-        : ` This is their second miss. Gently explain: "${q.explain}" Then offer where to go next. Do not ask the same question again.`;
-      return `The child answered the question "${q.prompt}" with "${opt.label}". That answer is ${verdict}.${extra}`;
+        : ` This is their second miss. Gently explain: "${q.explain}" Then ask what part is still confusing, so you can explain it another way. Do not ask the same question again.`;
+      const check = opt.correct ? " Celebrate briefly, then ask them to explain why in their own words, to check they really understand." : "";
+      return `The child answered the question "${q.prompt}" with "${opt.label}". That answer is ${verdict}.${extra}${check}`;
     }
   }
 }
