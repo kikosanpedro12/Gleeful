@@ -42,6 +42,7 @@ export default function Landing() {
           <a href="#parents">For parents</a>
           <a href="#pricing">Pricing</a>
         </nav>
+        <a className="lp-signin" href="/sign-in" data-testid="nav-signin">Sign in</a>
         <a className="lp-btn lp-btn-nav" href="/learn">Try the demo</a>
       </header>
 

@@ -52,6 +52,9 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-btn-main:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 .lp-btn-alt { background: #fff; color: var(--night); box-shadow: inset 0 0 0 2px var(--night); }
 .lp-btn-alt:hover { background: var(--cloud); }
+.lp-signin { font-weight: 700; padding: 10px 6px; text-decoration: none; white-space: nowrap; }
+.lp-signin:hover { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 2px; }
+@media (max-width: 760px) { .lp-signin { margin-left: auto; } .lp-nav .lp-signin + .lp-btn-nav { margin-left: 0; } .lp-nav { gap: 12px; } }
 .lp-btn-nav { min-height: 44px; padding: 0 18px; font-size: .9rem; background: var(--night); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .lp-btn { transition: none; } }
 
@@ -97,6 +100,16 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
   .lp-headline { font-size: clamp(1.75rem, 8.2vw, 2.5rem); line-height: 1.24; }
   .lp-strap { font-size: var(--t0); }
   .lp-ctas .lp-btn { flex: 1 1 100%; }
+}
+
+/* Phones: one calm panel instead of stacked coloured slabs, and no floating pill that collides with the text. */
+@media (max-width: 760px) {
+  .lp-hero.is-live .lp-bug { display: none; }
+  .lp-hero.is-live .lp-third { background: rgba(20, 33, 61, .82); color: #fff; padding: 16px 16px 18px; border-radius: 18px; }
+  .lp-hero.is-live .lp-episode { background: transparent; color: var(--sun); padding: 0; margin-bottom: 6px; }
+  .lp-hero.is-live .lp-headline span { background: none; color: #fff; padding: 0; }
+  .lp-hero.is-live .lp-strap { background: none; color: #e8edf7; padding: 0; margin-top: 10px; }
+  .lp-hero.is-live .lp-status { display: none; }
 }
 
 /* ------------------------------------------------------------- sections */
