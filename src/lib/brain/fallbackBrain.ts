@@ -16,6 +16,10 @@ export class FallbackBrain implements Brain {
   get kind(): Brain["kind"] { return this.last; }
 
   async respond(input: BrainInput, ctx: BrainContext): Promise<BrainReply> {
+    // The opening hello is a fixed line anyway: play it instantly from the script instead of
+    // leaving the teacher standing idle for seconds while the model writes a greeting.
+    // `last` is untouched, so the badge keeps describing who answers the child's turns.
+    if (input.kind === "session_start") return this.fallback.respond(input, ctx);
     if (this.now() >= this.skipUntil) {
       try {
         const r = await this.primary.respond(input, ctx);

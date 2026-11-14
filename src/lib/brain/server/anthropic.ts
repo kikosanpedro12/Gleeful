@@ -37,9 +37,10 @@ export async function callAnthropic(args: {
           max_tokens: args.maxTokens ?? LIMITS.maxOutputTokens,
           system: [{ type: "text", text: args.system, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: args.user }],
-          // Thinking tokens share max_tokens. With it on, replies hit the cap before the answer (stop: max_tokens).
-          // Haiku 5.5 accepts "disabled"; Sonnet 5.5 rejects it and takes "between_tools" (no up-front thinking).
-          thinking: { type: /sonnet/.test(args.model) ? "between_tools" : "disabled" },
+          // Thinking stays on (adaptive, the default) because it lands in hidden "thinking" blocks we never speak.
+          // With thinking turned off the model narrated its plan as plain text, and that text was spoken aloud.
+          // Low effort keeps thinking short; max_tokens leaves room for thinking plus the short reply.
+          output_config: { effort: "low" },
           ...(args.tools?.length ? { tools: args.tools, tool_choice: { type: "auto" } } : {}),
         }),
       });

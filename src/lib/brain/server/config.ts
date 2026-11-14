@@ -12,8 +12,8 @@ export const MODELS = {
 } as const;
 
 export const LIMITS = {
-  /** Reply budget. Teacher lines are short; a long reply is a bug or an attack. */
-  maxOutputTokens: 400,
+  /** Token ceiling for thinking + reply together (thinking shares it). What is spoken is still capped by maxSayChars/maxSegments. */
+  maxOutputTokens: 1500,
   maxBodyBytes: 16 * 1024,
   maxTextChars: 300,
   maxHistoryTurns: 8,

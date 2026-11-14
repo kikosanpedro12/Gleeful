@@ -44,6 +44,14 @@ export function sanitizeSay(v: unknown, max: number = LIMITS.maxSayChars): strin
   return cleaned && /[\p{L}\p{N}]/u.test(cleaned) ? cleaned : null;
 }
 
+/**
+ * Backstop: the model planning out loud ("The child tapped the rock, so I should...") instead of
+ * talking to the child. The teacher never calls the child "the child" or talks about its own
+ * instructions, so such a line is dropped rather than spoken.
+ */
+const NARRATION = /\b(the|this) (child|kid|learner|student|user)\b|\bI should\b|\b(system prompt|the record|listed facts|my instructions|tool call)\b|\bsession \d+\b/i;
+export function looksLikeNarration(text: string): boolean { return NARRATION.test(text); }
+
 export interface Block { type?: unknown; text?: unknown; name?: unknown; input?: unknown }
 
 export function buildReply(blocks: unknown, world: WorldId | "transit", input: WireInput): { segments: Segment[]; dropped: number } | null {
@@ -72,7 +80,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
     if (!b || typeof b !== "object") { dropped++; continue; }
     if (b.type === "text") {
       const say = sanitizeSay(b.text);
-      if (!say) { dropped++; continue; }
+      if (!say || looksLikeNarration(say)) { dropped++; continue; }
       if (segments.length >= LIMITS.maxSegments) { dropped++; continue; }
       segments.push({ say, actions: segments.length === 0 ? pending.splice(0) : [] });
     } else if (b.type === "tool_use") {

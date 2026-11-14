@@ -219,7 +219,7 @@ describe("browser: passcode storage and header", () => {
   it("gate on and no code in this tab: never POSTs; the script answers", async () => {
     const f = fetchOf(probe(true));
     const b = new FallbackBrain(new ClaudeBrain({ fetchImpl: f as unknown as typeof fetch, probe: true }), new ScriptedBrain());
-    const r = await b.respond({ kind: "session_start" }, ctx());
+    const r = await b.respond({ kind: "resume" }, ctx());
     expect(b.kind).toBe("scripted");
     expect(r.segments.length).toBeGreaterThan(0);
     expect(f.mock.calls.map((c) => (c[1] as { method: string }).method)).toEqual(["GET"]);

@@ -38,7 +38,7 @@ describe("taste: happy path and what is sent upstream", () => {
     expect(s.model).toBe(MODELS.default);
     expect(s.model).not.toBe(MODELS.hard);
     expect(s.max_tokens).toBe(TASTE_LIMITS.maxOutputTokens);
-    expect(s.max_tokens).toBeLessThan(400);
+    expect(s.max_tokens).toBeLessThanOrEqual(600); // thinking shares this ceiling; the visible reply is capped by characters
     expect("tools" in s).toBe(false);
     expect("tool_choice" in s).toBe(false);
     expect(JSON.stringify(s)).not.toContain(KEY);

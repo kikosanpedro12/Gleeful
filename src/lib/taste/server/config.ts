@@ -10,8 +10,8 @@ import { MODELS } from "@/lib/brain/server/config";
 export const TASTE_MODEL = MODELS.default;
 
 export const TASTE_LIMITS = {
-  /** Reply budget in tokens: one or two spoken sentences. */
-  maxOutputTokens: 150,
+  /** Token ceiling for thinking + reply together. The visible reply is still capped by maxReplyChars. */
+  maxOutputTokens: 600,
   /** Longest reply we will pass on, in characters (after cleaning). */
   maxReplyChars: 280,
   maxBodyBytes: 2 * 1024,

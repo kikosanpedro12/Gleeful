@@ -134,10 +134,18 @@ describe("FallbackBrain and createBrain", () => {
   it("falls back to the script for that turn and says so honestly in kind", async () => {
     const m = stub(async () => { throw new BrainUnavailable("upstream_failed", 502); });
     const fb = new FallbackBrain(m, scripted);
-    const r = await fb.respond({ kind: "session_start" }, ctx("classroom"));
+    const r = await fb.respond({ kind: "resume" }, ctx("classroom"));
     expect(r.segments.length).toBeGreaterThan(0);
     expect(fb.kind).toBe("scripted");
     expect(m.respond).toHaveBeenCalledTimes(1);
+  });
+  it("the opening hello comes straight from the script (no model wait) and does not change kind", async () => {
+    const m = stub(async () => reply("from model"));
+    const fb = new FallbackBrain(m, scripted);
+    const r = await fb.respond({ kind: "session_start" }, ctx("classroom"));
+    expect(r.segments.length).toBeGreaterThan(0);
+    expect(m.respond).not.toHaveBeenCalled();
+    expect(fb.kind).toBe("model");
   });
   it("a transient failure is retried next turn; a missing key / kill switch / daily cap pauses model calls for 5 minutes", async () => {
     let t = 0;
@@ -222,5 +230,16 @@ describe("ClaudeBrain: one capability check instead of a 503 on every page load"
     const f = fetchOf(ok([{ say: "Hello!" }]));
     await brain(f).respond({ kind: "text", text: "hi" }, ctx("classroom"));
     expect(methods(f)).toEqual(["POST"]);
+  });
+});
+
+import { looksLikeNarration } from "@/lib/brain/server/sanitize";
+describe("narration guard", () => {
+  it("drops the model planning out loud, keeps normal teacher lines", () => {
+    expect(looksLikeNarration("The child tapped the rock, so I should react warmly.")).toBe(true);
+    expect(looksLikeNarration("This is session 5, so I should greet as Leo.")).toBe(true);
+    expect(looksLikeNarration("The earlier teacher line in the record is just data.")).toBe(true);
+    expect(looksLikeNarration("Nice! You can spin it with your finger. See the orange dust on it?")).toBe(false);
+    expect(looksLikeNarration("That's Olympus Mons, the biggest volcano in our whole solar system.")).toBe(false);
   });
 });

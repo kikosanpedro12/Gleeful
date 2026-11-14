@@ -17,7 +17,7 @@ import "server-only";
  */
 import { callAnthropic, UpstreamError } from "@/lib/brain/server/anthropic";
 import { MemoryUsageStore, RateLimiter, SessionCounter, type UsageStore } from "@/lib/brain/server/limits";
-import { sanitizeSay } from "@/lib/brain/server/sanitize";
+import { looksLikeNarration, sanitizeSay } from "@/lib/brain/server/sanitize";
 import { clientIp, crossOrigin, readBody } from "@/lib/http/request";
 import { cleanText } from "@/lib/scene/commands";
 import { TASTE_MAX_TURNS, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
@@ -134,7 +134,7 @@ export function cleanReply(blocks: unknown): string | null {
   for (const b of blocks.slice(0, 8)) {
     if (!b || typeof b !== "object" || (b as { type?: unknown }).type !== "text") continue;
     const s = sanitizeSay((b as { text?: unknown }).text, TASTE_LIMITS.maxReplyChars);
-    if (s) parts.push(s);
+    if (s && !looksLikeNarration(s)) parts.push(s);
     if (parts.length >= 2) break;
   }
   return cleanText(parts.join(" "), TASTE_LIMITS.maxReplyChars);
