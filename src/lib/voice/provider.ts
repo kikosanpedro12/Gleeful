@@ -55,6 +55,8 @@ export interface VoiceProvider {
   readonly micAvailable: boolean;
   /** Tap-to-talk providers listen for one utterance. */
   listenOnce?(): void;
+  /** Finish the current utterance and use what was heard (tap the mic again). Falls back to cancel. */
+  stopListening?(): void;
   cancelListening?(): void;
   /** 0..1 loudness of the teacher's voice right now (drives the mouth). */
   getOutputLevel(): number;

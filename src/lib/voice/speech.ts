@@ -59,10 +59,13 @@ export interface ListenHandlers {
   onNothing(reason: "no-speech" | "denied" | "error" | "aborted"): void;
 }
 
-/** One utterance, tap-to-talk. Returns a cancel function. */
-export function listenOnce(h: ListenHandlers): () => void {
+/** One utterance, tap-to-talk. Returns a cancel function (throws the audio away); `.stop()` on it finishes the
+ *  utterance instead, so what the child already said is still delivered. */
+export type Listening = (() => void) & { stop: () => void };
+export function listenOnce(h: ListenHandlers): Listening {
   const C = SRClass();
-  if (!C) { h.onNothing("error"); return () => {}; }
+  const mk = (cancel: () => void, stop: () => void): Listening => Object.assign(cancel, { stop });
+  if (!C) { h.onNothing("error"); return mk(() => {}, () => {}); }
   const r = new C();
   r.lang = "en-US";
   r.interimResults = true;
@@ -70,6 +73,7 @@ export function listenOnce(h: ListenHandlers): () => void {
   r.maxAlternatives = 1;
   let speechEndAt: number | undefined;
   let finished = false;
+  let lastInterim = "";
   const finish = (fn: () => void) => { if (!finished) { finished = true; fn(); } };
   r.onstart = () => h.onStart();
   r.onspeechend = () => { speechEndAt = performance.now(); };
@@ -80,13 +84,17 @@ export function listenOnce(h: ListenHandlers): () => void {
       if (e.results[i].isFinal) final += t; else interim += t;
     }
     if (final.trim()) finish(() => h.onFinal(final.trim(), speechEndAt));
-    else if (interim.trim()) h.onInterim(interim.trim());
+    else if (interim.trim()) { lastInterim = interim.trim(); h.onInterim(lastInterim); }
   };
   r.onerror = (e: any) => {
     const code = String(e?.error ?? "");
     finish(() => h.onNothing(code === "not-allowed" || code === "service-not-allowed" ? "denied" : code === "no-speech" ? "no-speech" : code === "aborted" ? "aborted" : "error"));
   };
-  r.onend = () => finish(() => h.onNothing("no-speech"));
+  // Android Chrome often ends with only interim text when the child taps stop: keep what was heard.
+  r.onend = () => finish(() => (lastInterim ? h.onFinal(lastInterim, speechEndAt) : h.onNothing("no-speech")));
   try { r.start(); } catch { finish(() => h.onNothing("error")); }
-  return () => { finished = true; try { r.abort(); } catch {} };
+  return mk(
+    () => { finished = true; try { r.abort(); } catch {} },
+    () => { try { r.stop(); } catch { finish(() => h.onNothing("error")); } },
+  );
 }

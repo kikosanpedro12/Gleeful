@@ -399,6 +399,8 @@ class SessionController {
   talk() {
     if (!this.provider?.listenOnce || this.s.status !== "connected") return;
     if (this.s.listening) {
+      // Tapping the mic again means "I'm done": hand over what was heard instead of throwing it away.
+      if (this.provider.stopListening) { this.provider.stopListening(); return; }
       this.provider.cancelListening?.();
       this.listenRequested = false;
       this.set({ listening: false, interim: "" });

@@ -26,7 +26,7 @@ export class ScriptedProvider implements VoiceProvider {
   private level = 0;
   private envT0 = 0;
   private envTimer?: ReturnType<typeof setInterval>;
-  private cancelListen?: () => void;
+  private cancelListen?: (() => void) & { stop?: () => void };
   private speakingNow = false;
 
   /** The brain is injected: ScriptedBrain today, a model-backed brain later. */
@@ -73,6 +73,8 @@ export class ScriptedProvider implements VoiceProvider {
     });
   }
   cancelListening() { this.cancelListen?.(); this.cancelListen = undefined; }
+  /** Child tapped the mic again: finish the utterance and use what was heard. */
+  stopListening() { if (this.cancelListen?.stop) this.cancelListen.stop(); else this.cancelListening(); }
 
   private handle(input: BrainInput) {
     this.cancel();
