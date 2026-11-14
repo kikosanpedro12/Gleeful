@@ -170,7 +170,12 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   await d.usage.addTokens(usage, up.usage.input, up.usage.output);
 
   const reply = buildReply(up.content, r.world, r.input);
-  if (!reply) { d.log("bad_model_output", { model: hard ? 1 : 0 }); return fail(502, "bad_model_output"); }
+  if (!reply) {
+    // Shape only (block types, stop reason, token count), never the child's words or the model's.
+    const types = Array.isArray(up.content) ? up.content.slice(0, 8).map((x) => String((x as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
+    d.log("bad_model_output", { model: hard ? 1 : 0, blocks: types, stop: up.stopReason ?? "?", out: up.usage.output });
+    return fail(502, "bad_model_output");
+  }
   if (reply.dropped) d.log("dropped_parts", { count: reply.dropped });
   const body: BrainResponse = { segments: reply.segments, model: hard ? "hard" : "default" };
   return new Response(JSON.stringify(body), { status: 200, headers: HEADERS });

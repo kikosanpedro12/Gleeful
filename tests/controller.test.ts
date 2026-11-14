@@ -144,6 +144,18 @@ describe("session controller", () => {
     expect(s().conv.state).toBe("thinking");
   });
 
+  it("a spoken question puts the inspected object back (the teacher never walks off holding the rock)", async () => {
+    const { session, s, p } = await load();
+    session.sendText("mars");
+    p.reply("r1", [["openWorld", { world: "mars" }]]);
+    session.transitEvent("arrived");
+    p.reply("a1", [["inviteTap", { target: "rock_1" }]]);
+    session.tap("rock_1");
+    expect(s().inspecting).toBe("rock_1");
+    p.ev.onUserTranscript("can we see the volcano");
+    expect(s().inspecting).toBeNull();
+  });
+
   it("answers go through only for the open question and its real options", async () => {
     const { session, s, p } = await load();
     session.sendText("mars");

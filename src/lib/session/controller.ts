@@ -163,7 +163,8 @@ class SessionController {
       else if (reason === "error") this.set({ banner: { kind: "info", text: "Voice input had a problem. You can tap the answers or type." } });
       this.guardStranded();
     },
-    onUserTranscript: (text) => { this.set({ interim: "" }); this.line("child", text, this.s.conv.turnId); },
+    // A spoken question moves on too: put the inspected object back.
+    onUserTranscript: (text) => { this.set({ interim: "", inspecting: null, question: null }); this.line("child", text, this.s.conv.turnId); },
     onResponseCreated: (id) => {
       const st = this.s.conv.state;
       if (st === "thinking" || st === "speaking" || this.systemReplyPending) {
