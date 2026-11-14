@@ -10,7 +10,7 @@ describe("the teacher introduces themself only at session start", () => {
   it("strips an opening introduction and keeps the rest", () => {
     expect(stripIntro("Hi, I'm Leo, an AI teacher! Look at those stars.")).toBe("Look at those stars.");
     expect(stripIntro("Hello there, I am Mia. We are flying!")).toBe("We are flying!");
-    expect(stripIntro("My name is Leo and I love space. Ready?")).toBe("Ready?");
+    expect(stripIntro("My name is Leo. Ready?")).toBe("Ready?");
   });
   it("leaves ordinary lines alone", () => {
     expect(stripIntro("Leo thinks the rock is red because of iron.")).toBe("Leo thinks the rock is red because of iron.");
@@ -24,11 +24,15 @@ describe("the teacher introduces themself only at session start", () => {
     expect(start?.segments[0].say).toMatch(/I'm Leo/);
   });
   it("keeps the honest AI answer when the child asks who the teacher is", () => {
-    for (const kind of [{ kind: "text", text: "are you a robot?" }, { kind: "choice", id: "x", label: "Who are you?" }] as const) {
-      const r = buildReply([{ type: "text", text: "I'm Leo, an AI teacher, not a person." }], "mars", kind);
-      expect(r?.segments[0].say).toBe("I'm Leo, an AI teacher, not a person.");
-    }
+    const r = buildReply([{ type: "text", text: "I'm Leo, an AI teacher, not a person." }], "mars", { kind: "text", text: "are you a robot?" });
+    expect(r?.segments[0].say).toBe("I'm Leo, an AI teacher, not a person.");
     expect(buildReply([{ type: "text", text: "My name is Mia!" }], "mars", { kind: "text", text: "what's your name?" })?.segments[0].say).toBe("My name is Mia!");
+  });
+  it("strips a re-intro after taps, choices, answers and widgets, but not a sentence that carries other content", () => {
+    for (const kind of [{ kind: "tap", target: "rock" }, { kind: "choice", id: "x", label: "Yes" }, { kind: "resume" }] as const)
+      expect(buildReply([{ type: "text", text: "Hi, I'm Leo, your AI teacher! The rock is red." }], "mars", kind)?.segments[0].say).toBe("The rock is red.");
+    expect(stripIntro("Hi friend, I’m Mia! Look up.")).toBe("Look up.");
+    expect(stripIntro("I'm Leo, and this crater is huge!")).toBe("I'm Leo, and this crater is huge!");
   });
   it("does not strip a possessive that merely starts with the name", () => {
     expect(stripIntro("This is Mia's favorite rock. Look!")).toBe("This is Mia's favorite rock. Look!");

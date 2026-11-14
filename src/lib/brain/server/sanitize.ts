@@ -57,11 +57,11 @@ export function looksLikeNarration(text: string): boolean { return NARRATION.tes
  * The teacher introduces themself once, at the start of a session. Later replies (a line mid-flight, an arrival,
  * a nudge) sometimes open with "Hi, I'm Leo, an AI teacher..." again; strip that opening sentence in code.
  */
-const INTRO = /^\s*(?:(?:hi|hello|hey)(?: there)?[,!.\s]+)?(?:i'?m|i am|my name is|this is)\s+(?:leo|mia)\b(?!['’]\w)[^.!?]*[.!?]+\s*/i;
+const INTRO = /^\s*(?:(?:hi|hello|hey)(?: there| friend)?[,!.\s]+)?(?:i['’]?m|i am|my name is|this is)\s+(?:leo|mia)\b(?!['’]\w)(?:,?\s+(?:your|an|the|a)\b[^.!?]*)?(?:[.!?]+\s*|$)/i;
 export function stripIntro(text: string): string { return text.replace(INTRO, "").trim(); }
-/** Only lines the teacher starts on its own can be an unwanted re-intro; a child asking "who are you?" must get the honest answer. */
-const TEACHER_INITIATED = new Set(["transit_cruise", "world_ready", "resume"]);
-export function mayStripIntro(kind: string): boolean { return TEACHER_INITIATED.has(kind); }
+/** Typed or spoken text may be a child asking "who are you?", which must get the honest answer; every other input is the app's own prompt, so an intro there is a repeat. */
+const MAY_BE_ASKED_WHO = new Set(["session_start", "text"]);
+export function mayStripIntro(kind: string): boolean { return !MAY_BE_ASKED_WHO.has(kind); }
 
 export interface Block { type?: unknown; text?: unknown; name?: unknown; input?: unknown }
 

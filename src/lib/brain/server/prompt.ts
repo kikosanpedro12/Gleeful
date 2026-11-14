@@ -111,8 +111,7 @@ export function buildUserMessage(req: BrainRequest): string {
     ? "Recent turns (oldest first):\n" + req.history.map((h) => (h.role === "child" ? `child: <child_said>${h.text}</child_said>` : `you: <earlier_teacher_line>${h.text}</earlier_teacher_line>`)).join("\n") + "\n\n"
     : "";
   // The child already knows who is talking: only the very first line of a session may introduce the teacher.
-  const TEACHER_STARTED = ["transit_cruise", "world_ready", "resume"];
-  const noIntro = TEACHER_STARTED.includes(req.input.kind) ? " Do not introduce yourself or say your name again; the child already knows you." : "";
+  const noIntro = req.input.kind !== "session_start" && req.input.kind !== "text" ? " Do not introduce yourself or say your name again; the child already knows you." : "";
   return `${recent}NOW: ${describeInput(req.input, req)}${noIntro}`;
 }
 

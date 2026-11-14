@@ -131,6 +131,16 @@ describe("the widget turn on the wire", () => {
   });
 });
 
+describe("number line labels stay unambiguous", () => {
+  const nl = (o: Record<string, unknown>) => parseWidget({ widget: "number_line", ...o });
+  it("integer format needs whole numbers; decimal at most 3 places", () => {
+    expect(nl({ min: 0, max: 2, step: 0.5, format: "integer" }).ok).toBe(false);
+    expect(nl({ min: 0, max: 2, step: 1, format: "integer" }).ok).toBe(true);
+    expect(nl({ min: 0, max: 0.01, step: 0.0005, format: "decimal" }).ok).toBe(false);
+    expect(nl({ min: 0, max: 2, step: 0.5, format: "decimal", target: 1.5 }).ok).toBe(true);
+  });
+});
+
 describe("the scripted lesson can drive the widgets (no AI needed)", () => {
   const ctx = (record = () => {}) => ({ world: "classroom" as const, teacher: "leo" as const, teacherName: "Leo", profile: emptyProfile(), session: 1, record });
   it("a choice opens fraction bars; a text mentioning a number line opens the number line", () => {

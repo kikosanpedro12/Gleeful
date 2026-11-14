@@ -139,13 +139,23 @@ describe("FallbackBrain and createBrain", () => {
     expect(fb.kind).toBe("scripted");
     expect(m.respond).toHaveBeenCalledTimes(1);
   });
-  it("the opening hello comes straight from the script (no model wait) and does not change kind", async () => {
+  it("a slow earlier turn cannot overwrite the kind of a newer one", async () => {
+    let release: (r: BrainReply) => void = () => {};
+    const slow = stub(() => new Promise<BrainReply>((res) => { release = res; }));
+    const fb = new FallbackBrain(slow, scripted);
+    const a = fb.respond({ kind: "text", text: "why is it red" }, ctx("classroom"));
+    await fb.respond({ kind: "session_start" }, ctx("classroom")); // newer turn, answered by the script
+    release(reply("late model line"));
+    await a;
+    expect(fb.kind).toBe("scripted");
+  });
+  it("the opening hello comes straight from the script (no model wait) and is reported as scripted", async () => {
     const m = stub(async () => reply("from model"));
     const fb = new FallbackBrain(m, scripted);
     const r = await fb.respond({ kind: "session_start" }, ctx("classroom"));
     expect(r.segments.length).toBeGreaterThan(0);
     expect(m.respond).not.toHaveBeenCalled();
-    expect(fb.kind).toBe("model");
+    expect(fb.kind).toBe("scripted");
   });
   it("a transient failure is retried next turn; a missing key / kill switch / daily cap pauses model calls for 5 minutes", async () => {
     let t = 0;

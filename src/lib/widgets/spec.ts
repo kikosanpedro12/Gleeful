@@ -61,6 +61,8 @@ export function parseWidget(args: unknown): WidgetParse {
     if (ticks < 1 || ticks > MAX_TICKS || Math.abs(ticks * step - (max - min)) > 1e-6) return err(`(max - min) must be a whole number of steps, 1 to ${MAX_TICKS}`);
     const format = args.format === undefined ? "integer" : args.format;
     if (format !== "integer" && format !== "decimal" && format !== "fraction") return err("format must be integer, decimal or fraction");
+    if (format === "integer") for (const v of [min, max, step]) if (!nearInt(v)) return err("integer format needs whole-number min, max and step");
+    if (format === "decimal") for (const v of [min, max, step]) if (Math.abs(v * 1000 - Math.round(v * 1000)) > 1e-6) return err("decimal format allows at most 3 decimals");
     let denominator = 1;
     if (format === "fraction") {
       const d = int(args.denominator, 2, 12);
