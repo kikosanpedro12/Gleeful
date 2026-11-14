@@ -88,7 +88,7 @@ function describeInput(input: WireInput, req: BrainRequest): string {
       const next = m === null
         ? " React to what they did and ask one short question about what they notice."
         : m
-          ? ` That is CORRECT: it matches the target (${input.target}). Celebrate briefly, then ask them to say why in their own words.`
+          ? ` The app reports this matches the target (${input.target}). Celebrate briefly, then ask them to say why in their own words.`
           : ` That is NOT correct: the target was ${input.target}. Do not say the answer. Give a short hint, then invite them to try again on the ${what}.`;
       return `The child set the ${what} to ${input.value}.${next}`;
     }
@@ -111,7 +111,8 @@ export function buildUserMessage(req: BrainRequest): string {
     ? "Recent turns (oldest first):\n" + req.history.map((h) => (h.role === "child" ? `child: <child_said>${h.text}</child_said>` : `you: <earlier_teacher_line>${h.text}</earlier_teacher_line>`)).join("\n") + "\n\n"
     : "";
   // The child already knows who is talking: only the very first line of a session may introduce the teacher.
-  const noIntro = req.input.kind === "session_start" ? "" : " Do not introduce yourself or say your name again; the child already knows you.";
+  const TEACHER_STARTED = ["transit_cruise", "world_ready", "resume"];
+  const noIntro = TEACHER_STARTED.includes(req.input.kind) ? " Do not introduce yourself or say your name again; the child already knows you." : "";
   return `${recent}NOW: ${describeInput(req.input, req)}${noIntro}`;
 }
 

@@ -88,3 +88,9 @@ One policy file, `src/lib/seo/site.ts` (tested in `tests/seo.test.ts`):
 
 ## Landing taste (`/api/taste`, 13 Nov)
 `src/lib/taste/` holds a deliberately narrow second model path for anonymous visitors: `protocol.ts` (client-safe types and the 3-turn / 140-character constants), `server/config.ts` (caps; env-tunable ceilings with hard maximums), `server/prompt.ts` (short system prompt, visitor text as data), `server/request.ts` (strict parser and cleaner), `server/handler.ts` (`handleTaste` as a pure function of (Request, deps), `tasteStatus` for GET). It reuses `callAnthropic` (now with optional `tools` and `maxTokens`), `MemoryUsageStore`/`RateLimiter`/`SessionCounter` (its own instances) and `sanitizeSay` from the brain. `src/components/landing/Taste.tsx` is the client box: server-rendered as the labelled Preview, upgraded to live only when `GET /api/taste` returns `available: true`. Tests: `tests/taste.test.ts` (caps, fail-closed, no Sonnet/tools, injection, logs), `tests/tasteUi.test.ts` (Preview by default), and section 7 of `scripts/landing-smoke.mjs` (live flow with stubbed network).
+
+## Widgets, voice lab and loading polish (14 Nov)
+- Widgets: `src/lib/widgets/spec.ts` (types, parse, match), `WidgetPanel.tsx` (SVG/HTML over the 3D scene), commands `showWidget`/`hideWidget`, wire input `{kind:"widget"}`; spec in `docs/SCENE_KIT_SPEC.md`. The scripted brain can drive them (greeting choice "Try fraction bars").
+- `/voice-lab`: blind A/B page of Kokoro-82M samples (`public/voice-lab/*.mp3`, `src/lib/voicelab/lines.ts`). Samples only, not the live voice.
+- `ScriptedProvider` drops a reply that arrives more than 5 s late (`onReplyDropped`); `Prewarm` (Stage.tsx) compiles hidden worlds' shaders and uploads their textures at frame ~20. Effect on blank frames is **unmeasured on a phone**.
+- Single header badge (`Hud.tsx`) replaces the two chips; it follows the last brain kind.

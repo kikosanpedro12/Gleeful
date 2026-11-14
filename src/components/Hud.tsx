@@ -209,7 +209,7 @@ export default function Hud() {
         {live && (
           <button
             className={`chip badge ${brainKind === "model" ? "ai" : "demo"}`} data-testid="demo-badge" aria-expanded={infoOpen} aria-controls="badge-info"
-            aria-label={`${name}: ${brainKind === "model" ? "AI" : "scripted, not AI"}. Tap for details.`}
+            aria-label={`${name}: ${brainKind === "model" ? "AI" : "scripted, not AI"}${notice ? ", simulation" : ""}. Tap for details.`}
             onClick={() => setInfoOpen((v) => !v)}
           >
             <span>{name} · {brainKind === "model" ? "AI" : "Scripted, not AI"}</span>
@@ -235,7 +235,7 @@ export default function Hud() {
       )}
 
       {live && infoOpen && (
-        <div className="badge-info" id="badge-info" role="dialog" aria-label="About this lesson" data-testid="badge-info">
+        <div className="badge-info" id="badge-info" role="region" aria-label="About this lesson" data-testid="badge-info">
           <p>{brainKind === "model"
             ? `${name} is an AI teacher (Claude). Test build: AI can make mistakes, and if it can't be reached a built-in script answers instead.`
             : `This part is a scripted lesson, not AI yet. ${name} only understands certain words.`}</p>

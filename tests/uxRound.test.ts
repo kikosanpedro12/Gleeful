@@ -23,6 +23,16 @@ describe("the teacher introduces themself only at session start", () => {
     const start = buildReply(blocks, "classroom", { kind: "session_start" });
     expect(start?.segments[0].say).toMatch(/I'm Leo/);
   });
+  it("keeps the honest AI answer when the child asks who the teacher is", () => {
+    for (const kind of [{ kind: "text", text: "are you a robot?" }, { kind: "choice", id: "x", label: "Who are you?" }] as const) {
+      const r = buildReply([{ type: "text", text: "I'm Leo, an AI teacher, not a person." }], "mars", kind);
+      expect(r?.segments[0].say).toBe("I'm Leo, an AI teacher, not a person.");
+    }
+    expect(buildReply([{ type: "text", text: "My name is Mia!" }], "mars", { kind: "text", text: "what's your name?" })?.segments[0].say).toBe("My name is Mia!");
+  });
+  it("does not strip a possessive that merely starts with the name", () => {
+    expect(stripIntro("This is Mia's favorite rock. Look!")).toBe("This is Mia's favorite rock. Look!");
+  });
   it("a reply that was only an introduction is dropped entirely", () => {
     expect(buildReply([{ type: "text", text: "Hi, I'm Leo, your AI teacher." }], "transit", { kind: "transit_cruise", to: "mars" })).toBeNull();
   });

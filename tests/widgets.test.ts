@@ -4,7 +4,7 @@ import { parseSceneCommand, parseToolCall, toolsFor } from "@/lib/scene/commands
 import { contextFor } from "@/lib/worlds/registry";
 import { buildReply } from "@/lib/brain/server/sanitize";
 import { parseRequest } from "@/lib/brain/server/request";
-import { buildUserMessage } from "@/lib/brain/server/prompt";
+import { buildUserMessage, isHardTurn } from "@/lib/brain/server/prompt";
 import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
 import { emptyProfile } from "@/lib/learner/profile";
 import { initialStore, useSession } from "@/lib/session/store";
@@ -124,7 +124,7 @@ describe("the widget turn on the wire", () => {
   });
   it("the server, not the client, decides right or wrong from the two values", () => {
     const req = (value: string, target?: string) => ({ ...base, input: { kind: "widget", widget: "fraction_bars", value, ...(target ? { target } : {}) } }) as unknown as BrainRequest;
-    expect(buildUserMessage(req("2/4", "1/2"))).toMatch(/CORRECT/);
+    expect(buildUserMessage(req("2/4", "1/2"))).toMatch(/matches the target/);
     expect(buildUserMessage(req("2/4", "1/2"))).not.toMatch(/NOT correct/);
     expect(buildUserMessage(req("1/4", "1/2"))).toMatch(/NOT correct: the target was 1\/2/);
     expect(buildUserMessage(req("1/4"))).not.toMatch(/CORRECT/);
@@ -149,6 +149,14 @@ describe("the scripted lesson can drive the widgets (no AI needed)", () => {
     expect(say("3/4", "3/4")).toMatch(/Yes, that's it/);
     expect(say("1/4", "3/4")).toMatch(/Not quite/);
     expect(say("1/4")).not.toMatch(/Yes, that's it|Not quite/);
+  });
+  it("a widget setting is client-reported: it never records evidence or escalates the model", () => {
+    const calls: unknown[] = [];
+    const b = new ScriptedBrain();
+    b.respond({ kind: "widget", widget: "number_line", value: "3/4", target: "3/4" }, ctx((...a: unknown[]) => { calls.push(a); }));
+    expect(calls).toHaveLength(0);
+    const req = { v: 1, learnerId: "l", sessionId: "s", tz: "Asia/Manila", world: "classroom", teacher: "leo", session: 1, hintsUsed: 3, history: [], skills: [], input: { kind: "widget", widget: "number_line", value: "1/4", target: "3/4" } } as BrainRequest;
+    expect(isHardTurn(req)).toBe(false);
   });
   it("the greeting offers fraction bars", () => {
     const b = new ScriptedBrain();

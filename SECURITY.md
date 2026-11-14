@@ -114,3 +114,9 @@ Private project. Report issues to the founder directly; do not open public issue
 - HONEST LIMIT: counters are per warm server instance (a brake). The Anthropic Console monthly spend limit is the ceiling. Behind a shared proxy or NAT many people share one address, and a spoofed `x-forwarded-for` can pick another bucket when the host does not overwrite it; the site-wide cap and the Console limit are what bind then.
 - Logs carry error kinds and status codes only; what the visitor typed and what the model said are never logged (tested). The visitor's address is held in memory for the day and not stored. The privacy notice says so.
 - Not yet done: a child-safety test set run against the REAL model for this prompt, and a lawyer's view on whether an open box that an under-13 can type into needs the parental-consent flow (the copy asks for a parent or older child and warns against private details, but that is not a legal control).
+
+## Widgets and voice lab (14 Nov)
+- New wire input `widget` (number line / fraction bars): value and optional target are parsed by `parseValue` (numbers and fractions only, bounded), refused during transit. The `target` is **client-asserted**: the prompt says "the app reports this matches", and a widget input never records evidence, escalates the model or spends extra (test in `tests/widgets.test.ts`). A tampered client can only get a wrong "that's right" for itself.
+- `showWidget`/`hideWidget` are validated commands (bounded specs, no strings, one per reply); the spec is validated again server-side. CSP unchanged.
+- `/voice-lab` is a private route (noindex, in PRIVATE_PREFIXES, llms.txt and layout metadata). It has no passcode: it serves only 20 bundled Kokoro sample clips and sends nothing.
+- Honesty filter: the code-side "no re-intro" strip applies only to teacher-started lines (transit, world ready, resume), so a child asking "are you a robot?" always gets the AI answer (tests in `tests/uxRound.test.ts`).

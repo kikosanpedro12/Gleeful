@@ -113,9 +113,9 @@ function Prewarm() {
         for (const mat of Array.isArray(m) ? m : m ? [m] : []) for (const v of Object.values(mat)) if (v instanceof THREE.Texture) textures.add(v);
       });
       for (const o of hidden) o.visible = true;
-      let pending: Promise<unknown> | undefined;
-      try { pending = gl.compileAsync(scene, camera); } finally { for (const o of hidden) o.visible = false; }
-      pending?.catch(() => {});
+      if (gl.getContext().isContextLost()) return;
+      // Synchronous compile starts the program builds without compileAsync's never-cancelled poll.
+      try { gl.compile(scene, camera); } finally { for (const o of hidden) o.visible = false; }
       for (const t of textures) { try { gl.initTexture(t); } catch {} }
     } catch {
       // Prewarming is an optimisation only; never let it break the lesson.

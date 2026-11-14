@@ -274,7 +274,7 @@ html:has(.vlab), body:has(.vlab) { overflow:auto; height:auto; }
 
 /* ------------------------------------------------------------ teaching widgets (number line, fraction bars) */
 .widget { position:relative; background:rgba(255,250,241,.97); border-radius:22px; padding:12px 14px 12px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); }
-.widget-close { position:absolute; top:4px; right:4px; width:40px; height:40px; z-index:1; background:transparent; box-shadow:none; }
+.widget-close { position:absolute; top:2px; right:2px; width:44px; height:44px; z-index:1; background:transparent; box-shadow:none; }
 .widget-body { display:flex; flex-direction:column; gap:8px; padding-right:30px; }
 .widget-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .widget-actions .ghost { min-height:44px; min-width:48px; padding:0 14px; }

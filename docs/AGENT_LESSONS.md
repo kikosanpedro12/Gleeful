@@ -44,6 +44,13 @@ Rules for entries:
 - **Two builders editing one working tree** → a second builder works in its own clone and runs `git pull --rebase origin main` plus the gate before pushing.
 - **Tester ran on a moving tree** (files edited mid-run) → test a pinned commit (`git archive <sha>` into a temp dir) when others are building.
 
+## Honesty and accessibility
+- **A code-side text filter on model output deleted a required safety answer** (the no-re-intro strip removed "I'm Leo, an AI teacher" for a child asking "are you a robot?") → scope output filters to the input kinds they target; test that every SAFETY_RULES obligation survives `buildReply` → `tests/uxRound.test.ts`.
+- **`aria-label` on a composite badge dropped a visible honesty label** ("Simulation") → the accessible name must include every visible label.
+- **Client-asserted facts reach the prompt** (widget `target`) → word them as "the app reports", never as ground truth; no evidence recording or escalation off them.
+- **Code cited a spec file that wasn't in the repo** → every `docs/X.md` reference must resolve.
+- **`compileAsync` polls forever after context loss** → use sync `gl.compile` and skip when the context is lost.
+
 ## Styling
 - **Bare element selectors in globals.css leak across surfaces** (a lesson-icon `svg { width:1.35em; path fill:none }` rule blanked the landing illustrations) → scope app styles under `.app`, landing styles under `.lp`; never style a bare element globally except resets → `npm run smoke:landing` ("poster mode shows the still illustrations").
 
@@ -51,6 +58,7 @@ Rules for entries:
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
 
 ## Round log (newest first, one line each)
+- 14 Nov, UX + widgets + voice lab f86251f: reviewer BLOCK (intro filter deleted the AI-disclosure answer) → scoped to teacher-started inputs, tests added; aria-label, 44px close, sync prewarm, spec doc, SECURITY/ARCHITECTURE notes.
 - 13 Nov, landing round 7357234: tester PASS / reviewer found overclaiming <title> + 28px footer links → titles say early access (test added), footer links 44px.
 - 13 Nov, UX polish e8ce640: tester FAIL / reviewer PASS WITH NOTES → honesty copy keyed on reachability, 44px icons, viewportFit cover, tester code ≥16 chars, named camera framing.
 - 2026-11-13: landing page round: global svg rule from the UI polish broke landing posters; scoped to `.app`.

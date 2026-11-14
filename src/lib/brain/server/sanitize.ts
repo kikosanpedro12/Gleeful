@@ -57,8 +57,11 @@ export function looksLikeNarration(text: string): boolean { return NARRATION.tes
  * The teacher introduces themself once, at the start of a session. Later replies (a line mid-flight, an arrival,
  * a nudge) sometimes open with "Hi, I'm Leo, an AI teacher..." again; strip that opening sentence in code.
  */
-const INTRO = /^\s*(?:(?:hi|hello|hey)(?: there)?[,!.\s]+)?(?:i'?m|i am|my name is|this is)\s+(?:leo|mia)\b[^.!?]*[.!?]+\s*/i;
+const INTRO = /^\s*(?:(?:hi|hello|hey)(?: there)?[,!.\s]+)?(?:i'?m|i am|my name is|this is)\s+(?:leo|mia)\b(?!['’]\w)[^.!?]*[.!?]+\s*/i;
 export function stripIntro(text: string): string { return text.replace(INTRO, "").trim(); }
+/** Only lines the teacher starts on its own can be an unwanted re-intro; a child asking "who are you?" must get the honest answer. */
+const TEACHER_INITIATED = new Set(["transit_cruise", "world_ready", "resume"]);
+export function mayStripIntro(kind: string): boolean { return TEACHER_INITIATED.has(kind); }
 
 export interface Block { type?: unknown; text?: unknown; name?: unknown; input?: unknown }
 
@@ -89,7 +92,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
     if (!b || typeof b !== "object") { dropped++; continue; }
     if (b.type === "text") {
       let say = sanitizeSay(b.text);
-      if (say && input.kind !== "session_start") say = stripIntro(say) || null;
+      if (say && mayStripIntro(input.kind)) say = stripIntro(say) || null;
       if (!say || looksLikeNarration(say)) { dropped++; continue; }
       if (segments.length >= LIMITS.maxSegments) { dropped++; continue; }
       segments.push({ say, actions: segments.length === 0 ? pending.splice(0) : [] });
