@@ -49,6 +49,9 @@ Rules for entries:
 - **`aria-label` on a composite badge dropped a visible honesty label** ("Simulation") → the accessible name must include every visible label.
 - **Client-asserted facts reach the prompt** (widget `target`) → word them as "the app reports", never as ground truth; no evidence recording or escalation off them.
 - **Code cited a spec file that wasn't in the repo** → every `docs/X.md` reference must resolve.
+- **Early return after a temporary state mutation** (Prewarm left hidden worlds visible) → restore in a `finally` that wraps everything after the mutation.
+- **Formatters that round can map distinct ticks to one label** → validate format against step (integer needs whole numbers; decimal ≤3 places) so a false CORRECT is impossible → `tests/widgets.test.ts`.
+- **Shared "last answered" state set by cancelled/slow async runs** → badge kind follows the latest turn only (FallbackBrain sequence) → `tests/claudeBrain.test.ts`; a test must never enshrine a behaviour that contradicts the honesty rule.
 - **`compileAsync` polls forever after context loss** → use sync `gl.compile` and skip when the context is lost.
 
 ## Styling
@@ -58,6 +61,7 @@ Rules for entries:
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
 
 ## Round log (newest first, one line each)
+- 14 Nov, tester on 88bc432: BLOCK (Prewarm early return left hidden worlds visible) + badge claimed AI while the script greeted + integer number lines with fractional steps → all fixed in 1a93baa, tests added; pushed.
 - 14 Nov, UX + widgets + voice lab f86251f: reviewer BLOCK (intro filter deleted the AI-disclosure answer) → scoped to teacher-started inputs, tests added; aria-label, 44px close, sync prewarm, spec doc, SECURITY/ARCHITECTURE notes.
 - 13 Nov, landing round 7357234: tester PASS / reviewer found overclaiming <title> + 28px footer links → titles say early access (test added), footer links 44px.
 - 13 Nov, UX polish e8ce640: tester FAIL / reviewer PASS WITH NOTES → honesty copy keyed on reachability, 44px icons, viewportFit cover, tester code ≥16 chars, named camera framing.
