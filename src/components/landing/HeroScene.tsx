@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { buildTeacher, LOOKS, type TeacherRig, type JointName } from "@/lib/teacher/rig";
 import { CHAPTERS, chapterAt, mixHex } from "./chapters";
-import { buildWorlds, Kit, SPACING, worldZ } from "./worlds3d";
+import { buildWorlds, fitTags, Kit, screenRect, SPACING, worldZ } from "./worlds3d";
 
 /**
  * The landing hero's 3D stage. Scroll progress (0..1) arrives through a ref,
@@ -48,7 +48,7 @@ function Flight({ progress, onReady, onPerf }: Omit<HeroSceneProps, "active">) {
   const fog = useMemo(() => new THREE.Fog(CHAPTERS[0].sky, 12, 46), []);
   const c = useRef(chapterAt(progress.current));
   const perf = useRef({ start: -1, frames: 0, done: false, readySent: false });
-  const tmp = useMemo(() => ({ bg: new THREE.Color(), sky: new THREE.Color() }), []);
+  const tmp = useMemo(() => ({ bg: new THREE.Color(), sky: new THREE.Color(), box: new THREE.Box3() }), []);
 
   useEffect(() => {
     for (const w of worlds) scene.add(w.group);
@@ -117,6 +117,11 @@ function Flight({ progress, onReady, onPerf }: Omit<HeroSceneProps, "active">) {
       else applyPose(rig, standPose, k === 0 ? FLY_L : FLY_R, fly);
       rig.helmet.visible = helmetOn(cc);
     });
+
+    // Name tags: never cut off, never behind the phone headline card, never over Leo or Mia.
+    cam.updateMatrixWorld();
+    const avoid = [leo, mia].map((rig) => screenRect(tmp.box.setFromObject(rig.root), cam));
+    worlds.forEach((w) => { if (w.group.visible) fitTags(w.group, cam, portrait, avoid); });
 
     // Report readiness after the first real frame, and a short fps sample for slow-device fallback.
     if (!perf.current.readySent) { perf.current.readySent = true; onReady(); }

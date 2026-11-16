@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { CHAPTERS } from "./chapters";
 
 /**
@@ -69,6 +70,70 @@ function palm(k: Kit, parent: THREE.Object3D, x: number, y: number, z: number, s
     leaf.translateY(1);
   }
   return p;
+}
+
+
+/** A small name tag that always faces the camera, so a child knows what they are looking at. */
+function label(k: Kit, parent: THREE.Object3D, text: string, x: number, y: number, z: number, size = 1) {
+  const c = document.createElement("canvas");
+  const font = "800 88px system-ui, sans-serif";
+  const ctx = c.getContext("2d");
+  const tw = ctx ? (ctx.font = font, ctx.measureText(text).width) : text.length * 50;
+  c.width = Math.ceil(tw + 96); c.height = 140;
+  if (ctx) {
+    ctx.font = font;
+    ctx.fillStyle = "rgba(20,33,61,0.9)"; ctx.beginPath(); ctx.roundRect(4, 8, c.width - 8, 124, 62); ctx.fill();
+    ctx.fillStyle = "#F5F8FF"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, c.width / 2, 74);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  // Not fogged or tone-mapped, so a tag stays readable in the dark of space and the haze of the sea.
+  // Drawn on top, so a drifting part can never half-cover it; fitTags keeps it off Leo and Mia.
+  const mat = new THREE.SpriteMaterial({ map: tex, depthWrite: false, depthTest: false, fog: false, toneMapped: false });
+  k.bin.push(tex, mat);
+  const sp = new THREE.Sprite(mat);
+  sp.position.set(x, y, z);
+  const h = 0.6 * size;
+  sp.scale.set(h * (c.width / c.height), h, 1);
+  sp.renderOrder = 10;
+  sp.name = `label_${text}`;
+  parent.add(sp);
+  return sp;
+}
+
+const _p = new THREE.Vector3();
+export type Rect = { x0: number; x1: number; y0: number; y1: number };
+
+/** A box's footprint on screen, in normalised device coordinates (-1..1). */
+export function screenRect(box: THREE.Box3, cam: THREE.Camera): Rect {
+  const r = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+  if (box.isEmpty()) return r;
+  for (let i = 0; i < 8; i++) {
+    _p.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(cam);
+    r.x0 = Math.min(r.x0, _p.x); r.x1 = Math.max(r.x1, _p.x); r.y0 = Math.min(r.y0, _p.y); r.y1 = Math.max(r.y1, _p.y);
+  }
+  return r;
+}
+
+/**
+ * Hide any shown tag that would be cut off at the screen edge, sit behind the camera, cover
+ * Leo or Mia, or (on a tall phone screen) fall behind the headline card in the lower half.
+ * A half-visible tag, or one on a teacher's face, is worse than none.
+ */
+export function fitTags(group: THREE.Object3D, cam: THREE.PerspectiveCamera, portrait: boolean, avoid: Rect[] = []) {
+  const tanY = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+  for (const o of group.children) {
+    if (!o.name.startsWith("label_") || !o.visible) continue;
+    o.getWorldPosition(_p);
+    const dist = _p.distanceTo(cam.position);
+    _p.project(cam);
+    const halfW = o.scale.x / 2 / (dist * tanY * cam.aspect);
+    const halfH = o.scale.y / 2 / (dist * tanY);
+    const x0 = _p.x - halfW, x1 = _p.x + halfW, y0 = _p.y - halfH, y1 = _p.y + halfH;
+    const onScreen = _p.z < 1 && x0 > -0.96 && x1 < 0.96 && y1 < 0.8 && y0 > (portrait ? 0 : -0.35);
+    const onTeacher = avoid.some((a) => x0 < a.x1 && x1 > a.x0 && y0 < a.y1 && y1 > a.y0);
+    o.visible = onScreen && !onTeacher;
+  }
 }
 
 // ------------------------------------------------------------------ classroom
@@ -144,8 +209,12 @@ function ocean(k: Kit): World {
   }
   // Fish: one instanced mesh, three schools circling.
   const FISH = 42;
-  const fishGeo = k.geo(new THREE.ConeGeometry(0.16, 0.6, 5));
-  fishGeo.rotateX(Math.PI / 2);
+  // Fish: a round body, a tail fin and a top fin, merged so the school stays one draw call.
+  const fBody = new THREE.SphereGeometry(0.2, 8, 6); fBody.scale(1, 0.75, 1.9);
+  const fTail = new THREE.ConeGeometry(0.2, 0.32, 3); fTail.rotateX(Math.PI / 2); fTail.scale(0.25, 1.1, 1); fTail.translate(0, 0, -0.55); // narrow end at the body, wide fin at the back
+  const fFin = new THREE.ConeGeometry(0.1, 0.22, 3); fFin.scale(0.3, 1, 1.4); fFin.translate(0, 0.2, 0.02);
+  const fishGeo = k.geo(mergeGeometries([fBody.toNonIndexed(), fTail.toNonIndexed(), fFin.toNonIndexed()]) ?? fBody);
+  for (const x of [fBody, fTail, fFin]) x.dispose();
   const fish = new THREE.InstancedMesh(fishGeo, k.mat("#FFFFFF"), FISH);
   const palette = [new THREE.Color("#FFB627"), new THREE.Color("#FF5E8A"), new THREE.Color("#F5F8FF")];
   const seeds = Array.from({ length: FISH }, (_, i) => ({ school: i % 3, a: r() * Math.PI * 2, rad: 1 + r() * 1.6, y: (r() - 0.5) * 1.2, sp: 0.4 + r() * 0.3 }));
@@ -161,11 +230,28 @@ function ocean(k: Kit): World {
   const whale = new THREE.Group();
   whale.position.set(-9, 3.5, -16);
   g.add(whale);
-  const body = k.mesh(new THREE.SphereGeometry(1, 10, 8), "#2B59C3", whale);
+  const body = k.mesh(new THREE.SphereGeometry(1, 14, 10), "#2B59C3", whale);
   body.scale.set(3.6, 1.3, 1.5);
-  const tail = k.mesh(new THREE.ConeGeometry(0.9, 1.6, 4), "#2B59C3", whale, 3.9, 0.2, 0);
-  tail.rotation.z = Math.PI / 2;
-  k.mesh(new THREE.SphereGeometry(1, 10, 8), "#F5F8FF", whale, 0, -0.55, 0).scale.set(3, 0.6, 1.2);
+  k.mesh(new THREE.SphereGeometry(1, 14, 10), "#DCE8FF", whale, -0.4, -0.55, 0).scale.set(3, 0.6, 1.2);
+  // Tail stock and a flat, two-lobed fluke: what makes it read as a whale, not a blob.
+  const tail = new THREE.Group();
+  tail.position.set(3.3, 0.15, 0);
+  whale.add(tail);
+  k.mesh(new THREE.ConeGeometry(0.75, 1.8, 8), "#2B59C3", tail, 0.8, 0, 0).rotation.z = -Math.PI / 2;
+  for (const side of [1, -1]) {
+    const lobe = k.mesh(new THREE.SphereGeometry(1, 10, 6), "#2B59C3", tail, 1.9, 0, side * 0.7);
+    lobe.scale.set(0.55, 0.12, 0.95);
+    lobe.rotation.y = side * 0.5;
+  }
+  // Flippers, eyes and a smile line.
+  for (const side of [1, -1]) {
+    const fl = k.mesh(new THREE.SphereGeometry(1, 8, 6), "#22489E", whale, -1.2, -0.7, side * 1.35);
+    fl.scale.set(0.9, 0.12, 0.35);
+    fl.rotation.set(side * 0.5, side * -0.4, -0.3);
+    k.mesh(new THREE.SphereGeometry(0.16, 8, 6), "#14213D", whale, -2.6, 0.15, side * 0.95);
+  }
+  const smile = k.mesh(new THREE.TorusGeometry(1.1, 0.05, 6, 16, Math.PI * 0.5), "#14213D", whale, -2.4, 0.1, 0);
+  smile.rotation.set(Math.PI / 2, 0, Math.PI * 0.75);
 
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
   return {
@@ -189,7 +275,7 @@ function ocean(k: Kit): World {
       });
       bubbles.instanceMatrix.needsUpdate = true;
       whale.position.x = -9 + Math.sin(t * 0.15) * 3;
-      tail.rotation.y = Math.sin(t * 1.5) * 0.4;
+      tail.rotation.z = Math.sin(t * 1.5) * 0.3; // whales beat their tails up and down, fish side to side
     },
   };
 }
@@ -203,26 +289,59 @@ function cell(k: Kit): World {
   const wall = k.mesh(new THREE.BoxGeometry(30, 16, 44, 2, 2, 2), "#9BD37A", g, 0, 1, -2, { side: THREE.BackSide, flatShading: false, roughness: 1 });
   const nucleus = k.mesh(new THREE.IcosahedronGeometry(2.4, 2), "#8E6CCF", g, -6, 2.5, -8);
   k.mesh(new THREE.IcosahedronGeometry(0.9, 1), "#5B3FA6", nucleus, 0.6, 0.4, 1.7);
-  const vacuole = k.mesh(new THREE.SphereGeometry(4.2, 20, 14), "#CFF3FF", g, 7, 1.5, -12, { transparent: true, opacity: 0.35, flatShading: false });
+  const vacuole = k.mesh(new THREE.SphereGeometry(4.2, 20, 14), "#CFF3FF", g, 7, 1.5, -12, { transparent: true, opacity: 0.35, flatShading: false, depthWrite: false });
   void vacuole;
   const drifting: THREE.Object3D[] = [];
+  // Inner parts are merged once and shared, so each organelle costs two draw calls, not a dozen.
+  const shared = (geo: THREE.BufferGeometry, color: string, parent: THREE.Object3D) => { const m = new THREE.Mesh(geo, k.mat(color)); parent.add(m); return m; };
+  const discs: THREE.BufferGeometry[] = [];
+  for (let j = -1; j <= 1; j++) for (let d = 0; d < 4; d++) discs.push(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 10).translate(j * 0.5, -0.12 + d * 0.08, 0));
+  const grana = k.geo(mergeGeometries(discs) ?? discs[0]);
+  for (const d of discs) if (d !== grana) d.dispose();
+  const folds: THREE.BufferGeometry[] = [];
+  for (let f = 0; f < 6; f++) {
+    const h = 0.6 * (1 - Math.abs(f - 2.5) * 0.18);
+    folds.push(new THREE.CylinderGeometry(h / 2, h / 2, 0.07, 12).rotateZ(Math.PI / 2).translate(-0.65 + f * 0.26, f % 2 ? 0.06 : -0.06, 0));
+  }
+  const cristae = k.geo(mergeGeometries(folds) ?? folds[0]);
+  for (const f of folds) if (f !== cristae) f.dispose();
+  const chloroSkin = k.geo(new THREE.SphereGeometry(0.7, 12, 8));
+  const mitoSkin = k.geo(new THREE.SphereGeometry(0.5, 14, 10));
   for (let i = 0; i < 16; i++) {
     const cp = new THREE.Group();
     cp.position.set((r() - 0.5) * 22, -3 + r() * 9, -18 + r() * 34);
+    // The first one is the showcase: high, just right of centre, clear of Leo and Mia on a phone and a laptop.
+    if (i === 0) cp.position.set(1.6, 2.2, -4);
     g.add(cp);
-    const b = k.mesh(new THREE.SphereGeometry(0.7, 10, 8), "#3FA34D", cp);
-    b.scale.set(1.5, 0.75, 0.75);
-    for (let j = -1; j <= 1; j++) k.mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 10), "#7BD389", cp, j * 0.38, 0, 0).rotation.z = Math.PI / 2;
+    // Chloroplast: a see-through green capsule with its stacked discs (grana) visible inside.
+    shared(grana, "#226B30", cp);
+    const b = new THREE.Mesh(chloroSkin, k.mat("#3FA34D", { transparent: true, opacity: 0.55, flatShading: false, depthWrite: false }));
+    b.scale.set(1.6, 0.8, 0.8);
+    cp.add(b);
     cp.rotation.set(r() * 3, r() * 3, r() * 3);
     cp.userData = { phase: r() * 6, spin: 0.2 + r() * 0.4 };
     drifting.push(cp);
   }
+  // Mitochondria: a bean-shaped outer skin with the folded inner membrane (cristae) showing through.
   for (let i = 0; i < 6; i++) {
-    const m = k.mesh(new THREE.CapsuleGeometry(0.35, 1, 4, 8), "#F28C38", g, (r() - 0.5) * 18, -2 + r() * 7, -14 + r() * 26);
+    const m = new THREE.Group();
+    m.position.set((r() - 0.5) * 18, -2 + r() * 7, -14 + r() * 26);
+    // The showcase mitochondrion: just left of centre, a little lower than the chloroplast.
+    if (i === 0) m.position.set(-1.0, 2.0, -3);
+    g.add(m);
+    shared(cristae, "#D9622B", m);
+    const skin = new THREE.Mesh(mitoSkin, k.mat("#F7A35C", { transparent: true, opacity: 0.5, flatShading: false, depthWrite: false }));
+    skin.scale.set(2, 1, 1);
+    m.add(skin);
     m.rotation.set(r() * 3, r() * 3, r() * 3);
     m.userData = { phase: r() * 6, spin: 0.3 };
     drifting.push(m);
   }
+  // Name tags, so it is a lesson, not a lava lamp. Each tag follows its own part as it drifts.
+  label(k, g, "nucleus", -6, 4.6, -8, 1.1);
+  label(k, g, "vacuole", 7, 4.2, -12, 1.1);
+  label(k, g, "chloroplast", 0, 0, 0, 0.9).userData = { follow: drifting[0], dy: 1.3 };
+  label(k, g, "mitochondrion", 0, 0, 0, 0.75).userData = { follow: drifting[16], dy: 1.15 };
   const PTS = 260;
   const pos = new Float32Array(PTS * 3);
   for (let i = 0; i < PTS; i++) { pos[i * 3] = (r() - 0.5) * 26; pos[i * 3 + 1] = -5 + r() * 12; pos[i * 3 + 2] = -20 + r() * 40; }
@@ -303,13 +422,13 @@ function city(k: Kit): World {
     const s = 10 - i * 1.35;
     k.mesh(new THREE.BoxGeometry(s, 1.1, s), i % 2 ? "#D9A441" : "#C8913A", pyramid, 0, 0.55 + i * 1.1, 0);
   }
-  k.mesh(new THREE.BoxGeometry(1.6, 1, 1.6), "#FFB627", pyramid, 0, 8.2, 0, { emissive: "#FFB627", emissiveIntensity: 0.3 });
-  // Stairs up the front face.
-  for (let i = 0; i < 7; i++) k.mesh(new THREE.BoxGeometry(1.4, 0.3, 0.6), "#F0D9A0", pyramid, 0, 0.2 + i * 1.1, 5 - i * 0.68);
-  // A row of columns with a lintel.
+  // Egypt, kept consistent: a step pyramid (like Djoser's) and, behind it, a smooth one (like Giza's).
+  k.mesh(new THREE.ConeGeometry(7, 9, 4), "#E3BE6E", g, -20, 1.3, -24).rotation.y = Math.PI / 4;
+  // A temple colonnade with papyrus-flower tops, the Egyptian style (not Greek).
   for (let i = 0; i < 6; i++) {
-    k.mesh(new THREE.CylinderGeometry(0.35, 0.42, 5, 8), "#F3E3BD", g, 6, -0.7, 4 - i * 3);
-    k.mesh(new THREE.BoxGeometry(1, 0.35, 1), "#E2CC97", g, 6, 1.9, 4 - i * 3);
+    k.mesh(new THREE.CylinderGeometry(0.42, 0.5, 4.6, 10), "#F3E3BD", g, 6, -0.9, 4 - i * 3);
+    k.mesh(new THREE.CylinderGeometry(0.75, 0.42, 0.7, 10), "#7FB77E", g, 6, 1.7, 4 - i * 3);
+    k.mesh(new THREE.BoxGeometry(1.1, 0.25, 1.1), "#E2CC97", g, 6, 2.1, 4 - i * 3);
   }
   k.mesh(new THREE.BoxGeometry(1.2, 0.6, 16.5), "#E2CC97", g, 6, 2.35, -3.5);
   const obelisk = k.mesh(new THREE.CylinderGeometry(0.3, 0.6, 7, 4), "#CDAE6E", g, 2.5, 0.3, -18);
@@ -369,12 +488,9 @@ function numbers(k: Kit): World {
     g.add(sp);
     tiles.push(sp);
   }
-  const cubes: THREE.Mesh[] = [];
-  for (let i = 0; i < 8; i++) {
-    const m = k.mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), colours[i % 4], g, (r() - 0.5) * 18, r() * 6 - 1, -16 + r() * 20);
-    m.userData.phase = r() * 6;
-    cubes.push(m);
-  }
+  label(k, g, "4 quarters = 1 whole", -1.5, 3.2, -4, 1);
+  label(k, g, "2 halves = 1 whole", 4.5, 4.4, -9, 1.2);
+  label(k, g, "3 of 8 parts = 3/8", -1, -1.3, 1, 0.8);
   return {
     group: g,
     update(t, near) {
@@ -385,7 +501,6 @@ function numbers(k: Kit): World {
       h1.position.x = -0.2 - open * 0.6; h2.position.x = 0.2 + open * 0.6;
       halves.rotation.y = t * 0.3;
       for (const tl of tiles) tl.position.y += Math.sin(t + tl.userData.phase) * 0.003;
-      for (const cb of cubes) { cb.rotation.x = t * 0.4 + cb.userData.phase; cb.rotation.y = t * 0.3; }
     },
   };
 }
@@ -410,18 +525,26 @@ function space(k: Kit): World {
   const planet = new THREE.Group();
   planet.position.set(-8, 3, -18);
   g.add(planet);
-  k.mesh(new THREE.IcosahedronGeometry(5, 2), "#FF5E8A", planet);
-  const ring = k.mesh(new THREE.RingGeometry(6.4, 9, 40), "#FFD27A", planet, 0, 0, 0, { side: THREE.DoubleSide, flatShading: false });
+  k.mesh(new THREE.SphereGeometry(5, 32, 20), "#E3C58F", planet, 0, 0, 0, { flatShading: false, emissive: "#6B5530", emissiveIntensity: 0.6 });
+  for (const [y, c] of [[1.6, "#C9A46A"], [-0.6, "#D8B57E"], [-2.4, "#BF9558"]] as const) {
+    const band = k.mesh(new THREE.SphereGeometry(5.02, 32, 4, 0, Math.PI * 2, Math.acos(Math.min(1, (y + 0.45) / 5.02)), 0.18), c, planet, 0, 0, 0, { flatShading: false });
+    void band;
+  }
+  const ring = k.mesh(new THREE.RingGeometry(6.4, 9, 64), "#D9C49A", planet, 0, 0, 0, { side: THREE.DoubleSide, flatShading: false, transparent: true, opacity: 0.85, emissive: "#6B5530", emissiveIntensity: 0.6 });
   ring.rotation.x = 1.25;
-  const moon = k.mesh(new THREE.IcosahedronGeometry(1.4, 1), "#C9CED8", g, 7, 4.5, -8);
-  const earth = k.mesh(new THREE.IcosahedronGeometry(2.2, 2), "#2B59C3", g, -1, -5.5, -24);
-  for (let i = 0; i < 5; i++) k.mesh(new THREE.IcosahedronGeometry(0.8 + r() * 0.6, 0), "#74C365", earth, (r() - 0.5) * 2.4, (r() - 0.5) * 2.4, 1.6 + r() * 0.4);
+  // Earth with the Moon beside it at about a quarter of its width. Distances are squeezed, and Saturn is not to scale: its tag says so.
+  const earth = k.mesh(new THREE.IcosahedronGeometry(1.6, 2), "#3E7BE0", g, 1.4, 2.5, -8, { emissive: "#2B59C3", emissiveIntensity: 0.9 });
+  const moon = k.mesh(new THREE.IcosahedronGeometry(0.44, 1), "#C9CED8", g, -1.0, 3.0, -8, { emissive: "#55595F", emissiveIntensity: 0.5 });
+  label(k, g, "Earth", 1.4, 4.4, -8, 1.4);
+  label(k, g, "Moon, not to scale", -1.2, 3.9, -8, 0.9);
+  label(k, g, "Saturn, not to scale", -6, 7.2, -18, 1.9);
+  for (let i = 0; i < 5; i++) k.mesh(new THREE.IcosahedronGeometry(0.55 + r() * 0.4, 0), "#74C365", earth, (r() - 0.5) * 1.7, (r() - 0.5) * 1.7, 1.15 + r() * 0.3);
   return {
     group: g,
     update(t, near) {
       if (!near) return;
       planet.rotation.y = t * 0.05;
-      moon.position.y = 4.5 + Math.sin(t * 0.4) * 0.4;
+      moon.position.y = 3.0 + Math.sin(t * 0.4) * 0.15;
       earth.rotation.y = t * 0.15;
       stars.rotation.y = t * 0.005;
     },
@@ -435,6 +558,21 @@ export function buildWorlds(k: Kit): World[] {
     const w = BUILDERS[ch.id](k);
     w.group.position.z = worldZ(i);
     w.group.name = `world_${ch.id}`;
-    return w;
+    // Name tags show only while this world is on screen, so they never float into the neighbours.
+    const tags = w.group.children.filter((o) => o.name.startsWith("label_"));
+    if (!tags.length) return w;
+    const inner = w.update.bind(w);
+    return {
+      group: w.group,
+      update(t, near, c) {
+        const on = c > i - 0.3 && c < i + 0.75;
+        inner(t, near, c);
+        for (const tg of tags) {
+          tg.visible = on;
+          const f = tg.userData.follow as THREE.Object3D | undefined;
+          if (f) tg.position.set(f.position.x, f.position.y + (tg.userData.dy as number), f.position.z);
+        }
+      },
+    };
   });
 }
