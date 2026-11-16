@@ -54,3 +54,14 @@ Console: workspace `ai-teacher` has a $20/month dev spend limit (2026-11-12). Ra
 
 ## Deepgram Aura-2 text-to-speech (14 Nov, from review-site prices, verify on Deepgram's page)
 About $30 per million characters pay-as-you-go (Aura-1 about half), so roughly $1.60 per live hour at ~54,000 characters per hour. Free $200 credit, no card: that covers roughly 6.6 million characters (about 120 hours of speech) for testing and the private MVP phase. Spend is braked by `/api/tts` (daily character ceiling). Cached lines still apply: fixed lines should be pre-recorded once, not spoken live.
+
+## 3D assets and ComfyUI (16 Nov 2026) — ESTIMATES
+Model: ComfyUI and AI image-to-3D are an OFFLINE build tool, not a live-session cost. Free CC0 packs (Quaternius) and Blender (free, scripted) come first; AI generation only for gaps.
+
+One-off asset budget (not per minute; never in COGS):
+- fal.ai Hunyuan3D image-to-3D: $0.225 per model (rapid), +$0.15 PBR textures, $0.375 pro. Comfy Cloud Standard $20/mo (4,200 credits, about 23 credits per GPU minute, about $0.11 per minute of GPU).
+- 100 models x 3 tries at $0.225 = about $68. 150 models x 4 tries at $0.375 to $0.525 = about $225 to $315. Add Comfy Cloud about $20/mo while generating. Plan for $100 to $400 total; spent so far $0.
+
+IF a tutor generated a model live (NOT recommended): headroom at the 55% floor with all optimizations on, at the full cap, is about $4.58/month (Solo) and $3.52/month (Family) = about 20 and 15 rapid models a month. At the 65% target there is none for Family: Family is already 59.5% at its 40 h cap, below the 65% target. Live generation also breaks the rule that the brain only triggers validated commands, and takes tens of seconds per model.
+Safe live alternative: a pre-built library (cache hit = $0), plus an overnight "request a model" queue with a per-child monthly cap.
+No per-minute figure changes; `config/pricing.json` untouched.
