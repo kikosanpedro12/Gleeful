@@ -74,3 +74,11 @@ Rules for entries:
 - 13 Nov, UX polish e8ce640: tester FAIL / reviewer PASS WITH NOTES → honesty copy keyed on reachability, 44px icons, viewportFit cover, tester code ≥16 chars, named camera framing.
 - 2026-11-13: landing page round: global svg rule from the UI polish broke landing posters; scoped to `.app`.
 - 2026-11-13: seeded from CHECKPOINT/SECURITY history (Stage A rounds 1-4, Stage B review + tester rounds, deploy setup).
+
+## Landing tags (Nov 2026)
+- Tags are factual claims: shapes, scale and motion must be accurate or labelled ("not to scale"). A caveat must be visible whenever the claim it qualifies is visible.
+- A hide rule needs a must-show test for the viewport it is meant to show in (`tests/landingTagsView.test.ts`).
+- A guard test must check WHAT the target is, not only where it is (`tests/landingTagIdentity.test.ts`). Break each new guard once (swap or move the target) and see it fail.
+- Commit only after the tester's verdict on that exact file hash.
+- Tester works in a pinned copy (/tmp/t); never run `npm run build` in a checkout another agent serves. `npm run stop` matches by cwd and can kill other agents' servers.
+- Open low notes: vacuole tag over a chloroplast; fraction tags cover the 3/4 and 1/2 tiles on desktop; Moon tag small on desktop; Box3 counts hidden helmet.
