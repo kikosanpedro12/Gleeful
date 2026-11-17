@@ -14,6 +14,7 @@ import { matchInvite } from "./invites";
 import { LIMITS } from "./config";
 import { callAnthropic, UpstreamError } from "./anthropic";
 import { RateLimiter, SessionCounter, type UsageStore } from "./limits";
+import { curriculumContext } from "@/lib/curriculum/retrieve";
 import { buildSystem, buildUserMessage, isHardTurn, modelFor } from "./prompt";
 import { parseRequest } from "./request";
 import { buildReply } from "./sanitize";
@@ -176,6 +177,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   d.sessionTotals.add(sessionKey, now);
 
   const ctx = contextFor(r.world);
+  const curriculum = r.input.kind === "text" ? await curriculumContext(r.input.text).catch(() => "") : "";
   // The model sometimes answers with actions only (no spoken sentence), or with a line the
   // narration guard drops. One automatic retry, with a firm reminder, beats falling back to the script.
   const REMIND = "\n\n(Reminder: your reply MUST include at least one short spoken sentence to the child, in the words a teacher would say out loud, before any tool calls.)";
@@ -185,7 +187,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
     try {
       up = await callAnthropic({
         fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: modelFor(hard),
-        system: buildSystem(r), user: buildUserMessage(r) + (attempt ? REMIND : ""), tools: toolsFor(ctx),
+        system: buildSystem(r, curriculum), user: buildUserMessage(r) + (attempt ? REMIND : ""), tools: toolsFor(ctx),
       });
     } catch (e) {
       const err = e instanceof UpstreamError ? e : new UpstreamError("failed");

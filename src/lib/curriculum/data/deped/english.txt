@@ -1,0 +1,46 @@
+# DepEd MATATAG English CG, Grades 4 and 7. Source: https://www.deped.gov.ph/wp-content/uploads/MATATAG-ENGLISH-CG-G4-and-7.pdf
+# Grade 4 competencies are coded by DepEd (EN4LR-I-1 etc.). Grade 7 listed from Q4 transactional texts partly; UNVERIFIED; remainder of Grade 7 to be added.
+## 4|1
+Listening & Reading|EN4LR-I-1 Comprehend literary texts: story grammar, point of view, sequencing, plot, sound devices, inference, summary
+Listening & Reading|EN4LR-I-2 Comprehend informational texts: outlining, text types, author's purpose, conclusions, summary
+Speaking & Writing|EN4SW-I-1 Use literal and implied word meanings: context clues, root words, prefixes, suffixes, compounds
+Speaking & Writing|EN4SW-I-3 Compose clear sentences: subject-verb agreement, nouns, pronouns, verbs, tenses, adjectives, complex sentences
+Speaking & Writing|EN4SW-I-4 Produce text with introduction, body, and conclusion
+Speaking & Writing|EN4SW-I-5 Express ideas: narrative, enumeration-description, friendly letters
+Viewing & Representing|EN4VR-I-1 Identify visual elements: lines
+Viewing & Representing|EN4VR-I-3 Identify real or make-believe, fact or non-fact images
+## 4|2
+Listening & Reading|EN4LR-II-1 Comprehend literary texts incl. sound devices (onomatopoeia, alliteration)
+Listening & Reading|EN4LR-II-2 Comprehend informational texts: enumeration, chronology, procedural texts
+Speaking & Writing|EN4SW-II-1 Word meanings: prefixes (non-, anti-, de-), suffixes (-dom, -ity, -ment)
+Speaking & Writing|EN4SW-II-3 Compose clear sentences: indefinite pronouns, action verbs, tenses, numeral adjectives
+Speaking & Writing|EN4SW-II-5 Express ideas: narrative, enumeration, chronology, procedural texts, friendly letters
+Viewing & Representing|EN4VR-II-1 Identify visual elements: shapes
+## 4|3
+Listening & Reading|EN4LR-III-1 Comprehend literary texts incl. assonance, simile
+Listening & Reading|EN4LR-III-2 Comprehend informational texts: chronology, procedural, recount; fact vs. opinion
+Speaking & Writing|EN4SW-III-1 Word meanings: definition and exemplification context clues; prefixes (re-, ex-, super-)
+Speaking & Writing|EN4SW-III-3 Compose clear sentences: irregular and collective nouns, possessive pronouns, helping verbs, degrees of adjectives
+Speaking & Writing|EN4SW-III-6 Use non-verbal cues: facial expressions, gestures, eye contact
+Viewing & Representing|EN4VR-III-1 Identify visual elements: colors and their general meanings
+## 4|4
+Listening & Reading|EN4LR-IV-1 Comprehend literary texts incl. consonance, metaphor
+Listening & Reading|EN4LR-IV-2 Comprehend informational texts: recount; fact vs. opinion; summary
+Speaking & Writing|EN4SW-IV-1 Word meanings: prefixes (pre-, post-, uni-, bi-), adjective suffixes
+Speaking & Writing|EN4SW-IV-3 Compose clear sentences: irregular nouns, possessive and demonstrative pronouns, linking verbs, series adjectives
+Speaking & Writing|EN4SW-IV-5 Express ideas: narrative and recount texts, friendly letters
+Viewing & Representing|EN4VR-IV-1 Identify visual elements: space
+Viewing & Representing|EN4VR-IV-4 Create a visual text from learned visual elements
+## 7|1-2
+Literary Texts|Analyze structural context: conflict, character, plot, tone, figures of speech, point of view
+Literary Texts|Analyze biographical, historical, and sociocultural context of literary texts
+Literary Texts|Compose and revise literary texts; publish an original poem or prose that reflects culture
+## 7|3
+Informational Texts|Examine text structures: sequence, comparison-contrast, cause-effect, problem-solution; news, features
+Informational Texts|Distinguish facts from claims and opinions; analyze propaganda techniques
+Informational Texts|Analyze non-linear texts: graphs, charts, infographics
+Informational Texts|Determine veracity: credibility, accuracy, relevance, timeliness, objectivity
+Informational Texts|Publish a multimodal expository text, news/press release, or feature
+## 7|4
+Transactional Texts|Analyze features of formal and informal correspondence (e.g., letter of request)
+Transactional Texts|Compose and revise a letter of request

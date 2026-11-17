@@ -1,0 +1,168 @@
+# DepEd MATATAG Mathematics CG, Grades 1, 4, 7. Source: https://www.deped.gov.ph/wp-content/uploads/MATATAG-Mathematics-CG-Grades1-4-and-7.pdf
+# Format: "## grade|quarter" then "topic|competency". Competencies are shortened English summaries; UNVERIFIED against the PDF by a person.
+## 1|1
+Simple 2D shapes|Identify triangles, rectangles, and squares in different sizes and orientations
+Simple 2D shapes|Compare and distinguish 2D shapes by sides and corners
+Simple 2D shapes|Compose and decompose triangles, squares, and rectangles
+Whole numbers up to 100|Count up to 100, including counting up/down and finding 1 more/1 less
+Whole numbers up to 100|Read and write numerals up to 100
+Whole numbers up to 100|Represent numbers up to 100 with concrete and pictorial models
+Whole numbers up to 100|Compare two numbers up to 20
+Whole numbers up to 100|Order numbers up to 20 from smallest to largest and vice versa
+Ordinal numbers|Describe position using ordinal numbers 1st to 10th
+Whole numbers up to 100|Compose and decompose numbers up to 10 with concrete materials
+Addition (sums up to 20)|Illustrate addition with sums up to 20 as counting up and putting together
+Addition (sums up to 20)|Apply the zero property and commutative property of addition
+Addition (sums up to 20)|Solve addition problems with sums up to 20 (oral or pictorial)
+## 1|2
+Non-standard measurement|Measure length and distance using non-standard units
+Non-standard measurement|Compare lengths and distances using non-standard units
+Non-standard measurement|Solve problems involving lengths and distances using non-standard units
+Place value and addition to 100|Order numbers up to 100 from smallest to largest and vice versa
+Place value and addition to 100|Count by 2s, 5s, and 10s up to 100
+Place value and addition to 100|Determine place value, value, and digit of a 2-digit number
+Place value and addition to 100|Decompose 2-digit numbers into tens and ones
+Place value and addition to 100|Add by expressing addends as tens and ones (expanded form)
+Place value and addition to 100|Add numbers with sums up to 100 without regrouping, using models
+Place value and addition to 100|Solve addition problems with sums up to 100 without regrouping
+Data (pictographs without scale)|Collect one-variable data through a simple interview
+Data (pictographs without scale)|Present data in a pictograph without a scale
+Data (pictographs without scale)|Interpret a pictograph without a scale
+Data (pictographs without scale)|Organize pictograph data into a table
+Subtraction (numbers under 100)|Illustrate subtraction up to 20 as taking away
+Subtraction (numbers under 100)|Find missing numbers in addition and subtraction sentences up to 20
+Subtraction (numbers under 100)|Write equivalent expressions for given addition or subtraction expressions
+Subtraction (numbers under 100)|Solve subtraction problems where both numbers are under 20
+Subtraction (numbers under 100)|Subtract numbers under 100 without regrouping (2-digit minus 1- or 2-digit)
+Subtraction (numbers under 100)|Subtract without regrouping using expanded form
+Repeating patterns|Determine the next term(s) in a repeating pattern
+Repeating patterns|Create repeating patterns using objects, images, or numbers
+## 1|3
+Fractions 1/2 and 1/4|Illustrate 1/2 and 1/4 as parts of a whole
+Fractions 1/2 and 1/4|Compare 1/2 and 1/4 using models
+Fractions 1/2 and 1/4|Count halves and quarters
+Philippine money|Recognize coins (excluding centavos) and bills up to ₱100 and their notations
+Philippine money|Determine the value of bills and/or coins up to ₱100
+Philippine money|Compare different peso denominations up to ₱100
+Money addition and subtraction|Solve 1-step addition (sum up to ₱100) and subtraction money problems
+Position after turns|Identify object positions after half or quarter turns, clockwise or counterclockwise
+Time|Read and write time by hour, half hour, and quarter hour on an analog clock
+Time|Give days of the week and months of the year in correct order
+Time|Determine the day and month of the year using a calendar
+Time|Solve problems involving hours, half hours, quarter hours, days, weeks, and months
+## 4|1
+Angles|Illustrate right, acute, and obtuse angles using models
+Angles|Measure and draw angles using a protractor
+Triangles and quadrilaterals|Draw and state properties of triangles and quadrilaterals
+Triangles and quadrilaterals|Classify triangles and quadrilaterals by sides and angles
+Triangles and quadrilaterals|Differentiate different quadrilaterals
+Perimeter|Find the perimeter of quadrilaterals that are not squares or rectangles
+Perimeter|Find the perimeter of composite figures made of triangles and quadrilaterals
+Whole numbers up to 1,000,000|Read and write numbers up to 1,000,000 in numerals and words
+Whole numbers up to 1,000,000|Determine place value, value, and digit in a 6-digit number
+Whole numbers up to 1,000,000|Compare numbers up to 1,000,000 using =, <, and >
+Whole numbers up to 1,000,000|Round numbers to the nearest hundred thousand
+Whole numbers up to 1,000,000|Estimate sums and differences of 5- to 6-digit numbers by rounding
+Addition and subtraction to 1,000,000|Add and subtract numbers up to 1,000,000, with and without regrouping
+## 4|2
+Multiplication|Multiply 3- to 4-digit numbers by 1-digit numbers, with and without regrouping
+Multiplication|Multiply 2- to 3-digit numbers by 2-digit numbers (products up to 1,000,000)
+Multiplication|Estimate products of two numbers where the product is under 1,000,000
+Multi-step problems|Solve multi-step problems using the four operations, including money
+Division|Divide 3- to 4-digit numbers by 1-digit numbers, with and without regrouping
+Division|Divide 2- to 3-digit numbers by 2-digit numbers, with and without regrouping
+Division|Estimate quotients using multiples of 10
+Number sentences and MDAS|Represent operation situations using number sentences
+Number sentences and MDAS|Perform two or more operations by applying the MDAS rules
+Unit conversion|Convert between meter/centimeter, kilometer/meter, kilogram/gram, gram/milligram, liter/milliliter
+Unit conversion|Convert time from seconds to minutes, minutes to hours, hours to days, days to weeks, weeks to months, months to years
+Unit conversion|Solve problems involving unit conversion, including elapsed time
+Fractions (similar)|Identify proper fractions, improper fractions, and mixed numbers
+Fractions (similar)|Rewrite improper fractions as mixed numbers and vice versa
+Fractions (similar)|Plot fractions with denominators 2, 4, 5, and 10 on a number line
+Fractions (similar)|Add and subtract similar fractions, including mixed numbers and whole numbers
+## 4|3
+Dissimilar and equivalent fractions|Represent dissimilar fractions (denominators up to 10) using models
+Dissimilar and equivalent fractions|Compare dissimilar fractions using =, >, and <
+Dissimilar and equivalent fractions|Order dissimilar fractions from smallest to largest and vice versa
+Dissimilar and equivalent fractions|Generate and determine equivalent fractions using models
+Factors and multiples|Identify multiples of numbers up to 100
+Factors and multiples|Find all factors of numbers up to 100
+Factors and multiples|Reduce fractions to simplest form
+Addition and subtraction of dissimilar fractions|Add and subtract dissimilar fractions using models
+Addition and subtraction of dissimilar fractions|Add and subtract dissimilar fractions (proper fractions, mixed numbers, whole numbers)
+Addition and subtraction of dissimilar fractions|Solve multi-step problems involving addition and subtraction of fractions
+Line symmetry and reflection|Identify symmetry with respect to a line
+Line symmetry and reflection|Complete a figure that is symmetric with respect to a line
+Line symmetry and reflection|Draw the image of an object after reflection with respect to a line, including glide reflection
+## 4|4
+Data (tables and line graphs)|Collect data with a time element using appropriate sources
+Data (tables and line graphs)|Present data in a table or single line graph
+Data (tables and line graphs)|Interpret data presented in a table or single line graph
+Data (tables and line graphs)|Solve problems using data for at most two variables
+Simple patterns|Describe the rule used to generate a given simple pattern
+Number sentences|Complete number sentences to represent properties of operations (e.g., commutative property)
+Number sentences|Complete number sentences to represent equivalent number facts
+Decimals|Represent decimal numbers using models and manipulatives to show their relation to fractions
+Decimals|Read and write decimal numbers with parts to hundredths
+Decimals|Determine place value, value, and digit of decimal numbers to hundredths
+Decimals|Convert decimals to fractions and fractions with denominators 10 or 100 to decimals
+Decimals|Plot decimal numbers with tenths on a number line
+Decimals|Compare and order decimal numbers with parts to hundredths
+Decimals|Round decimal numbers to the nearest whole number and nearest tenth
+## 7|1
+Polygons|Draw and describe regular and irregular polygons with 5, 6, 8, or 10 sides using ruler and protractor
+Polygons|Draw triangles, quadrilaterals, and regular polygons with given angle measures
+Angle relationships|Describe and explain relationships between angle pairs based on their measures
+Polygon classification|Classify polygons by number of sides, regularity, and convexity
+Polygon classification|Deduce the relationship between an exterior angle and its adjacent interior angle
+Polygon angles and sides|Determine measures of angles and number of sides of polygons
+Percentages|Solve problems involving percentage increase and percentage decrease
+Percentages|Solve money problems with percentages (discount, commission, sales tax, simple interest)
+Financial planning|Create a financial plan
+Rates|Identify and explain the uses of rates
+Rates|Solve problems involving rates (e.g., speed)
+Rational numbers|Describe rational numbers as fractions, decimals, or percentages
+Rational numbers|Order rational numbers on a number line
+Rational numbers|Perform operations on rational numbers
+## 7|2
+Square and cube roots|Determine square roots of perfect squares and cube roots of perfect cubes
+Irrational numbers|Identify irrational numbers from roots and locate them on a number line
+Unit conversion|Convert units within SI and across different measurement systems
+Volume of cylinders|Explain inductively the volume of a cylinder using the area of a circle
+Volume of cylinders|Find the volume of a cylinder
+Volume of cylinders|Solve problems involving volumes of cylinders
+Volume of pyramids|Explore inductively the volume of square and rectangular pyramids using prisms
+Volume of pyramids|Estimate volumes of square and rectangular pyramids
+Volume of pyramids|Solve problems involving volumes of square and rectangular pyramids
+Sets|Describe sets and subsets, and the union and intersection of sets
+Sets|Illustrate sets, subsets, union, and intersection using Venn diagrams
+Subsets of real numbers|Illustrate the different subsets of real numbers
+## 7|3
+Data collection and graphs|Investigate different data collection and sampling techniques
+Data collection and graphs|Organize statistical data in a frequency distribution table
+Data collection and graphs|Represent data using pie graphs, bar graphs, line graphs, and stem-and-leaf plots
+Data collection and graphs|Interpret statistical graphs
+Integers|Describe the set of integers
+Integers|Use positive and negative numbers to describe directions or opposites
+Integers|Locate integers on a number line
+Integers|Compare and order integers
+Integers|Add and subtract integers using models and numerals
+Integers|Multiply and divide integers
+Integers|Simplify numerical expressions involving integers using properties and GEMDAS
+Absolute value|Identify the absolute value of an integer and its meaning on a number line
+## 7|4
+Simple equations|Solve simple equations represented by bar models to find unknowns
+Algebraic expressions|Distinguish a variable from a constant in an algebraic expression
+Algebraic expressions|Evaluate algebraic expressions given the values of the variables
+Algebraic expressions|Translate verbal phrases into algebraic expressions
+Properties of equality|Illustrate the properties of equality
+Formulas|Solve one variable in terms of the other variables in a formula
+Equations|Write equations in algebraic form
+Equations|Find the value of an unknown where the unknown is non-negative
+Algebra applications|Solve problems involving algebraic expressions and formulas
+Experiments and outcomes|Collect data from experiments (e.g., coin tosses, die rolls)
+Experiments and outcomes|Express outcomes in words or symbols and represent them in tables or graphs
+Experiments and outcomes|Solve problems using the outcomes of experiments
+Scientific notation|Write very large or very small numbers in scientific notation and vice versa
+Scientific notation|Perform operations on numbers expressed in scientific notation

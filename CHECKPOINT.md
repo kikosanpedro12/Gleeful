@@ -140,3 +140,9 @@ Still open: privacy contact is Kiko's personal email for now (swap to a domain a
 
 ## Independent review + QA of the live site (14 Nov 2026)
 Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typecheck, 418 tests, secret scan, offline build; live landing, pricing, privacy, sign-in; security headers; no open redirect; no secret in the client; consent migration sound; /api/taste hardened. Fixed in d0434c8: the emailed sign-in link can no longer be built from the request host (fixed trusted site URL only); landing and privacy copy now say the Ask box is the real AI and full live lessons are in private testing; privacy notice discloses Vercel server logs and that Anthropic may keep the question under its own terms; "out loud" claims removed; taste prompt says "tutor"; parent view labelled device-only. Still open: no /terms page (needed before charging a card); caps are per warm instance (Console $20 limit is the real ceiling and is set); `clientIp` trusts the first X-Forwarded-For (correct on Vercel); no lint script/CI lint; a console `getComputedStyle` TypeError of unknown source (maybe the preview tool) and a THREE.Clock deprecation warning to look at.
+
+## 18 Nov 2026 — curriculum map + open-domain brain
+- Curriculum data (src/lib/curriculum): CCSS math/ELA, NGSS, DepEd MATATAG summaries (math G1/4/7, AP G4/7, English G4 + part G7, GMRC G1/G4 Q1-3). ~1,900 lines, each with a source link. DepEd summaries are unverified by a person.
+- Pending: DepEd Science, Filipino, K/Language/Reading/Makabansa, MAPEH, EPP/TLE, other grades, C3 social studies (see src/lib/curriculum/manifest.ts).
+- Brain now answers any genuine learning question; up to 5 related standards are added as background context (server-only, retrieve.ts). Safety rules still win; non-learning chat is redirected.
+- World mapping (worldMap.ts): 3 environments built (classroom, planet_surface, market); others planned. Not yet used at runtime.
