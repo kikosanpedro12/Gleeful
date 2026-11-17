@@ -204,6 +204,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   }
   if (!reply) return fail(502, "bad_model_output");
   if (reply.dropped) d.log("dropped_parts", { count: reply.dropped });
+  if (reply.moderated) d.log("moderated", { count: reply.moderated }); // a count only, never the text
   const body: BrainResponse = { segments: reply.segments, model: hard ? "hard" : "default" };
   return new Response(JSON.stringify(body), { status: 200, headers: HEADERS });
 }

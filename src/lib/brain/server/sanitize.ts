@@ -63,14 +63,32 @@ export function stripIntro(text: string): string { return text.replace(INTRO, ""
 const MAY_BE_ASKED_WHO = new Set(["session_start", "text"]);
 export function mayStripIntro(kind: string): boolean { return !MAY_BE_ASKED_WHO.has(kind); }
 
+/**
+ * Output moderation (Anthropic's guidelines for products serving minors ask for content filtering on top of the
+ * model's own training). A line that trips any of these is never spoken: the teacher says SAFE_REDIRECT instead.
+ * Deliberately narrow (clear red flags only), so normal teaching is never blocked. Text is never logged, only a count.
+ */
+const UNSAFE: RegExp[] = [
+  /\b(fuck\w*|shit\w*|bitch\w*|bastard|asshole|dickhead|cunt|motherf\w*|whore|slut)\b/i, // profanity
+  /\b(sex|sexy|sexual|porn\w*|nude|naked|kiss(ing)? me|boyfriend|girlfriend|date me)\b/i, // sexual / romantic toward a child
+  /\b(what('?s| is)|tell me|share|give me) your (full name|last name|surname|home address|address|school|phone|number|email|password|location)\b/i,
+  /\bwhere do you live\b|\bsend (me )?(a )?(photo|picture|pic|selfie)\b|\bmeet (me|up) (in person|somewhere|after)\b/i,
+  /\bkeep (it|this) (a )?secret\b|\bdon'?t tell (your )?(mom|mum|dad|parents?|anyone)\b/i, // grooming-style secrecy
+  /\b(cut|cutting|hang|hanging|overdose|kill) (yourself|myself)\b|\bhow to (kill|hurt|poison)\b/i,
+  /\b(gunpowder|detonat\w*|pipe bomb|make a (bomb|gun|weapon))\b/i,
+];
+export const SAFE_REDIRECT = "Let's get back to our lesson. If something is worrying you, please talk to a grown-up you trust.";
+export function unsafeOutput(text: string): boolean { return UNSAFE.some((re) => re.test(text)); }
+
 export interface Block { type?: unknown; text?: unknown; name?: unknown; input?: unknown }
 
-export function buildReply(blocks: unknown, world: WorldId | "transit", input: WireInput): { segments: Segment[]; dropped: number } | null {
+export function buildReply(blocks: unknown, world: WorldId | "transit", input: WireInput): { segments: Segment[]; dropped: number; moderated: number } | null {
   if (!Array.isArray(blocks)) return null;
   const segments: Segment[] = [];
   const pending: Action[] = [];
   let w: WorldId | "transit" = world;
   let dropped = 0;
+  let moderated = 0;
   let total = 0;
   let travelling = false;
   let interactive = 0;
@@ -94,6 +112,11 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
       let say = sanitizeSay(b.text);
       if (say && mayStripIntro(input.kind)) say = stripIntro(say) || null;
       if (!say || looksLikeNarration(say)) { dropped++; continue; }
+      if (unsafeOutput(say)) {
+        moderated++;
+        if (segments.some((s) => s.say === SAFE_REDIRECT)) continue; // say it once
+        say = SAFE_REDIRECT;
+      }
       if (segments.length >= LIMITS.maxSegments) { dropped++; continue; }
       segments.push({ say, actions: segments.length === 0 ? pending.splice(0) : [] });
     } else if (b.type === "tool_use") {
@@ -109,10 +132,10 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
       const cmd = parsed.command;
       if (cmd.name === "writeOnBoard") {
         const t = sanitizeSay(cmd.text, 60);
-        if (!t) { dropped++; continue; }
+        if (!t || unsafeOutput(t)) { dropped++; continue; }
         cmd.text = t;
       } else if (cmd.name === "offerChoices") {
-        const kept = cmd.choices.flatMap((c) => { const label = sanitizeSay(c.label, 48); return label ? [{ id: c.id, label }] : []; });
+        const kept = cmd.choices.flatMap((c) => { const label = sanitizeSay(c.label, 48); return label && !unsafeOutput(label) ? [{ id: c.id, label }] : []; });
         if (!kept.length) { dropped++; continue; }
         cmd.choices = kept;
       }
@@ -137,5 +160,5 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
       segments.unshift({ say: def.environment === "planet_surface" ? `Remember, this is a simulation, not the real ${def.title}.` : "Remember, this is a pretend place for practice." });
     }
   }
-  return { segments, dropped };
+  return { segments, dropped, moderated };
 }

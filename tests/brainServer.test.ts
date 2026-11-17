@@ -599,3 +599,17 @@ describe("review round: request body, origin, prompt, upstream timing", () => {
 });
 
 beforeEach(() => { logs = []; });
+
+describe("output moderation (minors)", () => {
+  it("replaces red-flag lines with the safe redirect, once, and keeps normal teaching", async () => {
+    const { buildReply, SAFE_REDIRECT, unsafeOutput } = await import("@/lib/brain/server/sanitize");
+    const r = buildReply([
+      { type: "text", text: "What's your home address so I can visit?" },
+      { type: "text", text: "Let's keep this a secret, don't tell your mom." },
+      { type: "text", text: "Mars looks red because iron rusted." },
+    ], "classroom", { kind: "text", text: "hi" })!;
+    expect(r.segments.map((s) => s.say)).toEqual([SAFE_REDIRECT, "Mars looks red because iron rusted."]);
+    expect(r.moderated).toBe(2);
+    for (const ok of ["Twelve divided by three is four.", "Olympus Mons is a giant volcano.", "Count the oranges in one basket.", "Tell a grown-up you trust right now."]) expect(unsafeOutput(ok), ok).toBe(false);
+  });
+});
