@@ -128,7 +128,7 @@ Private project. Report issues to the founder directly; do not open public issue
 - Tests: `tests/tts.test.ts`.
 
 ## Text-to-speech route `/api/voice` (ElevenLabs, 16 Nov)
-- `ELEVENLABS_API_KEY` is server-only (`import "server-only"`), sent only to api.elevenlabs.io, never `NEXT_PUBLIC_*` (`check-secrets` flags `NEXT_PUBLIC_ELEVEN*`). Closed by default: key + `BRAIN_TESTER_CODE` (16+ chars) + not `TTS_DISABLED`; otherwise 503.
+- `ELEVENLABS_API_KEY` is server-only (`import "server-only"`), sent only to api.elevenlabs.io, never `NEXT_PUBLIC_*` (`check-secrets` flags any public-prefixed ElevenLabs variable). Closed by default: key + `BRAIN_TESTER_CODE` (16+ chars) + not `TTS_DISABLED`; otherwise 503.
 - Order: same-origin → config → per-address rate limit (20/min) → passcode → body (2 KB, 3 s) → teacher allowlist (`leo`/`mia`) and text ≤ 300 chars → daily characters (default 30,000, hard cap 100,000, per warm instance) → streamed upstream call (10 s headers, 18 s total, 3 MB audio cap).
 - The browser sends only `teacher` and `text`. Voice id, model (allowlist), format and endpoint are server-side. Text is never logged. Refund only on a clean upstream refusal.
 - Real ceiling: the credit cap on the ElevenLabs key (30,000) plus 90-day expiry. Key scope: Text to Speech + Voices Read only.
