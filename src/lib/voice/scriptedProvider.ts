@@ -157,19 +157,20 @@ export class ScriptedProvider implements VoiceProvider {
     const code = elevenAvailable();
     if (code) {
       let began = false, finished = false;
-      const guard = setTimeout(() => { if (!began) fallback(); }, 12000); // never hang on a slow or silent response
+      const guard = setTimeout(() => { if (!began) fallback(text, false); }, 6000); // never hang on a slow or silent response
       run.timers.push(guard);
-      const fallback = () => {
+      const fallback = (rest: string = text, alreadyBegun = false) => {
         if (finished || run.cancelled) return;
         finished = true;
         clearTimeout(guard);
-        this.elevenLine?.stop();
-        this.speakBrowser(run, text, onBegin, onEnd);
+        line?.stop();
+        this.speakBrowser(run, rest, alreadyBegun ? () => {} : onBegin, onEnd);
       };
-      this.elevenLine = speakElevenLine(text, this.info.teacher, code, {
+      let line: ElevenLine | undefined;
+      line = this.elevenLine = speakElevenLine(text, this.info.teacher, code, {
         onFirstSound: () => { if (run.cancelled || finished) return; began = true; clearTimeout(guard); onBegin(); },
         onEnd: () => { if (run.cancelled || finished) return; finished = true; onEnd(); },
-        onFail: (spokeAny) => { if (spokeAny) { if (!run.cancelled && !finished) { finished = true; onEnd(); } } else fallback(); },
+        onFail: (spokeAny, rest) => fallback(rest, spokeAny),
       });
       return;
     }

@@ -43,14 +43,17 @@ export function chunkText(text: string, max = ELEVEN_MAX_CHARS): string[] {
 }
 
 export interface ElevenLine { stop(): void }
+/** Deadline for one chunk: fetch + playback. A suspended audio context or stalled stream must not hang the lesson. */
+export const chunkDeadlineMs = (piece: string) => 12_000 + piece.length * 90;
 /**
  * Plays `text` as chunks. `onFirstSound` fires once, at the first queued audio of the first chunk. `onEnd` fires after the
- * last chunk finished. `onFail(spokeAny)` fires on a refusal or error (ElevenLabs is then switched off); if nothing was
- * spoken yet the caller should speak the whole line with the browser voice. Never fires after stop().
+ * last chunk finished (or a later chunk stalled past its deadline). `onFail(spokeAny, rest)` fires on a refusal or error:
+ * `rest` is the text not yet spoken (the whole line if nothing was). A 403, 503 or network error switches ElevenLabs off
+ * for this visit; a 429 (rate limit) does not. Never fires after stop().
  */
 export function speakElevenLine(
   text: string, teacher: ElevenTeacher, code: string,
-  cb: { onFirstSound: () => void; onEnd: () => void; onFail: (spokeAny: boolean) => void },
+  cb: { onFirstSound: () => void; onEnd: () => void; onFail: (spokeAny: boolean, rest: string) => void },
 ): ElevenLine {
   const chunks = chunkText(text);
   let stopped = false;
@@ -58,12 +61,24 @@ export function speakElevenLine(
   let spoke = false;
   const stop = () => { stopped = true; cur?.stop(); cur = null; };
   void (async () => {
-    for (const piece of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
+      const piece = chunks[i];
       if (stopped) return;
-      cur = speakEleven(piece, teacher, code, () => { if (!stopped && !spoke) { spoke = true; cb.onFirstSound(); } });
-      const res = await cur.done;
-      if (stopped || res.result === "stopped") return;
-      if (res.result !== "ended") { disableEleven(); cb.onFail(spoke); return; }
+      const pb = (cur = speakEleven(piece, teacher, code, () => { if (!stopped && !spoke) { spoke = true; cb.onFirstSound(); } }));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const res = await Promise.race([
+        pb.done,
+        new Promise<"late">((r) => { timer = setTimeout(() => r("late"), chunkDeadlineMs(piece)); }),
+      ]);
+      clearTimeout(timer);
+      if (stopped) return;
+      if (res === "late") { pb.stop(); disableEleven(); if (spoke) cb.onEnd(); else cb.onFail(false, chunks.join(" ")); return; }
+      if (res.result === "stopped") return;
+      if (res.result !== "ended") {
+        if (!(res.result === "refused" && res.status === 429)) disableEleven();
+        cb.onFail(spoke, chunks.slice(i).join(" "));
+        return;
+      }
     }
     if (!stopped) cb.onEnd();
   })();

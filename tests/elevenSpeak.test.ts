@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { chunkText, disableEleven, elevenAvailable, resetEleven, speakElevenLine } from "@/lib/voice/elevenSpeak";
+import { chunkDeadlineMs, chunkText, disableEleven, elevenAvailable, resetEleven, speakElevenLine } from "@/lib/voice/elevenSpeak";
 
 describe("chunkText", () => {
   it("keeps a short line whole", () => expect(chunkText("Hello! Where should we go today?")).toEqual(["Hello! Where should we go today?"]));
@@ -37,10 +37,37 @@ describe("lesson voice gating", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 503 })));
     const onFail = vi.fn(), onEnd = vi.fn(), onFirstSound = vi.fn();
     speakElevenLine("Hi there.", "leo", "code", { onFirstSound, onEnd, onFail });
-    await vi.waitFor(() => expect(onFail).toHaveBeenCalledWith(false));
+    await vi.waitFor(() => expect(onFail).toHaveBeenCalledWith(false, "Hi there."));
     expect(onEnd).not.toHaveBeenCalled();
     vi.stubGlobal("sessionStorage", { getItem: () => "code" });
     expect(elevenAvailable()).toBeNull();
+    resetEleven();
+    vi.unstubAllGlobals();
+  });
+  it("a rate limit (429) falls back for this line only and does not switch ElevenLabs off", async () => {
+    resetEleven();
+    class Ctx { state = "running"; currentTime = 0; destination = {}; resume() { return Promise.resolve(); } }
+    vi.stubGlobal("window", { AudioContext: Ctx });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 429 })));
+    const onFail = vi.fn();
+    speakElevenLine("Hi there.", "mia", "code", { onFirstSound: vi.fn(), onEnd: vi.fn(), onFail });
+    await vi.waitFor(() => expect(onFail).toHaveBeenCalled());
+    vi.stubGlobal("sessionStorage", { getItem: () => "code" });
+    expect(elevenAvailable()).toBe("code");
+    resetEleven();
+    vi.unstubAllGlobals();
+  });
+  it("a stalled chunk ends past its deadline instead of hanging", async () => {
+    resetEleven();
+    vi.useFakeTimers();
+    class Ctx { state = "running"; currentTime = 0; destination = {}; resume() { return Promise.resolve(); } }
+    vi.stubGlobal("window", { AudioContext: Ctx });
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {}))); // never answers
+    const onFail = vi.fn();
+    speakElevenLine("Hi there.", "leo", "code", { onFirstSound: vi.fn(), onEnd: vi.fn(), onFail });
+    await vi.advanceTimersByTimeAsync(chunkDeadlineMs("Hi there.") + 10);
+    expect(onFail).toHaveBeenCalledWith(false, "Hi there.");
+    vi.useRealTimers();
     resetEleven();
     vi.unstubAllGlobals();
   });
