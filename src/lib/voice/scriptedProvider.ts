@@ -4,6 +4,7 @@ import { createBrain } from "@/lib/brain";
 import { LOOKS } from "@/lib/teacher/rig";
 import { learnerStore, type LearnerStore } from "@/lib/learner/store";
 import { emptyProfile, type LearnerProfile } from "@/lib/learner/profile";
+import { elevenAvailable, speakElevenLine, type ElevenLine } from "./elevenSpeak";
 import { listenOnce, recognitionAvailable, ttsAvailable, voiceFor, loadVoices } from "./speech";
 
 /**
@@ -30,6 +31,7 @@ export class ScriptedProvider implements VoiceProvider {
   private envTimer?: ReturnType<typeof setInterval>;
   private cancelListen?: (() => void) & { stop?: () => void };
   private speakingNow = false;
+  private elevenLine?: ElevenLine;
 
   /** The brain is injected: ScriptedBrain today, a model-backed brain later. */
   private profile: LearnerProfile = emptyProfile();
@@ -150,6 +152,31 @@ export class ScriptedProvider implements VoiceProvider {
   }
 
   private speak(run: Run, text: string, onBegin: () => void, onEnd: () => void) {
+    // Private testers (passcode present) hear the line in ElevenLabs. Any refusal or error falls back to the
+    // browser voice below, for this line and every later one in this visit.
+    const code = elevenAvailable();
+    if (code) {
+      let began = false, finished = false;
+      const guard = setTimeout(() => { if (!began) fallback(); }, 12000); // never hang on a slow or silent response
+      run.timers.push(guard);
+      const fallback = () => {
+        if (finished || run.cancelled) return;
+        finished = true;
+        clearTimeout(guard);
+        this.elevenLine?.stop();
+        this.speakBrowser(run, text, onBegin, onEnd);
+      };
+      this.elevenLine = speakElevenLine(text, this.info.teacher, code, {
+        onFirstSound: () => { if (run.cancelled || finished) return; began = true; clearTimeout(guard); onBegin(); },
+        onEnd: () => { if (run.cancelled || finished) return; finished = true; onEnd(); },
+        onFail: (spokeAny) => { if (spokeAny) { if (!run.cancelled && !finished) { finished = true; onEnd(); } } else fallback(); },
+      });
+      return;
+    }
+    this.speakBrowser(run, text, onBegin, onEnd);
+  }
+
+  private speakBrowser(run: Run, text: string, onBegin: () => void, onEnd: () => void) {
     let begun = false, ended = false, silent = false;
     let estTimer: ReturnType<typeof setTimeout> | undefined;
     const b = () => { if (!begun) { begun = true; onBegin(); } };
@@ -213,6 +240,8 @@ export class ScriptedProvider implements VoiceProvider {
     }
     this.speakingNow = false;
     this.level = 0;
+    this.elevenLine?.stop();
+    this.elevenLine = undefined;
     try { if (ttsAvailable()) window.speechSynthesis.cancel(); } catch {}
   }
 
