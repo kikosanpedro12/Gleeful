@@ -16,13 +16,20 @@ await p.goto(`${O}/tester`, { waitUntil: "networkidle2" });
 await p.type("input", CODE);
 await p.keyboard.press("Enter");
 await p.waitForSelector('[data-testid="tester-saved"]', { timeout: 8000 }).then(() => chk("tester page accepts code", true), () => chk("tester page accepts code", false));
-await p.goto(`${O}/learn`, { waitUntil: "networkidle2" });
-await sleep(1500);
-const btn = await p.$("button.primary, [data-testid=start]");
-if (btn) await btn.click();
+await p.goto(`${O}/learn`, { waitUntil: "domcontentloaded" });
+await sleep(4000);
+for (const x of await p.$$("button")) { if ((await x.evaluate((e) => e.textContent)).startsWith("Leo")) { await x.click(); break; } }
+await sleep(2500);
+for (const x of await p.$$("button")) { if ((await x.evaluate((e) => e.textContent)).startsWith("Start with")) { await x.click(); break; } }
+await sleep(6000);
+for (let k = 0; k < 6 && brainReqs.length === 0; k++) {
+  for (const x of await p.$$("button")) { if ((await x.evaluate((e) => e.textContent)).includes("homework about Mars")) { await x.click(); break; } }
+  await sleep(2500);
+}
 await sleep(12000);
+console.log("badge:", await p.evaluate(() => document.body.innerText.split("\n").find((l) => /Scripted|AI/.test(l))));
 chk("lesson runs (a brain POST carried the invite header)", brainReqs.length > 0 && brainReqs.every(Boolean));
-chk("lesson shows teacher text/UI", await p.evaluate(() => document.body.innerText.length > 50));
+chk("lesson shows teacher text/UI", await p.evaluate(() => document.body.innerText.includes("Leo")));
 await p.screenshot({ path: new URL("./out/invite-flow.png", import.meta.url).pathname });
 chk(`no page errors (${errs.length})`, errs.length === 0);
 if (errs.length) console.log(errs.slice(0, 5));
