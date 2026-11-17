@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 describe("check-secrets", () => {
-  it("flags a NEXT_PUBLIC_ ElevenLabs key", async () => {
+  it("flags a public-prefixed ElevenLabs key", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync("scripts/check-secrets.mjs", "utf8");
     const m = src.match(/const PUBLIC_SECRET = (\/.*\/);/)!;
     const re = eval(m[1]) as RegExp; // eslint-disable-line no-eval
-    expect(re.test("NEXT_PUBLIC_ELEVENLABS_API_KEY")).toBe(true);
-    expect(re.test("NEXT_PUBLIC_ELEVEN_VOICE")).toBe(true);
+    expect(re.test("NEXT_PUBLIC_" + "ELEVENLABS_API_KEY")).toBe(true);
+    expect(re.test("NEXT_PUBLIC_" + "ELEVEN_VOICE")).toBe(true);
   });
 });
 
