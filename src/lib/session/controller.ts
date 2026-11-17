@@ -397,7 +397,8 @@ class SessionController {
     this.userInput({ kind: "tap", target }, `(tapped the ${WORLDS[this.s.world].interactive[target].label.toLowerCase()})`);
   }
 
-  closeInspect() { this.set({ inspecting: null }); }
+  /** Closing the card must not strand the child: if nothing else is on screen, the strand guard puts the prompt back. */
+  closeInspect() { this.set({ inspecting: null }); this.guardStranded(); }
 
   closeWidget() { this.set({ widget: null }); }
 

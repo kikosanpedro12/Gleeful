@@ -74,7 +74,12 @@ export class ScriptedBrain implements Brain {
       case "choice": return this.intent(input.id, input.label, ctx);
       case "text": {
         if (this.pending) {
-          const hits = matchOptions(input.text, this.pending.q);
+          let hits = matchOptions(input.text, this.pending.q);
+          // "12 divided by 3 is 4": the numbers in the working also match. Use what comes after the LAST "is / equals / makes / =".
+          if (hits.length > 1) {
+            const tail = input.text.split(/\b(?:is|equals?|makes?)\b|=/i).pop() ?? "";
+            if (tail.length < input.text.length) { const t = matchOptions(tail, this.pending.q); if (t.length === 1) hits = t; }
+          }
           if (hits.length === 1) return this.answer(this.pending.q.id, hits[0].id, ctx);
           if (hits.length > 1) // e.g. "not hot, rust": don't guess, and don't record anything
             return { segments: [S("I heard more than one answer there. Which one do you pick?", A("askQuestion", { questionId: this.pending.q.id }))] };
@@ -286,6 +291,7 @@ export class ScriptedBrain implements Brain {
     const asked = saw && skillStatus(ctx.profile.attempts, skill).kind === "needs_check";
     const qid = RECALL[skill];
     if (asked) {
+      if (fromMarket) this.sawCrate = false; else this.sawRock = false; // one recheck per visit, not every trip back
       this.recallContext = "recheck";
       this.pending = { q: WORLDS.classroom.questions[qid], hints: 0 };
       return { segments: [S("Welcome back to class!", A("gesture", { gesture: "wave" })), S("Quick check, no hints this time.", A("askQuestion", { questionId: qid }))] };

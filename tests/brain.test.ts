@@ -255,3 +255,15 @@ describe("every intent in every world leads somewhere (no dead ends)", () => {
     }
   });
 });
+
+describe("market: full working sentences", () => {
+  it("'12 divided by 3 is 4' counts as 4; 'four or six' still asks again", () => {
+    const b = new ScriptedBrain();
+    const c = ctx("market");
+    b.respond({ kind: "tap", target: "crate" }, c);
+    const r = b.respond({ kind: "text", text: "four or six" }, c);
+    expect(r.segments[0].say).toMatch(/more than one/);
+    b.respond({ kind: "text", text: "12 divided by 3 is 4" }, c);
+    expect(c.profile.attempts.at(-1)).toMatchObject({ answerId: "four", correct: true });
+  });
+});

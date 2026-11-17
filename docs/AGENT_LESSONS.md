@@ -98,3 +98,5 @@ Rules for entries:
 - Inspect text must never contain a question's hint or numeric answer (data test in `tests/brain.test.ts`).
 - Every tappable mesh checks `fx.shown` (and no transit) BEFORE `stopPropagation`: R3F raycasts invisible meshes, and worlds share space.
 - Spoken number answers: "=" exact words; "~" homophones (for/to/ate) only in replies of up to 3 words.
+- Closing an inspect card re-arms the strand guard (`tests/marketStrand.test.ts`). Numeric answers: a full working sentence uses the part after the last "is/equals/=" ("12 divided by 3 is 4" → 4); "four or six" still asks again.
+- Tester sweeps: `tests/marketBreak.test.ts` (every probe × every world), `scripts/break-market.mjs` (browser break run, ~12 min per viewport).

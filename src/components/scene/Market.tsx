@@ -40,6 +40,7 @@ function Oranges() {
   const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#f28c28", roughness: 0.6 }), []);
   useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
   const a = useMemo(() => new THREE.Vector3(), []), b = useMemo(() => new THREE.Vector3(), []);
+  const calm = useMemo(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   useFrame(() => {
     if (fx.shown !== "market") { deal.start = -1; return; } // leaving resets the stall for next time
     const t = deal.start < 0 ? -1 : (performance.now() - deal.start) / 1000;
@@ -51,7 +52,7 @@ function Oranges() {
       const p = t < 0 ? 0 : THREE.MathUtils.clamp((t - i * STEP_S) / FLIGHT_S, 0, 1);
       const e = p * p * (3 - 2 * p);
       m.position.lerpVectors(a, b, e);
-      m.position.y += Math.sin(Math.PI * e) * 0.28; // a little hop
+      if (!calm) m.position.y += Math.sin(Math.PI * e) * 0.28; // a little hop (none with reduced motion)
     }
   });
   return (
