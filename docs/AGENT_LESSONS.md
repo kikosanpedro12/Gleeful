@@ -82,3 +82,11 @@ Rules for entries:
 - Commit only after the tester's verdict on that exact file hash.
 - Tester works in a pinned copy (/tmp/t); never run `npm run build` in a checkout another agent serves. `npm run stop` matches by cwd and can kill other agents' servers.
 - Open low notes: vacuole tag over a chloroplast; fraction tags cover the 3/4 and 1/2 tiles on desktop; Moon tag small on desktop; Box3 counts hidden helmet.
+
+## Voice route (ElevenLabs, Nov 2026)
+- A new vendor key needs all four in the same change: `check-secrets` public-name pattern, `.env.example`, ASSET_LICENSES row, SECURITY.md section. `tests/elevenPlayer.test.ts` now checks the pattern; still check the other three by hand.
+- Every cancel path must settle the promises it orphans. For each `await new Promise` ask what resolves it on stop (`tests/elevenPlayer.test.ts`).
+- A timing figure is shown only if its event occurred (audio context running) and is labelled an estimate. No latency claim in docs until measured against a recording on the real phone.
+- Do not hardcode a model name in a label when the model comes from config.
+- Probe via the account endpoint may 401 with a Text-to-Speech-only key; `keyValid:false` does not prove a bad key (unverified).
+- Open low notes: no `cancel()` cleanup of timers on client disconnect; sources not disconnected after long lines; GET /api/voice has no rate limit.

@@ -101,6 +101,7 @@
 - [ ] Separate production workspace + key from dev.
 - [ ] Claude API key `AI-Teacher-Brain` (workspace ai-teacher, created 2026-11-13, 90-day expiry → ~2027-02-11). Scheduled reminder fires 2027-02-04 to rotate it.
 - [ ] ElevenLabs API key (restricted to Text to Speech only, 90-day expiry, credit cap set; created 2026-11-16 → expires ~2027-02-14). Scheduled reminder fires 2027-02-04 (same day as the Anthropic key) to rotate it in Vercel + `.env.local`. Never paste the key in chat.
+- [ ] ElevenLabs voice: `/api/voice` + /voice-lab slot built 17 Nov, tester + reviewer passed. Off unless key + passcode set (key is in Vercel Production only). Stand-in voices (Will, Jessica). NOT measured: latency, real phone playback, streaming on Vercel. Next: test on the Honor X9b via the production URL, then design Leo/Mia voices.
 - [ ] Re-check vendor prices (`/cost-report` step 1); Deepgram's rate is promotional.
 - [ ] **BLOCKER for any public traffic: parent sign-in + usage limits in `brain_usage`.** For the PRIVATE test only, set `BRAIN_TESTER_CODE` in Vercel (16+ random characters) together with the key: without the code nothing reaches the model (see SECURITY.md). Until then anyone can rotate address/session/learner ids and bypass every per-user cap (proven in `tests/brainAttack.test.ts`); the Console spend limit is the only hard ceiling, so keep it low and share the Vercel link with nobody.
 - [ ] Server-side per-child and per-account live-minute caps on (pricing doc: Solo $29 / 10 h, Family $79 / 40 h; one price worldwide).
