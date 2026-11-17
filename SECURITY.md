@@ -140,4 +140,7 @@ Private project. Report issues to the founder directly; do not open public issue
 - `TESTER_INVITES="name:code,..."` (server-only). Each invite is its own budget owner (`tester:<name>`) in the brain's per-owner daily ceilings, and its own character bucket in `/api/voice` (`ELEVEN_TESTER_DAILY_CHARS`, default 6,000, hard cap 20,000). The master `BRAIN_TESTER_CODE` is one more tester (`tester`). Whole-site ceilings still apply on top.
 - Codes are compared in constant time against every invite (no early exit). A malformed, short, duplicate or over-50th entry is skipped. Revoke by removing the entry and redeploying. Tester buckets are capped at 100 in memory and fail closed.
 - Per-instance counters again: the real ceilings are the ElevenLabs key credit cap and the Anthropic Console limit.
+- All testers (master + invites) also share one class budget (`tester*`) with the same per-owner ceilings, so adding invites never raises the tester total (1,200 turns, 60 Sonnet per day per warm instance). Each invite also has its own ceilings under that.
+- A master code shorter than 16 characters switches off the brain AND all invites (fail closed). Skipped invite entries log one warning with a count only. An invite equal to the master code is dropped. /api/tts (Deepgram, lab only) accepts only the master code.
+- Known: any code holder can rotate learner ids to fill the 5,000-key table on one instance (503 for everyone until the day rolls). Bounded and authenticated; unchanged in kind.
 - Tests: `tests/invites.test.ts`.

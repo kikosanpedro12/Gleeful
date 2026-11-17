@@ -12,6 +12,7 @@ export const INVITE_MAX = 50;
 export const INVITE_CODE_MIN = 16;
 const NAME = /^[a-z0-9_-]{1,24}$/;
 
+let warned = false;
 export function parseInvites(raw: string | undefined): Invite[] {
   const out: Invite[] = [];
   const names = new Set<string>(), codes = new Set<string>();
@@ -25,6 +26,8 @@ export function parseInvites(raw: string | undefined): Invite[] {
     out.push({ name, code });
     if (out.length >= INVITE_MAX) break;
   }
+  const given = (raw ?? "").split(",").filter((p) => p.trim()).length;
+  if (given > out.length && !warned) { warned = true; console.warn(`[brain] TESTER_INVITES: ${given - out.length} of ${given} entries were skipped (bad name, code under 16 characters, duplicate, or over 50).`); }
   return out;
 }
 

@@ -44,7 +44,7 @@ export const LIMITS = {
   /**
    * Per signed-in parent (keyed on the verified auth user id, which a client cannot choose or rotate).
    * Every family member's learners share it. Above one family's real use, far below abuse.
-   * The private-test passcode holders share one "tester" bucket with the same ceilings.
+   * Each private-test owner ("tester", or "tester:<name>" per invite) has these ceilings, and ALL testers together share one more bucket with the same ceilings ("tester*").
    */
   dailyTurnsPerParent: 1200,
   dailyHardTurnsPerParent: 60,
@@ -98,6 +98,6 @@ export function readEnv(env: Record<string, string | undefined> = process.env): 
     disabled: flag === "1" || flag === "true" || flag === "yes",
     testerCode: tester || undefined,
     testerMisconfigured: !!tester && tester.length < TESTER_CODE_MIN,
-    invites: parseInvites(env.TESTER_INVITES),
+    invites: parseInvites(env.TESTER_INVITES).filter((i) => i.code !== tester),
   };
 }

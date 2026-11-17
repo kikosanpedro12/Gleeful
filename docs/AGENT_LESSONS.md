@@ -90,3 +90,5 @@ Rules for entries:
 - Do not hardcode a model name in a label when the model comes from config.
 - Probe via the account endpoint may 401 with a Text-to-Speech-only key; `keyValid:false` does not prove a bad key (unverified).
 - Open low notes: no `cancel()` cleanup of timers on client disconnect; sources not disconnected after long lines; GET /api/voice has no rate limit.
+- Splitting a shared bucket per owner multiplies the class total: add a class cap (`tester*`) and a test, and state the new sum in SECURITY.md. A rollover must REPLACE the bucket object (never reset it in place) so a refund from the old day cannot touch today (`tests/invites.test.ts`).
+- `MemoryUsageStore.reserve*` only changes an entry that `*Today` has already created; call the `*Today` first in tests.

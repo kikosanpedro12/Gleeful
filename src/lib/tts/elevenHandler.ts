@@ -117,13 +117,14 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
     mine = { day, chars: 0 };
     d.perTester.set(g.principal, mine);
   }
-  if (mine.day !== day) { mine.day = day; mine.chars = 0; }
+  if (mine.day !== day) { mine = { day, chars: 0 }; d.perTester.set(g.principal, mine); } // replace, so a refund from an earlier day cannot touch today
   if (mine.chars + say.length > d.env.testerDailyChars) return fail(429, "tester_daily_limit");
   if (d.spent.chars + say.length > d.env.dailyChars) return fail(429, "daily_limit");
   const bucket = d.spent; // refunds go to THIS day's bucket even if UTC midnight passes during the call
   bucket.chars += say.length;
   mine.chars += say.length;
-  const refund = () => { bucket.chars = Math.max(0, bucket.chars - say.length); mine!.chars = Math.max(0, mine!.chars - say.length); };
+  const myBucket = mine; // captured before any await
+  const refund = () => { bucket.chars = Math.max(0, bucket.chars - say.length); myBucket.chars = Math.max(0, myBucket.chars - say.length); };
 
   const ctl = new AbortController();
   const total = setTimeout(() => ctl.abort(), ELEVEN_LIMITS.totalTimeoutMs);

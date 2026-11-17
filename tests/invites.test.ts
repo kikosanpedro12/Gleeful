@@ -100,3 +100,44 @@ describe("brain accepts an invite", () => {
     expect(f).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("class budget and rollover", () => {
+  it("all testers share one turn budget: many invites cannot multiply it", async () => {
+    const { handleBrain, makeDeps } = await import("@/lib/brain/server/handler");
+    const { MemoryUsageStore } = await import("@/lib/brain/server/limits");
+    const { LIMITS } = await import("@/lib/brain/server/config");
+    const usage = new MemoryUsageStore();
+    const now = Date.now();
+    // Pretend the whole tester class already used its day.
+    await usage.parentToday("tester*", now); // creates the entry
+    for (let i = 0; i < LIMITS.dailyTurnsPerParent; i++) await usage.reserveParent("tester*", now, false);
+    const f = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: "text", text: "ok" }], usage: { input_tokens: 1, output_tokens: 1 } }), { status: 200 }));
+    const body = { v: 1, learnerId: "l1", sessionId: "s1", tz: "Asia/Manila", world: "mars", teacher: "leo", session: 1, input: { kind: "text", text: "hi" }, hintsUsed: 0, history: [], skills: [] };
+    const d = makeDeps({ env: { ...readEnv({ TESTER_INVITES: RAW }), apiKey: "test-key-not-real", disabled: false }, usage, fetchImpl: f as unknown as typeof fetch, log: () => {}, now: () => now });
+    const r = await handleBrain(new Request("https://gleeful.test/api/brain", { method: "POST", headers: { "content-type": "application/json", host: "gleeful.test", "x-gleeful-tester": A }, body: JSON.stringify(body) }), d);
+    expect(r.status).toBe(429);
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("a master code under 16 characters switches the invites off too; an invite equal to the master is dropped", () => {
+    expect(readEnv({ BRAIN_TESTER_CODE: "short", TESTER_INVITES: RAW }).testerMisconfigured).toBe(true);
+    expect(readEnv({ BRAIN_TESTER_CODE: A, TESTER_INVITES: RAW }).invites).toEqual([{ name: "bob", code: B }]);
+  });
+  it("a refund after UTC midnight does not touch the new day's bucket", async () => {
+    let t = Date.UTC(2026, 10, 18, 23, 59, 59);
+    const releases: ((r: Response) => void)[] = [];
+    const fetchImpl = vi.fn(() => new Promise<Response>((res) => { releases.push(res); }));
+    const d = makeElevenDeps({ env: readElevenEnv({ ELEVENLABS_API_KEY: "k" }), brainEnv: readEnv({ TESTER_INVITES: RAW }), fetchImpl: fetchImpl as unknown as typeof fetch, now: () => t });
+    const post = () => new Request("http://localhost/api/voice", { method: "POST", headers: { "content-type": "application/json", "x-gleeful-tester": A }, body: JSON.stringify({ text: "Hello! Where should we go today?", teacher: "leo" }) });
+    const first = handleVoice(post(), d);
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    t = Date.UTC(2026, 10, 19, 0, 0, 5); // midnight passes during the call
+    const second = handleVoice(post(), d);
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    expect(d.perTester.get("tester:alice")!.chars).toBe(32); // today's bucket holds only the second call
+    releases[0](new Response("no", { status: 500 })); // first call's upstream refusal arrives late
+    expect((await first).status).toBe(502);
+    expect(d.perTester.get("tester:alice")!.chars).toBe(32); // not reduced by the old day's refund
+    releases[1](new Response(new Uint8Array([1, 0]), { status: 200 }));
+    await second;
+  });
+});

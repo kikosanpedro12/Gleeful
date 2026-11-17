@@ -83,6 +83,8 @@ export function testerPrincipal(env: { testerCode?: string; invites?: { name: st
   const n = matchInvite(env.invites, given);
   return n ? `tester:${n}` : null;
 }
+/** Shared budget key for every tester owner. Not a valid owner name ("*" is outside the invite name pattern). */
+const TESTER_CLASS = "tester*";
 /** True when any passcode (master or invite) is set up. */
 export const hasTesterAccess = (env: { testerCode?: string; invites?: unknown[] }) => Boolean(env.testerCode) || Boolean(env.invites?.length);
 
@@ -91,7 +93,7 @@ let warnedMisconfigured = false;
 export function warnTesterMisconfigured() {
   if (warnedMisconfigured) return;
   warnedMisconfigured = true;
-  console.warn("[brain] BRAIN_TESTER_CODE is shorter than 16 characters: model calls are refused until it is fixed.");
+  console.warn("[brain] BRAIN_TESTER_CODE is shorter than 16 characters: model calls AND all invite codes are refused until it is fixed.");
 }
 
 export async function handleBrain(req: Request, d: Deps): Promise<Response> {
@@ -150,7 +152,11 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   const usage = await d.usage.today(`${owner}:${r.learnerId}`, r.tz, now);
   const ipDay = await d.usage.ipToday(ip, now);
   const parentDay = await d.usage.parentToday(owner, now);
-  if (!usage || !ipDay || !parentDay) return fail(503, "global_limit"); // fail closed when a table is full of live keys
+  // All testers (master code and every invite) also share ONE class budget, so adding invites never multiplies the tester total.
+  const isTester = owner === "tester" || owner.startsWith("tester:");
+  const classDay = isTester ? await d.usage.parentToday(TESTER_CLASS, now) : parentDay;
+  if (!usage || !ipDay || !parentDay || !classDay) return fail(503, "global_limit"); // fail closed when a table is full of live keys
+  if (classDay.turns >= LIMITS.dailyTurnsPerParent) return fail(429, "daily_limit");
   if (usage.turns >= LIMITS.dailyTurnsPerLearner || ipDay.turns >= LIMITS.dailyTurnsPerIp || parentDay.turns >= LIMITS.dailyTurnsPerParent) return fail(429, "daily_limit");
   const global = await d.usage.globalToday(now);
   if (global.turns >= LIMITS.dailyTurnsGlobal) return fail(503, "global_limit");
@@ -159,11 +165,13 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   const hard = isHardTurn(r)
     && usage.hardTurns < LIMITS.dailyHardTurnsPerLearner
     && parentDay.hardTurns < LIMITS.dailyHardTurnsPerParent
+    && classDay.hardTurns < LIMITS.dailyHardTurnsPerParent
     && ipDay.hardTurns < LIMITS.dailyHardTurnsPerIp
     && global.hardTurns < LIMITS.dailyHardTurnsGlobal;
   await d.usage.reserve(usage, hard);
   await d.usage.reserveIp(ip, now, hard);
   await d.usage.reserveParent(owner, now, hard);
+  if (isTester) await d.usage.reserveParent(TESTER_CLASS, now, hard);
   await d.usage.reserveGlobal(now, hard);
   d.sessionTotals.add(sessionKey, now);
 
