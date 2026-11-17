@@ -29,7 +29,7 @@ The brain and the validator can only use ids the current world declares. Adding 
 2. Reuse an existing environment (`classroom`, `planet_surface`). Only a genuinely new kind of place needs a new scene component.
 3. Add a lesson to the brain. Scripted now; Claude later reads the world data directly, so new lessons won't need code.
 
-Known gap: the scripted brain is Mars-specific code. That is acceptable because Stage B replaces it, but a second scripted subject would currently mean a second scripted lesson.
+Known gap: the scripted brain has hand-written lessons per world (Mars, Fair Share Market). Worlds connect through the classroom hub; the brain must handle every WorldId (tests/brain.test.ts runs every intent in every world). The model brain reads the world data directly.
 
 ## Key rules
 - **Turn ids everywhere.** Every child input bumps the turn. Speech, captions, tool calls, directives, choices and invites from an older turn are dropped. Teacher-initiated lines (the greeting, mid-flight remarks, the arrival) wait until the teacher stops talking.

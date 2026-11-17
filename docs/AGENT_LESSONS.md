@@ -92,3 +92,9 @@ Rules for entries:
 - Open low notes: no `cancel()` cleanup of timers on client disconnect; sources not disconnected after long lines; GET /api/voice has no rate limit.
 - Splitting a shared bucket per owner multiplies the class total: add a class cap (`tester*`) and a test, and state the new sum in SECURITY.md. A rollover must REPLACE the bucket object (never reset it in place) so a refund from the old day cannot touch today (`tests/invites.test.ts`).
 - `MemoryUsageStore.reserve*` only changes an entry that `*Today` has already created; call the `*Today` first in tests.
+
+## Second world (Market, Nov 2026)
+- Brain code that branches on the world must handle EVERY WorldId; worlds connect through the classroom hub. Enforced by the intent × world matrix in `tests/brain.test.ts` (every reply valid and ends in a next step; "on our way" only in transit).
+- Inspect text must never contain a question's hint or numeric answer (data test in `tests/brain.test.ts`).
+- Every tappable mesh checks `fx.shown` (and no transit) BEFORE `stopPropagation`: R3F raycasts invisible meshes, and worlds share space.
+- Spoken number answers: "=" exact words; "~" homophones (for/to/ate) only in replies of up to 3 words.

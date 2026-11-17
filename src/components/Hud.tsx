@@ -100,7 +100,7 @@ function InspectCard() {
       <p>{item.inspect.body}</p>
       {item.inspect.hint && <p className="hint">{item.inspect.hint}</p>}
       {src && <a href={src.url} target="_blank" rel="noreferrer">Source: {src.title}</a>}
-      <button className="ghost small inspect-close" onClick={() => session.closeInspect()} aria-label="Put it back">Put it back</button>
+      <button className="ghost small inspect-close" onClick={() => session.closeInspect()} aria-label={item.inspect.closeLabel ?? "Put it back"}>{item.inspect.closeLabel ?? "Put it back"}</button>
     </aside>
   );
 }

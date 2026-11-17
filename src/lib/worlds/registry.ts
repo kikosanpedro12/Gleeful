@@ -16,7 +16,7 @@ export interface Source { id: string; title: string; url: string; note?: string 
 export interface Fact { id: string; text: string; sourceId: string }
 export interface QuestionOption { id: string; label: string; correct: boolean; keywords: string[] }
 export interface Question { id: string; skill: string; prompt: string; options: QuestionOption[]; hint: string; explain: string }
-export interface Interactive { label: string; inspect: { title: string; body: string; factIds: string[]; hint?: string } }
+export interface Interactive { label: string; inspect: { title: string; body: string; factIds: string[]; hint?: string; closeLabel?: string } }
 
 export interface WorldDef {
   id: WorldId;
@@ -82,9 +82,9 @@ export const WORLDS: Record<WorldId, WorldDef> = {
         id: "q_share_recall", skill: "math.division.equal_share",
         prompt: "Quick check, no hints: 10 cookies shared equally on 2 plates. How many on each plate?",
         options: [
-          { id: "two", label: "2", correct: false, keywords: ["=2", "=two"] },
+          { id: "two", label: "2", correct: false, keywords: ["=2", "=two", "~to", "~too"] },
           { id: "five", label: "5", correct: true, keywords: ["=5", "=five"] },
-          { id: "eight", label: "8", correct: false, keywords: ["=8", "=eight"] },
+          { id: "eight", label: "8", correct: false, keywords: ["=8", "=eight", "~ate"] },
         ],
         hint: "",
         explain: "10 shared equally into 2 groups is 5 in each, because 2 groups of 5 make 10.",
@@ -164,7 +164,8 @@ export const WORLDS: Record<WorldId, WorldDef> = {
           title: "Sharing 12 oranges",
           body: "Watch the oranges go into the 3 baskets one at a time, round and round, so every basket gets the same number.",
           factIds: ["equal", "each"],
-          hint: "Count the oranges in one basket.",
+          hint: "Watch the oranges move.",
+          closeLabel: "Close",
         },
       },
     },
@@ -174,7 +175,7 @@ export const WORLDS: Record<WorldId, WorldDef> = {
         prompt: "12 oranges shared equally into 3 baskets. How many in each basket?",
         options: [
           { id: "three", label: "3", correct: false, keywords: ["=3", "=three"] },
-          { id: "four", label: "4", correct: true, keywords: ["=4", "=four"] },
+          { id: "four", label: "4", correct: true, keywords: ["=4", "=four", "~for"] },
           { id: "six", label: "6", correct: false, keywords: ["=6", "=six"] },
         ],
         hint: "Count the oranges in just one basket. Every basket has the same number.",

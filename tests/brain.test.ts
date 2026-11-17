@@ -221,3 +221,37 @@ describe("world data integrity (all worlds)", () => {
     expect(parseSceneCommand("inviteTap", { target: "crate" }, c).ok).toBe(true);
   });
 });
+
+describe("every intent in every world leads somewhere (no dead ends)", () => {
+  const INTENT_TEXTS = ["stop", "back to class", "why is it red", "the crater", "the volcano", "where are the people", "a rock", "number line", "fraction bars", "I want to share oranges", "go to mars", "yes", "hello", "what is a banana"];
+  const NEXT = new Set(["openWorld", "offerChoices", "askQuestion", "inviteTap", "showWidget"]);
+  for (const world of ["classroom", "mars", "market"] as const) {
+    for (const text of INTENT_TEXTS) {
+      it(`${world}: "${text}"`, () => {
+        const r = new ScriptedBrain().respond({ kind: "text", text }, ctx(world));
+        allValid(r, world);
+        if (text !== "stop") expect(names(r).some((n) => NEXT.has(n)), JSON.stringify(r.segments.map((s) => s.say))).toBe(true);
+        expect(r.segments.map((s) => s.say).join(" ")).not.toMatch(/on our way/i); // only true while travelling
+      });
+    }
+  }
+  it("number homophones count only as a short reply", () => {
+    const b = new ScriptedBrain();
+    const c = ctx("market");
+    b.respond({ kind: "tap", target: "crate" }, c);
+    b.respond({ kind: "text", text: "is it for each basket of the oranges" }, c);
+    expect(c.profile.attempts).toHaveLength(0);
+    b.respond({ kind: "tap", target: "crate" }, c);
+    b.respond({ kind: "text", text: "for" }, c);
+    expect(c.profile.attempts.at(-1)).toMatchObject({ answerId: "four" });
+  });
+  it("inspect text never gives away a question's hint or correct answer", async () => {
+    const { WORLDS } = await import("@/lib/worlds/registry");
+    for (const w of Object.values(WORLDS)) for (const it2 of Object.values(w.interactive)) for (const q of Object.values(w.questions)) {
+      const shown = `${it2.inspect.body} ${it2.inspect.hint ?? ""}`;
+      if (q.hint) expect(shown.includes(q.hint)).toBe(false);
+      const right = q.options.find((o) => o.correct)!.label;
+      if (/^\d+$/.test(right)) expect(shown).not.toMatch(new RegExp(`\\b${right}\\b`));
+    }
+  });
+});

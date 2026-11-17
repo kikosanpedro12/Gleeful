@@ -232,6 +232,7 @@ function InspectRock() {
   });
 
   const down = (e: ThreeEvent<PointerEvent>) => {
+    if (fx.shown !== "mars" || useSession.getState().transit) return; // hidden: never steal a tap meant for another world
     e.stopPropagation();
     if (!inspecting) { session.tap("rock_1"); return; }
     spin.current.dragging = true;

@@ -25,7 +25,7 @@
 | TEACHER_DUO_REFERENCE.png | AI-generated concept art for this project | Visual direction only; not a rigged asset. |
 | ElevenLabs text-to-speech (service) | /api/voice, voice-lab slot | Live API calls, no files stored. Creator plan, key created by the founder 16 Nov 2026. Stand-in premade voices (Will, Jessica) until Leo and Mia are designed | ElevenLabs Terms of Service (generated audio keeps commercial rights; do not clone or train on its output; confirm data-retention and age terms before the product voice goes to children) | To confirm |
 | Deepgram Aura-2 text-to-speech (service) | /api/tts, voice-lab test slots | Live API calls, no files stored. Free $200 credit account created by the founder 14 Nov 2026 | Deepgram Terms of Service (service use; confirm output-use and data-retention terms before the product voice goes to children) | To confirm |
-
-Rule: nothing gets added to `public/` or the bundle without a row here first.
 | Fair Share Market scene (stall, crate, oranges, baskets, sign) | src/components/scene/Market.tsx | Made in code from primitives for Gleeful, 18 Nov 2026 | Own work | OK |
 | Common Core State Standards, Grade 3 OA (fact source) | Market world facts in src/lib/worlds/registry.ts | Paraphrased facts only, linked | © NGA Center/CCSSO, public license for use of the standards | OK (pending human review of the facts) |
+
+Rule: nothing gets added to `public/` or the bundle without a row here first.

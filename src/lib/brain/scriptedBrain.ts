@@ -4,7 +4,7 @@ import { skillStatus } from "@/lib/learner/profile";
 import { matches } from "@/lib/widgets/spec";
 
 /**
- * SCRIPTED lesson brain — NOT AI. A deterministic Mars field-trip lesson used
+ * SCRIPTED lesson brain — NOT AI. Deterministic lessons (a Mars field trip and the Fair Share Market) used
  * to test presence, the world transition, interaction and interruption before
  * a model brain is connected. Understands only keyword intents; says so when
  * it does not understand.
@@ -23,7 +23,7 @@ const INTENTS: [string, RegExp][] = [
   ["rock", /\b(rock|stone)\b/i],
   ["numberline", /number ?line/i],
   ["fractions", /\b(fractions?|halves|half|quarters?)\b/i],
-  ["market", /\b(market|shar(e|ing)|divid(e|ing)|division|equal groups?|fair share|oranges?)\b/i],
+  ["market", /\b(market|shar(e[sd]?|ing)|divid(e[sd]?|ing)|division|split(ting)?|equal groups?|fair share|oranges)\b/i],
   ["mars", /\b(mars|planet|space)\b/i],
   ["yes", /^(yes|yeah|yep|ok|okay|sure|let'?s go|go)\b/i],
   ["hello", /\b(hello|hi|hey)\b/i],
@@ -34,10 +34,12 @@ const SHARE = "math.division.equal_share";
 /**
  * Options whose keywords start a WORD in the text ("rusty" matches rust; "photo" does not match hot).
  * A keyword starting with "=" must match a whole word exactly ("=4" matches "4" but not "14" or "40").
+ * "~" is the same, but only in a short reply of up to 3 words: speech recognition hears "four" as "for",
+ * yet "is it for each basket?" must not count as answering 4.
  */
 export function matchOptions(text: string, q: Question) {
   const words: string[] = text.toLowerCase().match(/[a-z0-9']+/g) ?? [];
-  return q.options.filter((o) => o.keywords.some((k) => k.startsWith("=") ? words.includes(k.slice(1)) : words.some((w) => w.startsWith(k))));
+  return q.options.filter((o) => o.keywords.some((k) => k.startsWith("=") ? words.includes(k.slice(1)) : k.startsWith("~") ? words.length <= 3 && words.includes(k.slice(1)) : words.some((w) => w.startsWith(k))));
 }
 
 /** Every question in every world, by id (ids are unique across worlds; see tests/brain.test.ts). */
@@ -149,10 +151,11 @@ export class ScriptedBrain implements Brain {
             S("Sharing! Let's go to the market and share some oranges.", A("moveTeacherTo", { spot: "center" }), A("gesture", { gesture: "open_hands" })),
             S("Here we go!", A("openWorld", { world: "market" })),
           ] };
+        if (onMars) return this.viaClass("The market is back through our classroom.");
         return { segments: [S("Hold on, we're on our way!")] };
       case "mars":
       case "yes":
-        if (ctx.world === "market" && intent === "yes") { this.pending = null; return this.inviteCrate(); }
+        if (ctx.world === "market") { if (intent === "yes") { this.pending = null; return this.inviteCrate(); } return this.viaClass("Mars is a space trip, and our rocket rug is in the classroom."); }
         if (onMars) return { segments: [S("We're on Mars right now! Look around.", A("gesture", { gesture: "open_hands" })), this.nudge(ctx)] };
         if (ctx.world === "classroom")
           return { segments: [
@@ -161,6 +164,7 @@ export class ScriptedBrain implements Brain {
           ] };
         return { segments: [S("Hold on, we're on our way!")] };
       case "red":
+        if (ctx.world === "market") { this.pending = null; return this.inviteCrate(); }
         if (!onMars)
           return { segments: [
             S("Great question. The answer is hiding in the rocks.", A("pointAt", { target: "mars_globe" })),
@@ -168,6 +172,7 @@ export class ScriptedBrain implements Brain {
           ] };
         return this.inviteRock();
       case "rock":
+        if (ctx.world === "market") { this.pending = null; return this.inviteCrate(); }
         return onMars ? this.inviteRock() : { segments: [S("The rocks we want are on Mars.", A("pointAt", { target: "mars_globe" })), S("Want to go?", choices(["mars", "Let's go!"]))] };
       case "air":
         return { segments: [
@@ -216,7 +221,11 @@ export class ScriptedBrain implements Brain {
     if (m === true)
       return { segments: [
         S("Yes, that's it! You got it by looking carefully.", A("gesture", { gesture: "thumbs_up" })),
-        S("What next?", choices(["fractions", "Fraction bars"], ["numberline", "Number line"], ["mars", "Go to Mars"])),
+        S("What next?", ctx.world === "market"
+          ? choices(["fractions", "Fraction bars"], ["market", "Share again"], ["back", "Back to class"])
+          : ctx.world === "mars"
+            ? choices(["fractions", "Fraction bars"], ["numberline", "Number line"], ["back", "Back to class"])
+            : choices(["fractions", "Fraction bars"], ["numberline", "Number line"], ["mars", "Go to Mars"])),
       ] };
     if (m === false)
       return { segments: [S("Not quite. Count the equal parts again, and try another spot.", A("gesture", { gesture: "think" }))] };
@@ -233,6 +242,11 @@ export class ScriptedBrain implements Brain {
         ? S("Want to explore more?", choices(["crater", "The crater"], ["mountain", "The volcano"], ["back", "Back to class"]))
         : S("What do you notice?", choices(["red", "Why is everything red?"], ["air", "Where are the people?"], ["crater", "What's that big hole?"]));
     return S("Where shall we go?", choices(["mars", "Mars (science)"], ["market", "Sharing equally (math)"]));
+  }
+
+  /** Worlds connect through the classroom hub: say so and offer the way back instead of a dead end. */
+  private viaClass(why: string): BrainReply {
+    return { segments: [S(`${why} Let's go back to class first.`, A("gesture", { gesture: "open_hands" }), choices(["back", "Back to class"]))] };
   }
 
   private inviteCrate(): BrainReply {

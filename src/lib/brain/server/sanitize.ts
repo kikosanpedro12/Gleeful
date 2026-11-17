@@ -134,7 +134,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
   if (input.kind === "world_ready") {
     const def = WORLDS[input.world];
     if (def.simulationNotice && !segments.some((s) => /simulat/i.test(s.say))) {
-      segments.unshift({ say: `Remember, this is a simulation, not the real ${def.title}.` });
+      segments.unshift({ say: def.environment === "planet_surface" ? `Remember, this is a simulation, not the real ${def.title}.` : "Remember, this is a pretend place for practice." });
     }
   }
   return { segments, dropped };
