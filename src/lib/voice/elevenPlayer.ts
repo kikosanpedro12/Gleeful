@@ -2,7 +2,7 @@
  * Plays ElevenLabs speech as it arrives. /api/voice streams raw 16-bit mono PCM; each chunk is converted and queued
  * on a Web Audio clock, so sound can start before the whole line has downloaded. Browser only.
  *
- * What the timing means: `firstSoundMs` runs from the moment this function was called until the first queued sample
+ * What the timing means: `firstSoundMs` is an ESTIMATE of when audio was queued: it runs from the moment this function was called until the first queued sample
  * is due to play. It includes our server and ElevenLabs. It does NOT include the phone's own speaker/Bluetooth delay,
  * and it is not the "child stops talking" timer (that one starts at the end of the child's speech).
  */
@@ -48,6 +48,7 @@ export function speakEleven(text: string, teacher: ElevenTeacher, code: string, 
   const ctl = new AbortController();
   const sources: AudioBufferSourceNode[] = [];
   let stopped = false;
+  let release: (() => void) | null = null; // settles the final-playback wait when stop() runs
   const timing: ElevenTiming = { firstSoundMs: null, totalMs: null };
 
   const stop = () => {
@@ -55,6 +56,7 @@ export function speakEleven(text: string, teacher: ElevenTeacher, code: string, 
     try { ctl.abort(); } catch { /* already done */ }
     for (const s of sources) { try { s.onended = null; s.stop(); } catch { /* not started */ } }
     sources.length = 0;
+    release?.();
   };
 
   const done = (async (): Promise<{ result: ElevenResult; status?: number; timing: ElevenTiming }> => {
@@ -81,7 +83,7 @@ export function speakEleven(text: string, teacher: ElevenTeacher, code: string, 
         src.buffer = buf;
         src.connect(ac.destination);
         const startAt = Math.max(next, ac.currentTime + LEAD_S);
-        if (timing.firstSoundMs === null) {
+        if (timing.firstSoundMs === null && ac.state === "running") {
           timing.firstSoundMs = Math.round(performance.now() - t0 + (startAt - ac.currentTime) * 1000);
           onFirstSound?.(timing.firstSoundMs);
         }
@@ -91,7 +93,7 @@ export function speakEleven(text: string, teacher: ElevenTeacher, code: string, 
         last = src;
       }
       if (!last) return { result: "error", timing };
-      await new Promise<void>((res) => { last!.onended = () => res(); });
+      if (!stopped) await new Promise<void>((res) => { release = res; last!.onended = () => res(); });
       timing.totalMs = Math.round(performance.now() - t0);
       return { result: stopped ? "stopped" : "ended", timing };
     } catch {

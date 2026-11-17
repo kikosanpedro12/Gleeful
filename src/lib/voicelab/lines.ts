@@ -36,7 +36,7 @@ export const ENGINES: Engine[] = [
   { id: "dg-2", name: "Deepgram Aura-2, voice 2 (paid API)", detail: (t) => (t === "leo" ? "aries" : "thalia"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-aries-en" : "aura-2-thalia-en") },
   { id: "dg-3", name: "Deepgram Aura-2, voice 3 (paid API)", detail: (t) => (t === "leo" ? "arcas" : "luna"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-arcas-en" : "aura-2-luna-en") },
   { id: "dg-4", name: "Deepgram Aura-2, voice 4 (paid API)", detail: (t) => (t === "leo" ? "atlas" : "aurora"), clip: () => null, voice: (t) => (t === "leo" ? "aura-2-atlas-en" : "aura-2-aurora-en") },
-  { id: "el-1", name: "ElevenLabs v4 Turbo, stand-in voice (paid API, streamed)", detail: (t) => (t === "leo" ? "Will (stand-in)" : "Jessica (stand-in)"), clip: () => null, eleven: true },
+  { id: "el-1", name: "ElevenLabs, stand-in voice (paid API, streamed)", detail: (t) => (t === "leo" ? "Will (stand-in)" : "Jessica (stand-in)"), clip: () => null, eleven: true },
 ];
 
 export type Rating = "great" | "ok" | "robotic";

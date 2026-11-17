@@ -174,7 +174,7 @@ export default function VoiceLab() {
               <li key={e.id}><b>{e.name}</b><br />Great {t[e.id].great} · OK {t[e.id].ok} · Robotic {t[e.id].robotic}</li>
             ))}
           </ul>
-          {firstSound.length > 0 && <p data-testid="vlab-timing">ElevenLabs time to first sound on this device: {Math.min(...firstSound)}–{Math.max(...firstSound)} ms over {firstSound.length} play{firstSound.length === 1 ? "" : "s"} (from tap to first sound queued; includes our server and ElevenLabs, not the phone speaker delay).</p>}
+          {firstSound.length > 0 && <p data-testid="vlab-timing">ElevenLabs first audio queued (estimate, not a target): {Math.min(...firstSound)}–{Math.max(...firstSound)} ms over {firstSound.length} play{firstSound.length === 1 ? "" : "s"} (tap to first audio queued; includes our server and ElevenLabs, not the phone speaker delay).</p>}
           <button className="ghost" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setNote("Could not copy. Select the numbers above instead."); } }}>{copied ? "Copied" : "Copy results"}</button>
           <small>Your ratings were not saved or sent. The sample lines were sent to Deepgram and ElevenLabs to make their voices. Send me the numbers (or paste the copied text).</small>
         </section>

@@ -142,7 +142,8 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
 
 /**
  * Capability check: booleans only, no secrets. With ?probe=1 AND the passcode it also asks ElevenLabs (a free account
- * lookup, no speech, no credits) whether the key works, and answers with a boolean and an HTTP status only.
+ * lookup, no speech) whether the key works. UNVERIFIED: this needs the key to have user-read access; a key limited to
+ * Text to Speech may answer 401, so keyValid:false does not by itself prove the key is bad, and answers with a boolean and an HTTP status only.
  */
 export async function voiceStatus(req: Request, d: ElevenDeps) {
   const { testerCode, testerMisconfigured } = d.brainEnv;

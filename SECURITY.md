@@ -118,7 +118,7 @@ Private project. Report issues to the founder directly; do not open public issue
 ## Widgets and voice lab (14 Nov)
 - New wire input `widget` (number line / fraction bars): value and optional target are parsed by `parseValue` (numbers and fractions only, bounded), refused during transit. The `target` is **client-asserted**: the prompt says "the app reports this matches", and a widget input never records evidence, escalates the model or spends extra (test in `tests/widgets.test.ts`). A tampered client can only get a wrong "that's right" for itself.
 - `showWidget`/`hideWidget` are validated commands (bounded specs, no strings, one per reply); the spec is validated again server-side. CSP unchanged.
-- `/voice-lab` is a private route (noindex, in PRIVATE_PREFIXES, llms.txt and layout metadata). The page itself has no passcode and saves nothing of the listener's ratings; the Kokoro clips are bundled static files. The Deepgram slots send the five sample lines to Deepgram through the passcode-gated /api/tts.
+- `/voice-lab` is a private route (noindex, in PRIVATE_PREFIXES, llms.txt and layout metadata). The page itself has no passcode and saves nothing of the listener's ratings; the Kokoro clips are bundled static files. The Deepgram slots send the five sample lines to Deepgram through the passcode-gated /api/tts, and the ElevenLabs slot sends them to ElevenLabs through the passcode-gated /api/voice.
 - Honesty filter: the code-side "no re-intro" strip applies only to teacher-started lines (transit, world ready, resume), so a child asking "are you a robot?" always gets the AI answer (tests in `tests/uxRound.test.ts`).
 
 ## Text-to-speech route `/api/tts` (14 Nov)
@@ -126,3 +126,11 @@ Private project. Report issues to the founder directly; do not open public issue
 - Order: same-origin check → config → per-address rate limit (20/min, before the passcode so guesses are limited) → passcode → body (2 KB cap, 3 s) → voice must be in the allowlist (`src/lib/tts/voices.ts`) and text ≤ 300 chars → daily character ceiling (default 60,000, hard cap 300,000, per warm instance) → upstream call (10 s, 2 MB cap).
 - The browser cannot choose the model, endpoint or encoding. Text is never logged. Real ceiling: Deepgram's prepaid credit (free $200, no card on file); keep no card until launch.
 - Tests: `tests/tts.test.ts`.
+
+## Text-to-speech route `/api/voice` (ElevenLabs, 16 Nov)
+- `ELEVENLABS_API_KEY` is server-only (`import "server-only"`), sent only to api.elevenlabs.io, never `NEXT_PUBLIC_*` (`check-secrets` flags `NEXT_PUBLIC_ELEVEN*`). Closed by default: key + `BRAIN_TESTER_CODE` (16+ chars) + not `TTS_DISABLED`; otherwise 503.
+- Order: same-origin → config → per-address rate limit (20/min) → passcode → body (2 KB, 3 s) → teacher allowlist (`leo`/`mia`) and text ≤ 300 chars → daily characters (default 30,000, hard cap 100,000, per warm instance) → streamed upstream call (10 s headers, 18 s total, 3 MB audio cap).
+- The browser sends only `teacher` and `text`. Voice id, model (allowlist), format and endpoint are server-side. Text is never logged. Refund only on a clean upstream refusal.
+- Real ceiling: the credit cap on the ElevenLabs key (30,000) plus 90-day expiry. Key scope: Text to Speech + Voices Read only.
+- Open: ElevenLabs keeps generation history by default. Review retention and age terms before any child's words or model replies go through it (see the voice-vendor line in the checklist above). Private tests send fixed sample lines only.
+- Tests: `tests/voiceEleven.test.ts`, `tests/elevenPlayer.test.ts`.
