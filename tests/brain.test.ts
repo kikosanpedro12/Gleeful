@@ -141,3 +141,83 @@ describe("tester R4-1: skill labels are prototype-safe", () => {
     expect(skillLabel("science.mars.red_color")).toBe("Why Mars looks red");
   });
 });
+
+describe("scripted brain (not AI): the Fair Share Market (division)", () => {
+  it("'sharing' in class → goes to the market; arrival is labelled pretend", () => {
+    const b = new ScriptedBrain();
+    const r = b.respond({ kind: "text", text: "I have homework on sharing equally" }, ctx("classroom"));
+    expect(actions(r).find((a) => a.name === "openWorld")?.args).toEqual({ world: "market" });
+    allValid(r, "classroom");
+    const a = b.respond({ kind: "world_ready", world: "market" }, ctx("market"));
+    expect(a.segments.map((s) => s.say).join(" ")).toMatch(/pretend/i);
+    allValid(a, "market");
+  });
+  it("invites a tap on the crate, the tap asks q_share, a wrong answer gets a hint, the right one is recorded with it", () => {
+    const b = new ScriptedBrain();
+    const c = ctx("market");
+    const inv = b.respond({ kind: "choice", id: "market", label: "Let's share!" }, c);
+    expect(actions(inv)).toContainEqual({ name: "inviteTap", args: { target: "crate" } });
+    allValid(inv, "market");
+    const t = b.respond({ kind: "tap", target: "crate" }, c);
+    expect(actions(t)).toContainEqual({ name: "askQuestion", args: { questionId: "q_share" } });
+    allValid(t, "market");
+    const wrong = b.respond({ kind: "answer", questionId: "q_share", optionId: "six" }, c);
+    expect(wrong.segments.map((s) => s.say).join(" ")).toMatch(/Count the oranges/);
+    expect(c.profile.attempts).toHaveLength(0);
+    const right = b.respond({ kind: "answer", questionId: "q_share", optionId: "four" }, c);
+    allValid(right, "market");
+    expect(c.profile.attempts).toEqual([expect.objectContaining({ skill: "math.division.equal_share", correct: true, hintsUsed: 1, context: "taught" })]);
+  });
+  it("spoken numbers match exactly: '4' and 'four' yes, '14' and '40' no", () => {
+    const b = new ScriptedBrain();
+    const c = ctx("market");
+    b.respond({ kind: "tap", target: "crate" }, c);
+    b.respond({ kind: "text", text: "is it 14?" }, c); // no option matched: closes the question, records nothing
+    expect(c.profile.attempts).toHaveLength(0);
+    b.respond({ kind: "tap", target: "crate" }, c);
+    b.respond({ kind: "text", text: "four in each" }, c);
+    expect(c.profile.attempts.at(-1)).toMatchObject({ answerId: "four", correct: true });
+  });
+  it("back in class after the market asks the SHARE recheck, not the Mars one", () => {
+    const b = new ScriptedBrain();
+    const c = ctx("market");
+    b.respond({ kind: "world_ready", world: "market" }, c);
+    b.respond({ kind: "tap", target: "crate" }, c);
+    b.respond({ kind: "answer", questionId: "q_share", optionId: "four" }, c);
+    const back = b.respond({ kind: "choice", id: "back", label: "Back to class" }, c);
+    allValid(back, "market");
+    const home = b.respond({ kind: "world_ready", world: "classroom" }, ctx("classroom", c.profile));
+    expect(actions(home)).toContainEqual({ name: "askQuestion", args: { questionId: "q_share_recall" } });
+    allValid(home, "classroom");
+    b.respond({ kind: "answer", questionId: "q_share_recall", optionId: "five" }, ctx("classroom", c.profile));
+    expect(skillStatus(c.profile.attempts, "math.division.equal_share").kind).toBe("needs_check");
+  });
+  it("a tap on the crate outside the market does nothing", () => {
+    const r = new ScriptedBrain().respond({ kind: "tap", target: "crate" }, ctx("classroom"));
+    expect(names(r)).not.toContain("askQuestion");
+  });
+});
+
+describe("world data integrity (all worlds)", () => {
+  it("question ids are unique across worlds, every fact has a real source, every inspect fact exists", async () => {
+    const { WORLDS } = await import("@/lib/worlds/registry");
+    const seen = new Set<string>();
+    for (const w of Object.values(WORLDS)) {
+      for (const q of Object.keys(w.questions)) { expect(seen.has(q), q).toBe(false); seen.add(q); }
+      for (const f of w.facts) expect(w.sources.some((s) => s.id === f.sourceId && s.url.startsWith("https://")), f.id).toBe(true);
+      for (const it of Object.values(w.interactive)) for (const id of it.inspect.factIds) expect(w.facts.some((f) => f.id === id), id).toBe(true);
+      for (const q of Object.values(w.questions)) expect(q.options.filter((o) => o.correct)).toHaveLength(1);
+      expect(w.spots[w.arrivalSpot]).toBeDefined();
+      if (w.id !== "classroom") expect(w.simulationNotice).toBeTruthy();
+    }
+  });
+  it("the market rejects hostile or foreign ids", () => {
+    const c = contextFor("market");
+    expect(parseSceneCommand("pointAt", { target: "rock_1" }, c).ok).toBe(false);
+    expect(parseSceneCommand("pointAt", { target: "__proto__" }, c).ok).toBe(false);
+    expect(parseSceneCommand("inviteTap", { target: "basket_1" }, c).ok).toBe(false); // not interactive
+    expect(parseSceneCommand("askQuestion", { questionId: "q_red" }, c).ok).toBe(false);
+    expect(parseSceneCommand("moveTeacherTo", { spot: "crater_edge" }, c).ok).toBe(false);
+    expect(parseSceneCommand("inviteTap", { target: "crate" }, c).ok).toBe(true);
+  });
+});

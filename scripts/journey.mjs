@@ -187,11 +187,44 @@ check("session 2 (Mia): opens with a no-hint check from stored evidence", !!welc
 const said2 = await page.evaluate(() => document.body.innerText);
 await click('[data-testid="answer-rust"]');
 await waitFor((d) => d.state === "idle" && !d.question, 25000);
+
+// Second subject: the Fair Share Market (division), reached by fade, not a space trip.
+const mk = await waitFor((d) => d.choices.includes("market") && d.state === "idle", 25000);
+check("market (math) offered after the Mars check", !!mk);
+await click('[data-testid="choice-market"]');
+const inMarket = await waitFor((d) => d.world === "market" && !d.transit, 15000);
+check("arrived at the market", !!inMarket);
+check("simulation label visible at the market", !!(await page.$('[data-testid="sim-badge"]')));
+check("no helmet at the market", inMarket ? inMarket.helmet === false : false);
+const share = await waitFor((d) => d.choices.includes("market") && d.state === "idle", 25000);
+if (share) await click('[data-testid="choice-market"]');
+const crateInv = await waitFor((d) => d.tag && d.state === "idle", 25000);
+check("crate invites a tap", !!crateInv);
+const cp = await page.evaluate(() => window.__project("crate"));
+check("crate is on screen", !!cp && cp.x > 0 && cp.x < W && cp.y > 0 && cp.y < H, cp ? `(${cp.x|0},${cp.y|0})` : "");
+if (cp) await page.mouse.click(cp.x, cp.y);
+const mq = await waitFor((d) => d.question && d.state === "idle", 30000);
+check("tapping the crate deals the oranges and asks how many in each", !!mq);
+await shot("16-market-question");
+await click('[data-testid="answer-six"]');
+await waitFor((d) => d.question && d.state === "idle", 25000);
+await click('[data-testid="answer-four"]');
+const mBack = await waitFor((d) => d.choices.includes("back") && d.state === "idle", 25000);
+check("right answer → offers back to class", !!mBack);
+await click('[data-testid="choice-back"]');
+const home2 = await waitFor((d) => d.world === "classroom" && !d.transit, 15000);
+check("back in class from the market", !!home2);
+const sr = await waitFor((d) => d.question && d.state === "idle", 25000);
+check("share recheck asked back in class", !!sr);
+await click('[data-testid="answer-five"]');
+await waitFor((d) => d.state === "idle" && !d.question, 25000);
+
 await page.goto(new URL("/parent", TARGET).href, { waitUntil: "domcontentloaded" });
 await sleep(1500);
 const parent2 = await page.evaluate(() => document.body.innerText);
 check("parent view after session 2: on their own in a later session", /on their own in a later session/i.test(parent2));
 check("parent view shows 2 sessions", /Sessions started:\s*2/.test(parent2));
+check("parent view lists the sharing skill", /Sharing equally/.test(parent2));
 await page.screenshot({ path: `${OUT}${TAG}-15-parent-session2.png`, fullPage: true });
 void said2;
 

@@ -74,7 +74,7 @@ describe("brain route: happy path", () => {
     expect(names).toContain("writeOnBoard");
     expect(names).not.toContain("inviteTap"); // classroom has nothing tappable
     const ow = sent.tools.find((t: { name: string }) => t.name === "openWorld");
-    expect(ow.input_schema.properties.world.enum).toEqual(["mars"]);
+    expect(ow.input_schema.properties.world.enum).toEqual(["mars", "market"]);
     expect(sent.tools).toEqual(toolsFor(contextFor("classroom")));
   });
   it("builds the world's facts from the registry, never from the request", () => {

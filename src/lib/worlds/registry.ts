@@ -6,8 +6,8 @@
  * ids declared here. Adding a subject = adding a world entry + (if needed) a
  * new reusable environment. Nothing here is executable.
  */
-export type WorldId = "classroom" | "mars";
-export type Environment = "classroom" | "planet_surface";
+export type WorldId = "classroom" | "mars" | "market";
+export type Environment = "classroom" | "planet_surface" | "market";
 /** How the camera frames a world: indoors (close) or outdoors (higher, wider). */
 export type Framing = "indoor" | "outdoor";
 export type Transit = "space_flight" | "fade";
@@ -45,6 +45,11 @@ export interface WorldDef {
   reviewStatus: "pending human review" | "reviewed";
 }
 
+const CCSS_G3_OA: Source = {
+  id: "ccss_math_3_oa", title: "Common Core State Standards, Grade 3, Operations & Algebraic Thinking (3.OA.A.2, 3.OA.A.3, 3.OA.B.6)",
+  url: "https://www.thecorestandards.org/Math/Content/3/OA/",
+  note: "Division as sharing into equal groups or making groups of a size; division as an unknown-factor problem.",
+};
 const NASA_MARS: Source = { id: "nasa_spaceplace_mars", title: "All About Mars — NASA Space Place", url: "https://spaceplace.nasa.gov/all-about-mars/en/" };
 
 export const WORLDS: Record<WorldId, WorldDef> = {
@@ -72,6 +77,17 @@ export const WORLDS: Record<WorldId, WorldDef> = {
         ],
         hint: "", // later checks are deliberately unassisted
         explain: "Mars looks red because iron in its rocks and dust has rusted.",
+      },
+      q_share_recall: {
+        id: "q_share_recall", skill: "math.division.equal_share",
+        prompt: "Quick check, no hints: 10 cookies shared equally on 2 plates. How many on each plate?",
+        options: [
+          { id: "two", label: "2", correct: false, keywords: ["=2", "=two"] },
+          { id: "five", label: "5", correct: true, keywords: ["=5", "=five"] },
+          { id: "eight", label: "8", correct: false, keywords: ["=8", "=eight"] },
+        ],
+        hint: "",
+        explain: "10 shared equally into 2 groups is 5 in each, because 2 groups of 5 make 10.",
       },
     },
     facts: [],
@@ -126,6 +142,52 @@ export const WORLDS: Record<WorldId, WorldDef> = {
       { id: "craters", text: "Craters on Mars were made when space rocks crashed into its surface.", sourceId: NASA_MARS.id },
     ],
     sources: [NASA_MARS],
+    reviewStatus: "pending human review",
+  },
+  market: {
+    id: "market",
+    title: "Fair Share Market",
+    subject: "math",
+    simulationNotice: "Pretend market · a practice scene",
+    environment: "market",
+    framing: "indoor",
+    background: "#ffe6bf",
+    transit: "fade",
+    helmet: false,
+    arrivalSpot: "center",
+    spots: { center: [-0.15, -0.7], stall_side: [-0.35, -0.9], basket_side: [2.25, -0.9] },
+    targets: { crate: "a crate of 12 oranges", basket_1: "the first basket", basket_2: "the second basket", basket_3: "the third basket", stall: "the market stall" },
+    interactive: {
+      crate: {
+        label: "Crate of oranges",
+        inspect: {
+          title: "Sharing 12 oranges",
+          body: "Watch the oranges go into the 3 baskets one at a time, round and round, so every basket gets the same number.",
+          factIds: ["equal", "each"],
+          hint: "Count the oranges in one basket.",
+        },
+      },
+    },
+    questions: {
+      q_share: {
+        id: "q_share", skill: "math.division.equal_share",
+        prompt: "12 oranges shared equally into 3 baskets. How many in each basket?",
+        options: [
+          { id: "three", label: "3", correct: false, keywords: ["=3", "=three"] },
+          { id: "four", label: "4", correct: true, keywords: ["=4", "=four"] },
+          { id: "six", label: "6", correct: false, keywords: ["=6", "=six"] },
+        ],
+        hint: "Count the oranges in just one basket. Every basket has the same number.",
+        explain: "12 shared equally into 3 baskets is 4 in each, because 3 groups of 4 make 12.",
+      },
+    },
+    facts: [
+      { id: "equal", text: "Sharing equally means every group gets the same number.", sourceId: CCSS_G3_OA.id },
+      { id: "each", text: "Division can tell how many are in each group: 12 ÷ 3 = 4 means 12 shared equally into 3 groups gives 4 in each.", sourceId: CCSS_G3_OA.id },
+      { id: "groups", text: "Division can also tell how many groups: 12 ÷ 4 = 3 means 12 put into groups of 4 makes 3 groups.", sourceId: CCSS_G3_OA.id },
+      { id: "unknown_factor", text: "Multiplication checks division: 12 ÷ 3 = 4 because 3 × 4 = 12.", sourceId: CCSS_G3_OA.id },
+    ],
+    sources: [CCSS_G3_OA],
     reviewStatus: "pending human review",
   },
 };

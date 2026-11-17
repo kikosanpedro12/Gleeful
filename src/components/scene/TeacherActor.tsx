@@ -73,7 +73,8 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
       reducedMotion,
       resolveTarget,
       resolveSpot: (name) => (s.transit ? null : world.spots[name] ?? null),
-      helmet: !!s.transit || world.helmet,
+      // Helmet in space (only space trips) and where a real person would need one. A fade trip to a market is not space.
+      helmet: (s.transit ? s.transit.style !== "fade" || WORLDS[s.transit.to].helmet || WORLDS[s.transit.from].helmet : false) || world.helmet,
       groundY: WORLD_GROUND[fx.shown],
       takeDirectives: () => {
         const d = useSession.getState().directives;

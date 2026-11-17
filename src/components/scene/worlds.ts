@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { WorldId } from "@/lib/worlds/registry";
 import Classroom from "./Classroom";
 import Mars, { groundHeight as marsGround } from "./Mars";
+import Market from "./Market";
 
 /**
  * The ONLY place that knows which 3D scene draws which world. Adding a world:
@@ -13,6 +14,7 @@ import Mars, { groundHeight as marsGround } from "./Mars";
 export const WORLD_SCENES: Record<WorldId, ComponentType> = {
   classroom: Classroom,
   mars: Mars,
+  market: Market,
 };
 
 /** Terrain height under a point, for worlds with uneven ground. Flat if absent. */
