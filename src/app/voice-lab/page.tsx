@@ -4,15 +4,16 @@ import { ENGINES, LINES, shuffled, summary, tally, type EngineId, type Rating, t
 import { loadVoices, ttsAvailable, voiceFor } from "@/lib/voice/speech";
 import { TESTER_HEADER, getTesterCode } from "@/lib/brain/tester";
 import { TTS_ENDPOINT } from "@/lib/tts/voices";
+import { primeAudio, speakEleven, type ElevenPlayback } from "@/lib/voice/elevenPlayer";
 
 /**
- * Blind voice A/B for a real phone. Each of five lesson lines is offered in six unlabeled slots (the engine
+ * Blind voice A/B for a real phone. Each of five lesson lines is offered in seven unlabeled slots (the engine
  * order is shuffled per line); the listener rates each slot, then reveals which engine was which.
  * Ratings stay on this screen (not saved or sent); "Copy results" is a text summary. The five sample lines ARE sent to
- * Deepgram, through /api/tts, to make its voices.
+ * Deepgram (through /api/tts) and ElevenLabs (through /api/voice) to make their voices.
  * Side page only: it does not touch the lesson.
  */
-const SLOT = ["A", "B", "C", "D", "E", "F"];
+const SLOT = ["A", "B", "C", "D", "E", "F", "G"];
 const RATINGS: { id: Rating; label: string }[] = [{ id: "great", label: "Great" }, { id: "ok", label: "OK" }, { id: "robotic", label: "Robotic" }];
 
 export default function VoiceLab() {
@@ -29,6 +30,9 @@ export default function VoiceLab() {
   const [heard, setHeard] = useState<Set<string>>(() => new Set());
   // Deepgram clips fetched this visit (blob URLs), so replaying a line costs nothing.
   const dgCache = useRef(new Map<string, string>());
+  // Live ElevenLabs playback, and its time-to-first-sound samples (ms). Shown only after the reveal so the test stays blind.
+  const eleven = useRef<ElevenPlayback | null>(null);
+  const [firstSound, setFirstSound] = useState<number[]>([]);
 
   // Different unlabeled order for every line, fixed until "Shuffle again".
   const orders = useMemo(() => {
@@ -43,6 +47,8 @@ export default function VoiceLab() {
   function stop() {
     playId.current++;
     try { audio.current?.pause(); } catch {}
+    try { eleven.current?.stop(); } catch {}
+    eleven.current = null;
     try { if (ttsAvailable()) window.speechSynthesis.cancel(); } catch {}
     setPlaying(null);
   }
@@ -57,6 +63,19 @@ export default function VoiceLab() {
     setPlaying(key);
     setNote("");
     const def = ENGINES.find((e) => e.id === engine)!;
+    if (def.eleven) {
+      const code = getTesterCode();
+      if (!code) return fail("Open /tester and enter the passcode first, then come back to this page in the same tab.");
+      primeAudio();
+      const pb = speakEleven(LINES[line], teacher, code, (ms) => { if (live()) { started(); setFirstSound((m) => [...m, ms]); } });
+      eleven.current = pb;
+      const res = await pb.done;
+      if (!live()) return;
+      setPlaying((p) => (p === key ? null : p));
+      if (res.result === "refused") return fail(res.status === 403 ? "Wrong passcode for this voice." : res.status === 429 ? "Voice limit reached for now." : "This voice is not available right now.");
+      if (res.result === "error") return fail("Could not play this voice.");
+      return;
+    }
     let url = def.clip(teacher, line);
     if (def.voice) {
       const voice = def.voice(teacher);
@@ -155,11 +174,12 @@ export default function VoiceLab() {
               <li key={e.id}><b>{e.name}</b><br />Great {t[e.id].great} · OK {t[e.id].ok} · Robotic {t[e.id].robotic}</li>
             ))}
           </ul>
+          {firstSound.length > 0 && <p data-testid="vlab-timing">ElevenLabs time to first sound on this device: {Math.min(...firstSound)}–{Math.max(...firstSound)} ms over {firstSound.length} play{firstSound.length === 1 ? "" : "s"} (from tap to first sound queued; includes our server and ElevenLabs, not the phone speaker delay).</p>}
           <button className="ghost" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setNote("Could not copy. Select the numbers above instead."); } }}>{copied ? "Copied" : "Copy results"}</button>
-          <small>Your ratings were not saved or sent. The sample lines were sent to Deepgram to make its voices. Send me the numbers (or paste the copied text).</small>
+          <small>Your ratings were not saved or sent. The sample lines were sent to Deepgram and ElevenLabs to make their voices. Send me the numbers (or paste the copied text).</small>
         </section>
       )}
-      <small className="vlab-fine">The Kokoro clip is a sample made ahead of time with an open-source model. The Deepgram voices are spoken live by the paid API and need the tester passcode (open /tester first, same tab).</small>
+      <small className="vlab-fine">The Kokoro clip is a sample made ahead of time with an open-source model. The Deepgram and ElevenLabs voices are spoken live by the paid APIs and need the tester passcode (open /tester first, same tab).</small>
     </main>
   );
 }

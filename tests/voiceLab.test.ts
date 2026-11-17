@@ -16,6 +16,14 @@ describe("voice lab", () => {
       expect(e.clip(t, 0)).toBeNull();
     }
   });
+  it("the ElevenLabs slot has no clip, no client-side voice id, and speaks through the server route", async () => {
+    const e = ENGINES.find((x) => x.eleven)!;
+    expect(e.id).toBe("el-1");
+    for (const t of ["leo", "mia"] as const) expect(e.clip(t, 0)).toBeNull();
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/lib/voice/elevenPlayer.ts", "utf8") + readFileSync("src/app/voice-lab/page.tsx", "utf8");
+    expect(src).not.toMatch(/api\.elevenlabs\.io|xi-api-key|ELEVENLABS/);
+  });
   it("the built-in voice has no clip (it speaks live)", () => {
     expect(ENGINES.find((e) => e.id === "browser")!.clip("leo", 0)).toBeNull();
   });
@@ -40,7 +48,8 @@ describe("voice lab", () => {
     const src = readFileSync("src/app/voice-lab/page.tsx", "utf8");
     expect(src).toMatch(/fetch\(/);
     expect(src).not.toMatch(/Nothing was saved or sent|Nothing is recorded or sent/);
-    expect(src).toMatch(/sent to Deepgram/);
+    expect(src).toMatch(/sent to Deepgram and ElevenLabs/);
+    expect(src).toMatch(/speakEleven/);
   });
   it("the page is private: noindex and disallowed", async () => {
     const { isPrivatePath } = await import("@/lib/seo/site");
