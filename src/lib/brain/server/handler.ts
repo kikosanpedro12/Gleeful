@@ -10,6 +10,7 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { BrainEnv } from "./config";
 import { TESTER_HEADER } from "../tester";
+import { matchInvite } from "./invites";
 import { LIMITS } from "./config";
 import { callAnthropic, UpstreamError } from "./anthropic";
 import { RateLimiter, SessionCounter, type UsageStore } from "./limits";
@@ -73,6 +74,18 @@ export function testerOk(expected: string | undefined, given: string | null): bo
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Who a passcode belongs to: "tester" for the master code, "tester:<name>" for an invite, null for neither.
+ * The master code is checked first. Used by the brain and the voice so one code opens both.
+ */
+export function testerPrincipal(env: { testerCode?: string; invites?: { name: string; code: string }[] }, given: string | null): string | null {
+  if (env.testerCode && testerOk(env.testerCode, given)) return "tester";
+  const n = matchInvite(env.invites, given);
+  return n ? `tester:${n}` : null;
+}
+/** True when any passcode (master or invite) is set up. */
+export const hasTesterAccess = (env: { testerCode?: string; invites?: unknown[] }) => Boolean(env.testerCode) || Boolean(env.invites?.length);
+
 /** Logged once per server instance; never includes the code or its length. */
 let warnedMisconfigured = false;
 export function warnTesterMisconfigured() {
@@ -96,8 +109,9 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   // signed-in parent whose consent is on file. The budget owner is the verified identity, never a browser-chosen id.
   const given = req.headers.get(TESTER_HEADER);
   let owner: string;
-  if (d.env.testerCode && testerOk(d.env.testerCode, given)) {
-    owner = "tester";
+  const principal = testerPrincipal(d.env, given);
+  if (principal) {
+    owner = principal;
   } else {
     let p: ParentAccess | null = null;
     if (d.parent) {
@@ -106,7 +120,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
     if (p) {
       if (!p.consented) return fail(403, "consent_required");
       owner = p.id;
-    } else if (given || (d.env.testerCode && !d.parent)) {
+    } else if (given || (hasTesterAccess(d.env) && !d.parent)) {
       return fail(403, "tester_required"); // a passcode was offered and is wrong, or this deployment is passcode-only
     } else {
       return fail(401, "sign_in_required");

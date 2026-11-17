@@ -1,4 +1,5 @@
 import "server-only";
+import { parseInvites, type Invite } from "./invites";
 /**
  * Stage B server configuration. Everything tunable lives here, in one place.
  * Nothing in this folder may be imported by client code (see the server-only
@@ -82,6 +83,8 @@ export interface BrainEnv {
    * the script answers. Fails closed rather than running with a weak gate.
    */
   testerMisconfigured?: boolean;
+  /** Per-tester invite codes (TESTER_INVITES). Each is its own budget owner. See invites.ts. */
+  invites?: Invite[];
 }
 
 /** Shortest accepted private-test passcode. */
@@ -95,5 +98,6 @@ export function readEnv(env: Record<string, string | undefined> = process.env): 
     disabled: flag === "1" || flag === "true" || flag === "yes",
     testerCode: tester || undefined,
     testerMisconfigured: !!tester && tester.length < TESTER_CODE_MIN,
+    invites: parseInvites(env.TESTER_INVITES),
   };
 }

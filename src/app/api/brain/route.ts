@@ -1,5 +1,5 @@
 import "server-only";
-import { handleBrain, makeDeps, warnTesterMisconfigured } from "@/lib/brain/server/handler";
+import { handleBrain, makeDeps, warnTesterMisconfigured, hasTesterAccess } from "@/lib/brain/server/handler";
 import { MemoryUsageStore } from "@/lib/brain/server/limits";
 import { readEnv } from "@/lib/brain/server/config";
 import { resolveParentAccess } from "@/lib/auth/parent";
@@ -40,9 +40,9 @@ export async function GET() {
     signedIn = p !== null;
     consented = p?.consented === true;
   } catch { /* cannot tell: treated as not signed in */ }
-  const wayIn = accountsAvailable() || Boolean(env.testerCode);
+  const wayIn = accountsAvailable() || hasTesterAccess(env);
   return Response.json(
-    { configured: Boolean(env.apiKey) && !env.disabled && !env.testerMisconfigured && wayIn, testerRequired: Boolean(env.testerCode), signedIn, consented },
+    { configured: Boolean(env.apiKey) && !env.disabled && !env.testerMisconfigured && wayIn, testerRequired: hasTesterAccess(env), signedIn, consented },
     { headers: { "cache-control": "no-store" } },
   );
 }

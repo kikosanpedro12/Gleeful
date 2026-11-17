@@ -135,3 +135,9 @@ Private project. Report issues to the founder directly; do not open public issue
 - Open: ElevenLabs keeps generation history by default. Review retention and age terms before any child's words or model replies go through it (see the voice-vendor line in the checklist above). Private tests send fixed sample lines only.
 - Lesson use: a tester (passcode in this tab) hears the tutor's lines in ElevenLabs; the line text (tutor lines only; the child's own speech is never sent, but a model reply can paraphrase what the child said) goes to ElevenLabs. Any refusal or error switches it off for the visit and the browser voice takes over. NOT for real children until the retention/age review above is done.
 - Tests: `tests/voiceEleven.test.ts`, `tests/elevenPlayer.test.ts`, `tests/elevenSpeak.test.ts`.
+
+## Per-tester invite codes (18 Nov)
+- `TESTER_INVITES="name:code,..."` (server-only). Each invite is its own budget owner (`tester:<name>`) in the brain's per-owner daily ceilings, and its own character bucket in `/api/voice` (`ELEVEN_TESTER_DAILY_CHARS`, default 6,000, hard cap 20,000). The master `BRAIN_TESTER_CODE` is one more tester (`tester`). Whole-site ceilings still apply on top.
+- Codes are compared in constant time against every invite (no early exit). A malformed, short, duplicate or over-50th entry is skipped. Revoke by removing the entry and redeploying. Tester buckets are capped at 100 in memory and fail closed.
+- Per-instance counters again: the real ceilings are the ElevenLabs key credit cap and the Anthropic Console limit.
+- Tests: `tests/invites.test.ts`.
