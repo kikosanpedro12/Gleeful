@@ -1,10 +1,10 @@
 # Tutor voices (ElevenLabs)
 
-Decision (18 Nov 2026): ElevenLabs is the live voice. Blind test on a real phone, Leo, 5 lines: the ElevenLabs stand-in scored Great on all 5. Every other engine scored OK at best (Deepgram, Kokoro, the phone's built-in voice). Mia has not been listened to yet.
+Decision (18 Nov 2026): ElevenLabs is the live voice. Blind test on a real phone, Leo, 5 lines: the ElevenLabs stand-in scored Great on all 5. Every other engine scored OK at best (Deepgram, Kokoro, the phone's built-in voice). Mia, same test (18 Nov): ElevenLabs Great on all 5, the rest OK or Robotic.
 
 ## MVP voices (now)
 - Leo: premade "Will" (`bIHbv24MWmeRgasZH58o`), already the default in `src/lib/tts/elevenHandler.ts`.
-- Mia: premade "Jessica" (`cgSgspJ2msm6clMCkdW9`), default, UNTESTED by the founder.
+- Mia: premade "Jessica" (`cgSgspJ2msm6clMCkdW9`), default. Founder blind test 18 Nov: Great on all 5 lines, best of 7 engines.
 - Change a voice with no code change: set `ELEVEN_VOICE_LEO` / `ELEVEN_VOICE_MIA` (20-character voice id) in Vercel and redeploy.
 
 ## Designed voices (later, when we want a signature sound)
