@@ -2,6 +2,7 @@ import "server-only";
 import { RateLimiter } from "@/lib/brain/server/limits";
 import { TESTER_CODE_MIN, type BrainEnv } from "@/lib/brain/server/config";
 import { TESTER_HEADER, testerPrincipal, hasTesterAccess, clientIp, readBody } from "@/lib/brain/server/handler";
+import type { ParentAccess } from "@/lib/auth/parent";
 import { crossOrigin } from "@/lib/http/request";
 import { ELEVEN_MAX_CHARS, ELEVEN_RATE_HEADER, ELEVEN_SAMPLE_RATE, ELEVEN_TEACHERS, isElevenTeacher, type ElevenTeacher } from "./elevenVoices";
 
@@ -20,8 +21,10 @@ export const ELEVEN_LIMITS = {
   /** Per tester (master code counts as one tester, each invite as its own). */
   testerDailyCharsDefault: 6_000,
   testerDailyCharsMax: 20_000,
-  /** Bound on distinct tester buckets kept in memory (invites are capped at 50). */
-  maxTesters: 100,
+  /** Bound on distinct per-person buckets kept in memory (testers, parents, addresses). Full = refuse new ones, never evict. */
+  maxTesters: 2_000,
+  /** Distinct anonymous addresses kept per day (separate table). */
+  maxAnon: 3_000,
   /** Time to get the response headers from ElevenLabs. */
   headerTimeoutMs: 10_000,
   /** Whole call, including the streamed audio. */
@@ -43,7 +46,12 @@ export const ELEVEN_DEFAULT_VOICES: Record<ElevenTeacher, string> = {
 export const ELEVEN_MODELS = ["eleven_v4_turbo", "eleven_v4", "eleven_flash_v2_5"] as const;
 const VOICE_ID = /^[A-Za-z0-9]{20}$/;
 
-export interface ElevenEnv { key: string | undefined; disabled: boolean; dailyChars: number; testerDailyChars: number; model: string; voices: Record<ElevenTeacher, string> }
+export interface ElevenEnv {
+  key: string | undefined; disabled: boolean; dailyChars: number; testerDailyChars: number; model: string; voices: Record<ElevenTeacher, string>;
+  /** ELEVEN_PUBLIC=on: visitors without a passcode get a small taste (per address), and consenting signed-in parents a larger one. Off by default. */
+  publicOn: boolean; anonIpDailyChars: number; parentDailyChars: number; anonPoolDailyChars: number;
+}
+const capped = (raw: string | undefined, def: number, max: number) => { const n = Number.parseInt(raw ?? "", 10); return Number.isFinite(n) && n > 0 ? Math.min(n, max) : def; };
 export function readElevenEnv(env: Record<string, string | undefined> = process.env): ElevenEnv {
   const n = Number.parseInt(env.ELEVEN_DAILY_CHARS ?? "", 10);
   const flag = (env.TTS_DISABLED ?? "").trim().toLowerCase();
@@ -60,6 +68,10 @@ export function readElevenEnv(env: Record<string, string | undefined> = process.
     testerDailyChars: Number.isFinite(tn) && tn > 0 ? Math.min(tn, ELEVEN_LIMITS.testerDailyCharsMax) : ELEVEN_LIMITS.testerDailyCharsDefault,
     model: (ELEVEN_MODELS as readonly string[]).includes(model) ? model : ELEVEN_MODELS[0],
     voices: { leo: pick("leo"), mia: pick("mia") },
+    publicOn: (env.ELEVEN_PUBLIC ?? "").trim().toLowerCase() === "on",
+    anonIpDailyChars: capped(env.ELEVEN_ANON_IP_CHARS, 700, 2_000),
+    parentDailyChars: capped(env.ELEVEN_PARENT_CHARS, 3_000, 10_000),
+    anonPoolDailyChars: capped(env.ELEVEN_ANON_POOL_CHARS, 6_000, 20_000),
   };
 }
 
@@ -73,29 +85,46 @@ export interface ElevenDeps {
   spent: { day: string; chars: number };
   /** Characters spent today by each tester principal ("tester" or "tester:<name>"). */
   perTester: Map<string, { day: string; chars: number }>;
+  /** Characters spent today by anonymous addresses ("anon:<ip>") plus the shared "anon-pool" row. Its own table. */
+  anon: Map<string, { day: string; chars: number }>;
+  /** Signed-in parent with consent on file (same resolver as /api/brain). Absent = no parent access. */
+  parent?: (req: Request) => Promise<ParentAccess | null>;
 }
 export function makeElevenDeps(over: Partial<ElevenDeps> & Pick<ElevenDeps, "env" | "brainEnv">): ElevenDeps {
-  return { fetchImpl: fetch, now: () => Date.now(), ipLimiter: new RateLimiter(ELEVEN_LIMITS.perIpPerMinute, 60_000), spent: { day: "", chars: 0 }, perTester: new Map(), ...over };
+  return { fetchImpl: fetch, now: () => Date.now(), ipLimiter: new RateLimiter(ELEVEN_LIMITS.perIpPerMinute, 60_000), spent: { day: "", chars: 0 }, perTester: new Map(), anon: new Map(), ...over };
 }
 
 const fail = (status: number, code: string, headers: Record<string, string> = {}) =>
   Response.json({ error: code }, { status, headers: { "cache-control": "no-store", ...headers } });
 
-/** Shared gate: origin, kill switch, key, a passcode set up, rate limit, passcode. Returns a refusal, or who the tester is. */
-function gate(req: Request, d: ElevenDeps): Response | { principal: string } {
+/** Who is asking, and what is their daily character ceiling. */
+interface Who { principal: string; cap: number; pool?: boolean }
+export const PUBLIC_HEADER = "x-gleeful-voice";
+
+/** Shared gate: origin, kill switch, key, a way in set up, rate limit, then passcode tester, consenting parent, or (when public is on) a small anonymous taste. */
+async function gate(req: Request, d: ElevenDeps): Promise<Response | Who> {
   if (crossOrigin(req)) return fail(403, "forbidden_origin");
   if (d.env.disabled || !d.env.key) return fail(503, "voice_unconfigured");
   const { testerCode, testerMisconfigured } = d.brainEnv;
-  if (!hasTesterAccess(d.brainEnv) || testerMisconfigured || (testerCode && testerCode.length < TESTER_CODE_MIN)) return fail(503, "voice_unconfigured"); // closed by default
-  const wait = d.ipLimiter.take(clientIp(req), d.now());
+  const testers = hasTesterAccess(d.brainEnv);
+  if ((!testers && !d.env.publicOn) || testerMisconfigured || (testerCode && testerCode.length < TESTER_CODE_MIN)) return fail(503, "voice_unconfigured"); // closed by default
+  const ip = clientIp(req);
+  const wait = d.ipLimiter.take(ip, d.now());
   if (wait > 0) return fail(429, "rate_limited", { "retry-after": String(wait) });
   const principal = testerPrincipal(d.brainEnv, req.headers.get(TESTER_HEADER));
-  if (!principal) return fail(403, "tester_required");
-  return { principal };
+  if (principal) return { principal, cap: d.env.testerDailyChars };
+  if (!d.env.publicOn) return fail(403, "tester_required");
+  if (d.parent) {
+    let p: ParentAccess | null = null;
+    try { p = await d.parent(req); } catch { /* treated as not signed in */ }
+    if (p?.consented) return { principal: `parent:${p.id}`, cap: d.env.parentDailyChars };
+  }
+  if (req.headers.get(PUBLIC_HEADER) === "public") return { principal: `anon:${ip}`, cap: d.env.anonIpDailyChars, pool: true };
+  return fail(403, "tester_required");
 }
 
 export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response> {
-  const g = gate(req, d);
+  const g = await gate(req, d);
   if (g instanceof Response) return g;
   const now = d.now();
 
@@ -111,20 +140,32 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
   const day = new Date(now).toISOString().slice(0, 10);
   if (d.spent.day !== day) d.spent = { day, chars: 0 };
   // Per-tester ceiling first (so one tester cannot use the whole site's budget), then the site ceiling.
-  let mine = d.perTester.get(g.principal);
+  let poolBucket: { day: string; chars: number } | null = null;
+  // Anonymous addresses live in their own bounded table, so a crowd of fake addresses can never lock out testers or parents.
+  const table = g.pool ? d.anon : d.perTester;
+  const maxRows = g.pool ? ELEVEN_LIMITS.maxAnon : ELEVEN_LIMITS.maxTesters;
+  let mine = table.get(g.principal);
   if (!mine) {
-    if (d.perTester.size >= ELEVEN_LIMITS.maxTesters) return fail(503, "global_limit"); // fail closed; never evict a live bucket
+    if (table.size >= maxRows) return fail(503, "global_limit"); // fail closed; never evict a live bucket
     mine = { day, chars: 0 };
-    d.perTester.set(g.principal, mine);
+    table.set(g.principal, mine);
   }
-  if (mine.day !== day) { mine = { day, chars: 0 }; d.perTester.set(g.principal, mine); } // replace, so a refund from an earlier day cannot touch today
-  if (mine.chars + say.length > d.env.testerDailyChars) return fail(429, "tester_daily_limit");
+  if (mine.day !== day) { mine = { day, chars: 0 }; table.set(g.principal, mine); } // replace, so a refund from an earlier day cannot touch today
+  if (mine.chars + say.length > g.cap) return fail(429, "tester_daily_limit");
+  if (g.pool) {
+    // Anonymous tasters share one pool so a crowd of addresses cannot spend the whole site budget.
+    let pool = d.anon.get("anon-pool");
+    if (!pool || pool.day !== day) { pool = { day, chars: 0 }; d.anon.set("anon-pool", pool); }
+    if (pool.chars + say.length > d.env.anonPoolDailyChars) return fail(429, "daily_limit");
+    poolBucket = pool;
+  }
   if (d.spent.chars + say.length > d.env.dailyChars) return fail(429, "daily_limit");
+  if (poolBucket) poolBucket.chars += say.length; // charged only once every check has passed
   const bucket = d.spent; // refunds go to THIS day's bucket even if UTC midnight passes during the call
   bucket.chars += say.length;
   mine.chars += say.length;
   const myBucket = mine; // captured before any await
-  const refund = () => { bucket.chars = Math.max(0, bucket.chars - say.length); myBucket.chars = Math.max(0, myBucket.chars - say.length); };
+  const refund = () => { if (poolBucket) poolBucket.chars = Math.max(0, poolBucket.chars - say.length); bucket.chars = Math.max(0, bucket.chars - say.length); myBucket.chars = Math.max(0, myBucket.chars - say.length); };
 
   const ctl = new AbortController();
   const total = setTimeout(() => ctl.abort(), ELEVEN_LIMITS.totalTimeoutMs);
@@ -169,10 +210,10 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
  */
 export async function voiceStatus(req: Request, d: ElevenDeps) {
   const { testerMisconfigured } = d.brainEnv;
-  const configured = Boolean(d.env.key) && !d.env.disabled && hasTesterAccess(d.brainEnv) && !testerMisconfigured;
-  const base = { configured, teachers: [...ELEVEN_TEACHERS], model: d.env.model, standInVoices: ELEVEN_TEACHERS.every((t) => d.env.voices[t] === ELEVEN_DEFAULT_VOICES[t]) };
+  const configured = Boolean(d.env.key) && !d.env.disabled && (hasTesterAccess(d.brainEnv) || d.env.publicOn) && !testerMisconfigured;
+  const base = { public: d.env.publicOn && configured, configured, teachers: [...ELEVEN_TEACHERS], model: d.env.model, standInVoices: ELEVEN_TEACHERS.every((t) => d.env.voices[t] === ELEVEN_DEFAULT_VOICES[t]) };
   if (!configured || new URL(req.url).searchParams.get("probe") !== "1") return { status: 200, body: base };
-  const g = gate(req, d);
+  const g = await gate(req, d);
   if (g instanceof Response) return { status: g.status, body: { configured } };
   try {
     const r = await d.fetchImpl("https://api.elevenlabs.io/v1/user/subscription", { headers: { "xi-api-key": d.env.key as string }, signal: AbortSignal.timeout(ELEVEN_LIMITS.headerTimeoutMs) });

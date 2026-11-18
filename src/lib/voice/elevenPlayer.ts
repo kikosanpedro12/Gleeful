@@ -7,7 +7,7 @@
  * and it is not the "child stops talking" timer (that one starts at the end of the child's speech).
  */
 import { TESTER_HEADER } from "@/lib/brain/tester";
-import { ELEVEN_ENDPOINT, ELEVEN_RATE_HEADER, ELEVEN_SAMPLE_RATE, type ElevenTeacher } from "@/lib/tts/elevenVoices";
+import { PUBLIC_VOICE, ELEVEN_ENDPOINT, ELEVEN_RATE_HEADER, ELEVEN_SAMPLE_RATE, type ElevenTeacher } from "@/lib/tts/elevenVoices";
 
 /** 16-bit little-endian PCM bytes to floats in -1..1. An odd trailing byte is returned so it can lead the next chunk. */
 export function pcm16ToFloat32(bytes: Uint8Array, carry: number | null = null): { samples: Float32Array; rest: number | null } {
@@ -62,7 +62,7 @@ export function speakEleven(text: string, teacher: ElevenTeacher, code: string, 
   const done = (async (): Promise<{ result: ElevenResult; status?: number; timing: ElevenTiming }> => {
     if (!ac) return { result: "error", timing };
     try {
-      const r = await fetch(ELEVEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/json", [TESTER_HEADER]: code }, body: JSON.stringify({ text, teacher }), signal: ctl.signal });
+      const r = await fetch(ELEVEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/json", ...(code === PUBLIC_VOICE ? { "x-gleeful-voice": "public" } : { [TESTER_HEADER]: code }) }, body: JSON.stringify({ text, teacher }), signal: ctl.signal });
       if (!r.ok || !r.body) return { result: r.status === 403 || r.status === 429 || r.status === 503 ? "refused" : "error", status: r.status, timing };
       const rate = Number(r.headers.get(ELEVEN_RATE_HEADER)) || ELEVEN_SAMPLE_RATE;
       const reader = r.body.getReader();

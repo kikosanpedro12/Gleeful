@@ -11,3 +11,6 @@ export const ELEVEN_MAX_CHARS = 300;
 /** The server asks ElevenLabs for raw 16-bit little-endian mono PCM at this rate (Creator plan allows it). */
 export const ELEVEN_SAMPLE_RATE = 24_000;
 export const ELEVEN_RATE_HEADER = "x-sample-rate";
+
+/** Stand-in for a passcode when the visit uses the public taste (no passcode). Never a real code: real ones are 16+ characters. */
+export const PUBLIC_VOICE = "public";

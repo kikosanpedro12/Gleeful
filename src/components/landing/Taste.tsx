@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { AI_NOUN, NOUN } from "./copy";
+import { elevenAvailable, probeVoice, speakElevenLine, type ElevenLine } from "@/lib/voice/elevenSpeak";
+import { primeAudio } from "@/lib/voice/elevenPlayer";
 import { TASTE_ENDPOINT, TASTE_MAX_INPUT, TASTE_MAX_TURNS, type TasteRequest } from "@/lib/taste/protocol";
 
 /**
@@ -26,6 +28,8 @@ export default function Taste() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const id = useRef<string>("");
+  const voice = useRef<ElevenLine | null>(null);
+  useEffect(() => { void probeVoice(); return () => voice.current?.stop(); }, []);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,6 +51,8 @@ export default function Taste() {
     if (!q || busy || left <= 0 || notice === "over" || notice === "busy") return;
     setBusy(true);
     setNotice(null);
+    voice.current?.stop();
+    if (elevenAvailable()) primeAudio(); // inside the tap, so the browser lets the teacher's voice play
     const body: TasteRequest = { v: 1, tasteId: id.current, text: q, history: lines.slice(-4) };
     try {
       const res = await fetch(TASTE_ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, credentials: "omit", body: JSON.stringify(body) });
@@ -56,6 +62,9 @@ export default function Taste() {
         setLines((l) => [...l, { role: "visitor", text: q }, { role: "teacher", text: j.reply as string }]);
         setLeft(typeof j.turnsLeft === "number" ? Math.max(0, Math.min(TASTE_MAX_TURNS, j.turnsLeft)) : 0);
         setText("");
+        // The teacher says it aloud if the server offers a voice taste; any refusal is silent (the text is already on screen).
+        const code = elevenAvailable();
+        if (code) voice.current = speakElevenLine(j.reply as string, "mia", code, { onFirstSound: () => {}, onEnd: () => {}, onFail: () => {} });
       } else if (res.status === 429 || res.status === 503) {
         const err = (await res.json().catch(() => ({}))) as { error?: unknown };
         // rate_limited = slow down a moment; taste_over / taste_busy / unavailable = done for now.
