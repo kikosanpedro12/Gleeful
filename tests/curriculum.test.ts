@@ -89,3 +89,21 @@ describe("data hygiene", () => {
     expect(SOURCES.filter((s) => s.id.startsWith("deped-") && s.status === "in")).toEqual([]);
   });
 });
+
+describe("response modes in the prompt", () => {
+  it("tells the brain to pick the format by topic", () => {
+    expect(SAFETY_RULES).toMatch(/Pick the format by topic/);
+    expect(SAFETY_RULES).toMatch(/no story/);
+    expect(SAFETY_RULES).toMatch(/cannot actually show/);
+  });
+});
+
+import { assetById, checkAssets, MAX_SCENE_KB } from "@/lib/assets/manifest";
+describe("asset manifest", () => {
+  it("rejects unknown ids and never loads them", () => {
+    expect(assetById("__proto__")).toBeUndefined();
+    expect(checkAssets(["nope"])).toBe("unknown asset id");
+    expect(checkAssets([])).toBeNull();
+    expect(MAX_SCENE_KB).toBe(5000);
+  });
+});

@@ -146,3 +146,5 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Pending: DepEd Science, Filipino, K/Language/Reading/Makabansa, MAPEH, EPP/TLE, other grades, C3 social studies (see src/lib/curriculum/manifest.ts).
 - Brain now answers any genuine learning question; up to 5 related standards are added as background context (server-only, retrieve.ts). Safety rules still win; non-learning chat is redirected.
 - World mapping (worldMap.ts): 3 environments built (classroom, planet_surface, market); others planned. Not yet used at runtime.
+- 18 Nov (later): Scene Kit spec v0.2 (docs/SCENE_KIT_SPEC.md and project doc 10): three response modes (direct / story / mixed), frame = validated scene spec, painting-based historical figures, one look per scene, asset manifest (src/lib/assets/manifest.ts, empty). Brain prompt now picks format by topic. Live: /api/brain configured, passcode required; TESTER_INVITES set and redeployed by founder.
+- Blocker: sandbox cannot download from polyhaven.com / quaternius.com; asset files must come via founder's computer. Quaternius licence is QAL v1.0 (not CC0).
