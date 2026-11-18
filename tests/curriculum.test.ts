@@ -107,3 +107,25 @@ describe("asset manifest", () => {
     expect(MAX_SCENE_KB).toBe(5000);
   });
 });
+
+import { ASSETS } from "@/lib/assets/manifest";
+import fs from "node:fs";
+describe("asset library", () => {
+  it("every asset has a file, a licence row, an https source, and a sane size", () => {
+    const lic = fs.readFileSync("ASSET_LICENSES.md", "utf8");
+    expect(ASSETS.length).toBeGreaterThanOrEqual(20);
+    const ids = new Set<string>();
+    for (const a of ASSETS) {
+      expect(ids.has(a.id)).toBe(false); ids.add(a.id);
+      const f = `public/assets/${a.file}`;
+      expect(fs.existsSync(f)).toBe(true);
+      expect(Math.abs(fs.statSync(f).size / 1024 - a.kb)).toBeLessThan(2);
+      expect(a.kb).toBeLessThanOrEqual(1500);
+      expect(a.sourceUrl.startsWith("https://")).toBe(true);
+      expect(lic.includes(a.file)).toBe(true);
+    }
+  });
+  it("starter set is one look so scenes can combine", () => {
+    expect(checkAssets(ASSETS.map((a) => a.id).slice(0, 5))).toBeNull();
+  });
+});
