@@ -1,5 +1,5 @@
 // Paste into the browser console on https://polyhaven.com (F12 -> Console), press Enter.
-// Downloads each starter model as ONE .glb (1k textures) into your Downloads folder. All CC0.
+// Packs each starter model as a .glb (1k textures) and downloads ONE zip (gleeful-polyhaven.zip). All CC0.
 (async () => {
   const IDS = ["SchoolDesk_01","SchoolChair_01","standing_chalkboard_01","alarm_clock_01","wall_clock","wooden_bookshelf_worn","marble_bust_01","pocket_watch","vintage_grandfather_clock_01","vintage_oil_lamp","seadogs_compass","vintage_microscope","jug_01","wicker_basket_01","wooden_crate_02","wooden_bucket_01","wooden_bowl_01","food_apple_01","potted_plant_01","tree_stump_01","rock_moss_set_01","boulder_01","fir_tree_01","moon_rock_01"];
   const pad = (n) => (4 - (n % 4)) % 4;
@@ -18,13 +18,29 @@
     let p = 20 + js.length; dv.setUint32(p, off, true); dv.setUint32(p + 4, 0x004e4942, true); p += 8; for (const q of parts) { out.set(q, p); p += q.length; }
     return out;
   }
-  for (const id of IDS) {
-    try {
-      const out = await pack(id);
-      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([out], { type: "model/gltf-binary" })); a.download = "ph_" + id + ".glb";
-      document.body.appendChild(a); a.click(); a.remove(); console.log("done", id, out.length);
-      await new Promise((r) => setTimeout(r, 700));
-    } catch (err) { console.log("FAILED", id, String(err)); }
+  const crcT = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (d) => { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = crcT[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  function zip(files) {
+    const enc = new TextEncoder(), chunks = [], central = []; let off = 0;
+    for (const [name, data] of files) {
+      const nm = enc.encode(name), c = crc(data), h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, c, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nm.length, true);
+      chunks.push(new Uint8Array(h.buffer), nm, data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint32(16, c, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+      central.push(new Uint8Array(ch.buffer), nm);
+      off += 30 + nm.length + data.length;
+    }
+    const csize = central.reduce((n, x) => n + x.length, 0), end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, csize, true); end.setUint32(16, off, true);
+    return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
   }
-  console.log("ALL DONE");
+  const files = [];
+  for (const id of IDS) {
+    try { const out = await pack(id); files.push(["ph_" + id + ".glb", out]); console.log("packed", id, out.length); }
+    catch (err) { console.log("FAILED", id, String(err)); }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(zip(files)); a.download = "gleeful-polyhaven.zip";
+  document.body.appendChild(a); a.click(); a.remove();
+  console.log("ALL DONE: one zip downloaded,", files.length, "models");
 })();
