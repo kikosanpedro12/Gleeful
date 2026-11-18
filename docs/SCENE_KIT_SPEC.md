@@ -48,3 +48,6 @@ Note: the build sandbox cannot download from polyhaven.com or quaternius.com; fi
 
 ### Open
 Which 30 starter assets; who fetches them; painting sources for historical figures (Wikimedia Commons public-domain, credited).
+
+## Update 19 Nov (founder decision)
+Historical people are shown as a **3D character** in the era scene (not only a painting). One character look for all people, not low-poly; a credited public-domain painting may sit beside it as the reference. Source of characters is open (Quaternius stylised, Mixamo/Sketchfab with licence check, or Blender); each needs an ASSET_LICENSES.md row first, and the figures manifest stays empty until then. Also built 19 Nov: `showScene`/`hideScene`, the display-only graph widget, per-asset cap 1,500 KB and per-scene cap 3,000 KB. The full, current spec is the project doc `10_SCENE_KIT_SPEC.md`.
