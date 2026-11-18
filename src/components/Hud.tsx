@@ -9,6 +9,7 @@ import { probeBrain, useReach } from "@/lib/brain/reach";
 import { playPreview, stopPreview } from "@/lib/voice/preview";
 import { actors } from "./scene/TeacherActor";
 import WidgetPanel from "./WidgetPanel";
+import StoryPanel from "./StoryPanel";
 
 const TEACHERS: TeacherId[] = ["leo", "mia"];
 
@@ -262,6 +263,7 @@ export default function Hud() {
             <div className="caption thinking" data-testid="thinking" aria-label={`${name} is thinking`}><b className="who">{name}</b><span className="dots" aria-hidden><i /><i /><i /></span></div>
           )}
           {listening && <div className="caption you" data-testid="interim"><b className="who">You</b><span className="say">{interim || "I'm listening. Tap the mic when you're done."}</span></div>}
+          <StoryPanel />
           <WidgetPanel />
           <QuestionCard />
           {choices.length > 0 && !busy && (

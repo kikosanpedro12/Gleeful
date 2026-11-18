@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "@/lib/session/store";
 import { session } from "@/lib/session/controller";
 import { LOOKS } from "@/lib/teacher/rig";
-import { describeWidget, formatFraction, formatValue, targetString, type FractionBarsSpec, type NumberLineSpec, type WidgetSpec } from "@/lib/widgets/spec";
+import { describeWidget, formatFraction, formatValue, targetString, type FractionBarsSpec, type GraphSpec, type NumberLineSpec, type WidgetSpec } from "@/lib/widgets/spec";
 
 /**
  * The on-screen teaching widget (docs/SCENE_KIT_SPEC.md). Plain SVG/HTML on top of the 3D scene: cheap on phones,
@@ -20,7 +20,7 @@ export default function WidgetPanel() {
       <button className="ghost icon widget-close" aria-label="Close this" onClick={() => session.closeWidget()}>
         <svg viewBox="0 0 24 24" aria-hidden><path d="M6 6l12 12M18 6L6 18" fill="none" /></svg>
       </button>
-      {w.spec.kind === "number_line" ? <NumberLine key={w.id} spec={w.spec} name={name} /> : <FractionBars key={w.id} spec={w.spec} name={name} />}
+      {w.spec.kind === "number_line" ? <NumberLine key={w.id} spec={w.spec} name={name} /> : w.spec.kind === "graph" ? <Graph key={w.id} spec={w.spec} /> : <FractionBars key={w.id} spec={w.spec} name={name} />}
     </section>
   );
 }
@@ -113,6 +113,45 @@ function FractionBars({ spec, name }: { spec: FractionBarsSpec; name: string }) 
           Tell {name}{shaded ? `: ${label}` : ""}
         </button>
       </div>
+    </div>
+  );
+}
+
+const GW = 320, GH = 320, GP = 24;
+
+/** A coordinate plane drawn from validated numbers only: grid, axes with labels, points, straight lines. Display only. */
+function Graph({ spec }: { spec: GraphSpec }) {
+  const sx = (GW - 2 * GP) / (spec.xmax - spec.xmin), sy = (GH - 2 * GP) / (spec.ymax - spec.ymin);
+  const X = (x: number) => GP + (x - spec.xmin) * sx;
+  const Y = (y: number) => GH - GP - (y - spec.ymin) * sy;
+  const xs = Array.from({ length: spec.xmax - spec.xmin + 1 }, (_, i) => spec.xmin + i);
+  const ys = Array.from({ length: spec.ymax - spec.ymin + 1 }, (_, i) => spec.ymin + i);
+  const strideX = Math.max(1, Math.ceil(xs.length / 10)), strideY = Math.max(1, Math.ceil(ys.length / 10));
+  const clip = (m: number, b: number) => {
+    // Where y = m x + b crosses the window edges, so the line stops at the frame.
+    const pts: [number, number][] = [];
+    const at = (x: number) => m * x + b;
+    for (const x of [spec.xmin, spec.xmax]) { const y = at(x); if (y >= spec.ymin - 1e-9 && y <= spec.ymax + 1e-9) pts.push([x, y]); }
+    if (m !== 0) for (const y of [spec.ymin, spec.ymax]) { const x = (y - b) / m; if (x > spec.xmin + 1e-9 && x < spec.xmax - 1e-9) pts.push([x, y]); }
+    return pts.length >= 2 ? [pts[0], pts[pts.length - 1]] : null;
+  };
+  return (
+    <div className="widget-body">
+      <svg viewBox={`0 0 ${GW} ${GH}`} className="graph" role="img" aria-label={describeWidget(spec)} data-testid="graph">
+        {xs.map((x) => <line key={`vx${x}`} x1={X(x)} x2={X(x)} y1={GP} y2={GH - GP} className="g-grid" />)}
+        {ys.map((y) => <line key={`hy${y}`} x1={GP} x2={GW - GP} y1={Y(y)} y2={Y(y)} className="g-grid" />)}
+        {spec.ymin <= 0 && spec.ymax >= 0 && <line x1={GP} x2={GW - GP} y1={Y(0)} y2={Y(0)} className="g-axis" />}
+        {spec.xmin <= 0 && spec.xmax >= 0 && <line x1={X(0)} x2={X(0)} y1={GP} y2={GH - GP} className="g-axis" />}
+        {xs.filter((x, i) => x !== 0 && i % strideX === 0).map((x) => <text key={`tx${x}`} x={X(x)} y={Math.min(GH - 6, Math.max(GP + 10, Y(0) + 12))} className="g-label" textAnchor="middle">{x}</text>)}
+        {ys.filter((y, i) => y !== 0 && i % strideY === 0).map((y) => <text key={`ty${y}`} x={Math.min(GW - 6, Math.max(GP - 4, X(0) - 6))} y={Y(y) + 4} className="g-label" textAnchor="end">{y}</text>)}
+        {spec.lines.map((l, k) => { const c = clip(l.m, l.b); return c ? <line key={k} x1={X(c[0][0])} y1={Y(c[0][1])} x2={X(c[1][0])} y2={Y(c[1][1])} className={`g-line g-line${k}`} /> : null; })}
+        {spec.points.map((p, k) => (
+          <g key={k}>
+            <circle cx={X(p.x)} cy={Y(p.y)} r="5" className="g-point" />
+            <text x={X(p.x) + 8} y={Y(p.y) - 8} className="g-plabel">{p.label || `(${p.x}, ${p.y})`}</text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }

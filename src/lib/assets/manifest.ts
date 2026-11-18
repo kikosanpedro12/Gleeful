@@ -46,14 +46,15 @@ export const ASSETS: readonly Asset[] = [
 const byId = new Map(ASSETS.map((a) => [a.id, a]));
 export const assetById = (id: string): Asset | undefined => byId.get(id);
 
-export const MAX_ASSET_KB = 1000;
-export const MAX_SCENE_KB = 5000;
+export const MAX_ASSET_KB = 1500;
+export const MAX_SCENE_KB = 3000;
 
 /** A scene may use one look only, and stay under the size budget. Returns an error string or null. */
 export function checkAssets(ids: readonly string[]): string | null {
   const list = ids.map(assetById);
   if (list.some((a) => !a)) return "unknown asset id";
   const found = list as Asset[];
+  if (found.some((a) => a.kb > MAX_ASSET_KB)) return "asset too large";
   if (new Set(found.map((a) => a.look)).size > 1) return "mixed looks";
   if (found.reduce((n, a) => n + a.kb, 0) > MAX_SCENE_KB) return "scene too large";
   return null;

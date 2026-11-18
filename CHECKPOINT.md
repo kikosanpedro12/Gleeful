@@ -149,3 +149,10 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - 18 Nov (later): Scene Kit spec v0.2 (docs/SCENE_KIT_SPEC.md and project doc 10): three response modes (direct / story / mixed), frame = validated scene spec, painting-based historical figures, one look per scene, asset manifest (src/lib/assets/manifest.ts, empty). Brain prompt now picks format by topic. Live: /api/brain configured, passcode required; TESTER_INVITES set and redeployed by founder.
 - Blocker: sandbox cannot download from polyhaven.com / quaternius.com; asset files must come via founder's computer. Quaternius licence is QAL v1.0 (not CC0).
 - 18 Nov (eve): 23 Poly Haven CC0 models (school, clocks, bust, microscope, baskets, rocks, plants) shrunk with Blender and added: public/assets/ph/, src/lib/assets/manifest.ts, ASSET_LICENSES.md rows. Fetched via founder's Chrome console (scripts/polyhaven-console.js); sandbox cannot reach polyhaven. Not yet rendered in-app; scene composer next. Quaternius forest set pending (needs founder's browser).
+
+## 19 Nov 2026
+- Brain for signed-in consenting parents was already wired (per-parent caps); voice (ElevenLabs) stays passcode-only until the founder decides on kids + ElevenLabs.
+- Story scenes: `showScene`/`hideScene` (validated ids only, one per reply, pretend label, error-boundary fallback, texture loading made CSP-safe). Figures manifest empty until paintings are fetched and licensed.
+- Graph widget (display only) for algebra / Cartesian plane.
+- Per-asset cap 1,500 KB, per-scene 3,000 KB. Tester + reviewer passed after fixes. `scripts/scene-smoke.mjs` runs on a build:test with `?test=1`.
+- Still open: painting figures, privacy page vendor wording, curriculum gaps, live launch checks.

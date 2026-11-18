@@ -3,7 +3,7 @@ import "server-only";
 import { ID_RE, SNAKE_RE, type BrainRequest, type WireInput, type WireSkillStatus } from "../protocol";
 import { LIMITS } from "./config";
 import { cleanText } from "@/lib/scene/commands";
-import { parseValue, WIDGET_KINDS } from "@/lib/widgets/spec";
+import { parseValue } from "@/lib/widgets/spec";
 import { contextFor, isWorldId, WORLDS, type WorldId } from "@/lib/worlds/registry";
 
 const SKILL_RE = /^(?=.{3,80}$)[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,3}$/;
@@ -88,10 +88,10 @@ function parseInput(v: unknown, ctx: ReturnType<typeof contextFor>): WireInput |
     }
     case "widget": {
       if (ctx.world === "transit") return null;
-      if (typeof v.widget !== "string" || !(WIDGET_KINDS as readonly string[]).includes(v.widget)) return null;
+      if (v.widget !== "number_line" && v.widget !== "fraction_bars") return null; // a graph is display only: the child cannot answer through it
       if (parseValue(v.value) === null) return null;
       if (v.target !== undefined && parseValue(v.target) === null) return null;
-      return { kind: "widget", widget: v.widget as (typeof WIDGET_KINDS)[number], value: String(v.value).trim(), ...(v.target !== undefined ? { target: String(v.target).trim() } : {}) };
+      return { kind: "widget", widget: v.widget, value: String(v.value).trim(), ...(v.target !== undefined ? { target: String(v.target).trim() } : {}) };
     }
     default: return null;
   }

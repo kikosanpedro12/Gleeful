@@ -10,6 +10,7 @@ import { cleanText, parseSceneCommand } from "@/lib/scene/commands";
 import { contextFor, WORLDS, type WorldId } from "@/lib/worlds/registry";
 import type { WireInput } from "../protocol";
 import { widgetToArgs } from "@/lib/widgets/spec";
+import { frameToArgs } from "@/lib/scene/frame";
 
 /**
  * Anything that looks like a link or address is removed. We never speak or show one.
@@ -93,6 +94,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
   let travelling = false;
   let interactive = 0;
   let widgets = 0;
+  let scenes = 0;
 
   const attach = (a: Action) => {
     if (total >= LIMITS.maxActionsPerReply) { dropped++; return; }
@@ -139,8 +141,17 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
         if (!kept.length) { dropped++; continue; }
         cmd.choices = kept;
       }
+      if (cmd.name === "showScene") {
+        const era = sanitizeSay(cmd.frame.era, 60);
+        if (!era || unsafeOutput(era) || scenes >= 1) { dropped++; continue; }
+        scenes++;
+        cmd.frame.era = era;
+        attach({ name: "showScene", args: frameToArgs(cmd.frame) });
+        continue;
+      }
       if (cmd.name === "showWidget") {
         if (widgets >= 1) { dropped++; continue; }
+        if (cmd.spec.kind === "graph" && cmd.spec.points.some((p) => p.label && unsafeOutput(p.label))) { dropped++; continue; }
         widgets++;
         attach({ name: "showWidget", args: widgetToArgs(cmd.spec) });
         continue;

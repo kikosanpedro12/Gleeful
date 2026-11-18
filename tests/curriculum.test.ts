@@ -98,13 +98,13 @@ describe("response modes in the prompt", () => {
   });
 });
 
-import { assetById, checkAssets, MAX_SCENE_KB } from "@/lib/assets/manifest";
+import { assetById, checkAssets, MAX_ASSET_KB, MAX_SCENE_KB } from "@/lib/assets/manifest";
 describe("asset manifest", () => {
   it("rejects unknown ids and never loads them", () => {
     expect(assetById("__proto__")).toBeUndefined();
     expect(checkAssets(["nope"])).toBe("unknown asset id");
     expect(checkAssets([])).toBeNull();
-    expect(MAX_SCENE_KB).toBe(5000);
+    expect(MAX_SCENE_KB).toBe(3000);
   });
 });
 
@@ -127,5 +127,58 @@ describe("asset library", () => {
   });
   it("starter set is one look so scenes can combine", () => {
     expect(checkAssets(ASSETS.map((a) => a.id).slice(0, 5))).toBeNull();
+  });
+});
+
+import { parseFrame, PRETEND_LABEL } from "@/lib/scene/frame";
+import { parseSceneCommand } from "@/lib/scene/commands";
+import { contextFor } from "@/lib/worlds/registry";
+
+describe("story scene frame", () => {
+  const ok = { setting: "study", era: "France, about 1805", props: ["ph_pocket_watch", "ph_marble_bust_01"] };
+  it("accepts a valid frame", () => { expect(parseFrame(ok).ok).toBe(true); });
+  it("rejects unknown setting, prop, figure, urls and too many props", () => {
+    expect(parseFrame({ ...ok, setting: "__proto__" }).ok).toBe(false);
+    expect(parseFrame({ ...ok, setting: "constructor" }).ok).toBe(false);
+    expect(parseFrame({ ...ok, props: ["https://evil.example/a.glb"] }).ok).toBe(false);
+    expect(parseFrame({ ...ok, props: ["nope"] }).ok).toBe(false);
+    expect(parseFrame({ ...ok, figure: "napoleon" }).ok).toBe(false);
+    expect(parseFrame({ ...ok, props: Array(7).fill("ph_jug_01") }).ok).toBe(false);
+    expect(parseFrame({ ...ok, era: "" }).ok).toBe(false);
+  });
+  it("is a validated command, not while travelling", () => {
+    expect(parseSceneCommand("showScene", ok, contextFor("classroom")).ok).toBe(true);
+    expect(parseSceneCommand("showScene", ok, contextFor("transit")).ok).toBe(false);
+  });
+  it("carries the pretend label", () => { expect(PRETEND_LABEL).toMatch(/pretend/i); });
+});
+
+import { parseWidget, describeWidget, widgetToArgs } from "@/lib/widgets/spec";
+describe("graph widget", () => {
+  const g = { widget: "graph", xmin: -5, xmax: 5, ymin: -5, ymax: 5, points: [{ x: 2, y: 3, label: "A" }], lines: [{ m: 2, b: 1 }] };
+  it("accepts a valid graph and round-trips", () => {
+    const r = parseWidget(g);
+    expect(r.ok).toBe(true);
+    if (r.ok) { expect(describeWidget(r.spec)).toContain("y = 2x + 1"); expect(parseWidget(widgetToArgs(r.spec)).ok).toBe(true); }
+  });
+  it("rejects out-of-window points, huge windows, too many items, bad numbers", () => {
+    expect(parseWidget({ ...g, points: [{ x: 9, y: 0 }] }).ok).toBe(false);
+    expect(parseWidget({ ...g, xmin: -500 }).ok).toBe(false);
+    expect(parseWidget({ ...g, xmax: -5 }).ok).toBe(false);
+    expect(parseWidget({ ...g, points: Array(7).fill({ x: 0, y: 0 }) }).ok).toBe(false);
+    expect(parseWidget({ ...g, lines: Array(3).fill({ m: 1, b: 0 }) }).ok).toBe(false);
+    expect(parseWidget({ ...g, lines: [{ m: "x", b: 0 }] }).ok).toBe(false);
+    expect(parseWidget({ ...g, lines: [{ m: Infinity, b: 0 }] }).ok).toBe(false);
+  });
+  it("strips markup from point labels", () => {
+    const r = parseWidget({ ...g, points: [{ x: 0, y: 0, label: "<b>hi</b>" }] });
+    expect(r.ok && r.spec.kind === "graph" && r.spec.points[0].label).toBe("bhib");
+  });
+});
+
+describe("scene size and failure safety", () => {
+  it("every asset is within the per-asset cap and a six-heavy-prop scene is refused", () => {
+    expect(ASSETS.every((a) => a.kb <= MAX_ASSET_KB)).toBe(true);
+    expect(checkAssets(["ph_boulder_01", "ph_potted_plant_01", "ph_moon_rock_01"])).toBe("scene too large");
   });
 });

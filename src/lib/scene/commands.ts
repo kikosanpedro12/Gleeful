@@ -4,6 +4,7 @@
  * Nothing model-written is executed as code; no remote URLs are accepted.
  */
 import { parseWidget, WIDGET_KINDS, type WidgetSpec } from "@/lib/widgets/spec";
+import { frameToArgs, parseFrame, propIds, figureIds, SETTING_IDS, MAX_PROPS, type StoryFrame } from "@/lib/scene/frame";
 import { isWorldId, WORLD_IDS, type CommandContext, type WorldId } from "@/lib/worlds/registry";
 
 export const GESTURES = ["wave", "nod", "thumbs_up", "shrug", "think", "open_hands"] as const;
@@ -21,7 +22,9 @@ export type SceneCommand =
   | { name: "askQuestion"; questionId: string }
   | { name: "inviteTap"; target: string }
   | { name: "showWidget"; spec: WidgetSpec }
-  | { name: "hideWidget" };
+  | { name: "hideWidget" }
+  | { name: "showScene"; frame: StoryFrame }
+  | { name: "hideScene" };
 
 export type ParseResult = { ok: true; command: SceneCommand } | { ok: false; error: string };
 
@@ -92,6 +95,13 @@ export function parseSceneCommand(name: unknown, args: unknown, ctx: CommandCont
     }
     case "hideWidget":
       return { ok: true, command: { name } };
+    case "showScene": {
+      if (ctx.world === "transit") return { ok: false, error: "no scene while travelling" };
+      const f = parseFrame(args);
+      return f.ok ? { ok: true, command: { name, frame: f.frame } } : { ok: false, error: f.error };
+    }
+    case "hideScene":
+      return { ok: true, command: { name } };
     default:
       return { ok: false, error: `unknown command ${name.slice(0, 40)}` };
   }
@@ -123,7 +133,7 @@ export function toolsFor(ctx: CommandContext) {
   if (ctx.world === "classroom") tools.push(tool("writeOnBoard", "Write a short phrase (max 60 chars) on the board.", { text: { type: "string" } }, ["text"]));
   if (ctx.world !== "transit") {
     tools.push(tool("showWidget",
-      "Show a teaching aid on screen: a number line (child taps a tick) or fraction bars (child shades parts of the FIRST bar; later bars are fixed references). Use it for number, fraction and decimal ideas instead of describing them. Give `target` (number line) or `target_num`/`target_den` (fraction bars) only when you want the child to find or build that value; the app then tells you whether the child matched it.",
+      "Show a teaching aid on screen: a number line (child taps a tick), fraction bars (child shades parts of the FIRST bar; later bars are fixed references) or a coordinate graph (display only: a window, up to 6 labelled points and up to 2 lines y = m x + b; use it for the Cartesian plane, plotting and linear equations). Use it for number, fraction and decimal ideas instead of describing them. Give `target` (number line) or `target_num`/`target_den` (fraction bars) only when you want the child to find or build that value; the app then tells you whether the child matched it.",
       {
         widget: { type: "string", enum: [...WIDGET_KINDS] },
         min: { type: "number" }, max: { type: "number" }, step: { type: "number", description: "tick spacing; (max - min) must be 1 to 24 whole steps" },
@@ -133,8 +143,23 @@ export function toolsFor(ctx: CommandContext) {
         target: { type: "number", description: "number line: the value for the child to tap (must sit on a tick)" },
         bars: { type: "array", items: { type: "object", properties: { parts: { type: "integer" }, shaded: { type: "integer" } }, required: ["parts"] }, description: "1 to 4 bars; up to 12 parts each" },
         target_num: { type: "integer" }, target_den: { type: "integer" },
+        xmin: { type: "integer" }, xmax: { type: "integer" }, ymin: { type: "integer" }, ymax: { type: "integer" },
+        points: { type: "array", items: { type: "object", properties: { x: { type: "number" }, y: { type: "number" }, label: { type: "string" } }, required: ["x", "y"] }, description: "graph: up to 6 points inside the window" },
+        lines: { type: "array", items: { type: "object", properties: { m: { type: "number" }, b: { type: "number" } }, required: ["m", "b"] }, description: "graph: up to 2 lines y = m x + b" },
       }, ["widget"]));
     tools.push(tool("hideWidget", "Take the teaching aid off the screen.", {}, []));
+  }
+  if (ctx.world !== "transit") {
+    const figs = figureIds();
+    tools.push(tool("showScene",
+      "Show a small pretend picture (a diorama) of a place or time for a story about people, events or places, e.g. Napoleon's France. Choose a setting, a short era caption, up to " + MAX_PROPS + " props from the list, and a figure only if one is listed. Do not use it for skills like algebra. Never invent ids.",
+      {
+        setting: { type: "string", enum: [...SETTING_IDS] },
+        era: { type: "string", description: "short caption, e.g. 'France, about 1805'" },
+        props: { type: "array", items: { type: "string", enum: propIds() }, maxItems: MAX_PROPS },
+        ...(figs.length ? { figure: { type: "string", enum: figs } } : {}),
+      }, ["setting", "era"]));
+    tools.push(tool("hideScene", "Take the pretend picture off the screen.", {}, []));
   }
   if (ctx.world !== "transit") tools.push(tool("openWorld", "Travel to a prepared world.", { world: { type: "string", enum: WORLD_IDS.filter((w) => w !== ctx.world) } }, ["world"]));
   return tools;

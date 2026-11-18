@@ -275,6 +275,21 @@ html:has(.vlab), body:has(.vlab) { overflow:visible; height:auto; min-height:100
 .vlab-fine { color:var(--ink-2); }
 
 /* ------------------------------------------------------------ teaching widgets (number line, fraction bars) */
+.graph { width:100%; max-width:340px; display:block; margin:0 auto; touch-action:manipulation; }
+.g-grid { stroke:#e6d9c3; stroke-width:1; }
+.g-axis { stroke:#5a4a36; stroke-width:2; }
+.g-label { font-size:10px; fill:#5a4a36; }
+.g-line { stroke:#d9534f; stroke-width:3; stroke-linecap:round; }
+.g-line1 { stroke:#2f7fbf; }
+.g-point { fill:#1f9d6b; stroke:#fff; stroke-width:2; }
+.g-plabel { font-size:11px; fill:#2d2417; font-weight:600; paint-order:stroke; stroke:#fffaf1; stroke-width:3px; }
+.story { position:relative; background:rgba(255,250,241,.97); border-radius:22px; padding:10px 12px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); }
+.story-view { height:200px; border-radius:16px; overflow:hidden; }
+.story-figure { margin:8px 0 0; display:flex; gap:10px; align-items:center; }
+.story-figure img { height:84px; width:auto; border-radius:8px; }
+.story-figure figcaption, .story-note { font-size:.78rem; color:#5a4a36; margin:0; }
+.story-era { margin:6px 0 0; font-size:.95rem; }
+@media (max-width:640px) { .story-view { height:150px; } }
 .widget { position:relative; background:rgba(255,250,241,.97); border-radius:22px; padding:12px 14px 12px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); }
 .widget-close { position:absolute; top:2px; right:2px; width:44px; height:44px; z-index:1; background:transparent; box-shadow:none; }
 .widget-body { display:flex; flex-direction:column; gap:8px; padding-right:30px; }

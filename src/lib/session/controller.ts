@@ -134,7 +134,7 @@ class SessionController {
         if (this.strandTimer) clearTimeout(this.strandTimer);
         if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
         this.dispatch({ type: "DISCONNECTED" });
-        this.set({ listening: false, interim: "", choices: [], question: null, widget: null, invite: null, inspecting: null, transit: null, world: "classroom" });
+        this.set({ listening: false, interim: "", choices: [], question: null, widget: null, scene: null, invite: null, inspecting: null, transit: null, world: "classroom" });
         if (detail) this.set({ banner: { kind: "error", text: `${detail} Tap Start to reconnect.` } });
       }
     },
@@ -229,6 +229,8 @@ class SessionController {
         case "inviteTap": this.set({ invite: c.target }); this.rememberPrompt(); break;
         case "showWidget": this.set({ widget: { id: ++this.seq, spec: c.spec } }); break;
         case "hideWidget": this.set({ widget: null }); break;
+        case "showScene": this.set({ scene: { id: ++this.seq, frame: c.frame } }); break;
+        case "hideScene": this.set({ scene: null }); break;
         case "openWorld": this.beginTransit(c.world); break;
       }
       // Body/scene actions go to the animator queue (gesture, pointAt, moveTeacherTo, inviteTap).
@@ -252,7 +254,7 @@ class SessionController {
     const style = WORLDS[to].transit === "space_flight" && from === "classroom" ? "space_flight"
       : WORLDS[from].transit === "space_flight" && to === "classroom" ? "space_return" : "fade";
     const t0 = performance.now();
-    this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null, widget: null });
+    this.set({ transit: { from, to, t0, style }, inspecting: null, invite: null, question: null, widget: null, scene: null });
     // The 3D director normally lands the trip. If it can't (no WebGL, lost
     // context, tab hidden), land it anyway so the lesson can't get stuck.
     if (this.transitWatchdog) clearTimeout(this.transitWatchdog);
@@ -314,7 +316,7 @@ class SessionController {
     if (this.s.status !== "disconnected" || !teacher) return;
     this.set({
       banner: null, status: "connecting", transcript: [], usage: { ...emptyUsage }, directives: [],
-      boardText: "Ask me anything!", world: "classroom", transit: null, choices: [], question: null, widget: null,
+      boardText: "Ask me anything!", world: "classroom", transit: null, choices: [], question: null, widget: null, scene: null,
       invite: null, inspecting: null, listening: false, interim: "",
     });
     this.firstTurnDone = false;
@@ -401,6 +403,7 @@ class SessionController {
   closeInspect() { this.set({ inspecting: null }); this.guardStranded(); }
 
   closeWidget() { this.set({ widget: null }); }
+  closeScene() { this.set({ scene: null }); }
 
   /** The child set the widget and told the teacher. The target the teacher asked for travels with it; code, not the model, compares them. */
   widgetAnswer(widget: "number_line" | "fraction_bars", value: string, target: string | undefined, label: string) {
@@ -487,3 +490,8 @@ class SessionController {
 }
 
 export const session = new SessionController();
+
+// Test builds only (NEXT_PUBLIC_TEST_HOOKS is never set in the deployment build): lets scripts/scene-smoke.mjs drive the real tool-call path.
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_TEST_HOOKS === "1" && /[?&]test=1(&|$)/.test(window.location.search)) {
+  (window as unknown as { __ctl?: unknown }).__ctl = session;
+}

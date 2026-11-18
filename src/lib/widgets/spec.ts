@@ -7,7 +7,7 @@
  * parts of the FIRST bar (any further bars are fixed reference bars, e.g. to show equal fractions).
  * Whether the child's setting matches the ask is computed by `matches`, in code, from the target the brain set.
  */
-export const WIDGET_KINDS = ["number_line", "fraction_bars"] as const;
+export const WIDGET_KINDS = ["number_line", "fraction_bars", "graph"] as const;
 export type WidgetKind = (typeof WIDGET_KINDS)[number];
 
 export interface NumberLineSpec {
@@ -33,7 +33,17 @@ export interface FractionBarsSpec {
   target?: { num: number; den: number };
 }
 
-export type WidgetSpec = NumberLineSpec | FractionBarsSpec;
+/** A coordinate plane (display only): a window, up to 6 labelled points and up to 2 straight lines y = m x + b. */
+export interface GraphSpec {
+  kind: "graph";
+  xmin: number; xmax: number; ymin: number; ymax: number;
+  points: { x: number; y: number; label: string }[];
+  lines: { m: number; b: number }[];
+}
+export const MAX_GRAPH_POINTS = 6;
+export const MAX_GRAPH_LINES = 2;
+
+export type WidgetSpec = NumberLineSpec | FractionBarsSpec | GraphSpec;
 
 export const MAX_TICKS = 24;
 export const MAX_MARKS = 6;
@@ -107,6 +117,33 @@ export function parseWidget(args: unknown): WidgetParse {
     }
     return { ok: true, spec: { kind: "fraction_bars", bars, ...(target ? { target } : {}) } };
   }
+  if (args.widget === "graph") {
+    const xmin = int(args.xmin ?? -5, -20, 19), xmax = int(args.xmax ?? 5, -19, 20), ymin = int(args.ymin ?? -5, -20, 19), ymax = int(args.ymax ?? 5, -19, 20);
+    if (xmin === null || xmax === null || ymin === null || ymax === null) return err("graph window must be whole numbers from -20 to 20");
+    if (xmax - xmin < 2 || xmax - xmin > 40 || ymax - ymin < 2 || ymax - ymin > 40) return err("graph window must span 2 to 40 on each axis");
+    const points: GraphSpec["points"] = [];
+    if (args.points !== undefined) {
+      if (!Array.isArray(args.points) || args.points.length > MAX_GRAPH_POINTS) return err(`points must be a list of up to ${MAX_GRAPH_POINTS}`);
+      for (const p of args.points) {
+        if (!isObj(p)) return err("each point must be an object");
+        const x = num(p.x), y = num(p.y);
+        if (x === null || y === null || x < xmin || x > xmax || y < ymin || y > ymax) return err("every point must be inside the window");
+        const label = typeof p.label === "string" ? Array.from(p.label.replace(/[^\p{L}\p{N} ,().'-]/gu, "")).slice(0, 12).join("").trim() : "";
+        points.push({ x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, label });
+      }
+    }
+    const lines: GraphSpec["lines"] = [];
+    if (args.lines !== undefined) {
+      if (!Array.isArray(args.lines) || args.lines.length > MAX_GRAPH_LINES) return err(`lines must be a list of up to ${MAX_GRAPH_LINES}`);
+      for (const l of args.lines) {
+        if (!isObj(l)) return err("each line must be an object");
+        const m = num(l.m), b = num(l.b);
+        if (m === null || b === null || Math.abs(m) > 100) return err("a line needs numeric m and b");
+        lines.push({ m: Math.round(m * 100) / 100, b: Math.round(b * 100) / 100 });
+      }
+    }
+    return { ok: true, spec: { kind: "graph", xmin, xmax, ymin, ymax, points, lines } };
+  }
   return err(`widget must be one of ${WIDGET_KINDS.join(", ")}`);
 }
 
@@ -170,6 +207,7 @@ export function matches(value: string, target: string | undefined): boolean | nu
 /** The target as the string the wire carries, in the widget's own format. */
 export function targetString(spec: WidgetSpec): string | undefined {
   if (spec.kind === "number_line") return spec.target === undefined ? undefined : formatValue(spec.target, spec);
+  if (spec.kind === "graph") return undefined; // display only: nothing for the child to match
   return spec.target ? formatFraction(spec.target.num, spec.target.den) : undefined;
 }
 
@@ -180,6 +218,12 @@ export function describeWidget(spec: WidgetSpec): string {
     if (spec.marks.length) parts.push(`with dots at ${spec.marks.map((m) => formatValue(m, spec)).join(", ")}`);
     return parts.join(" ");
   }
+  if (spec.kind === "graph") {
+    const bits = [`a coordinate graph, x from ${spec.xmin} to ${spec.xmax} and y from ${spec.ymin} to ${spec.ymax}`];
+    if (spec.points.length) bits.push(`points ${spec.points.map((p) => `(${p.x}, ${p.y})`).join(" ")}`);
+    if (spec.lines.length) bits.push(`lines ${spec.lines.map((l) => `y = ${l.m}x + ${l.b}`).join(" and ")}`);
+    return bits.join(", ");
+  }
   return `fraction bars: ${spec.bars.map((b) => `${b.shaded} of ${b.parts} parts shaded`).join("; ")}`;
 }
 
@@ -188,5 +232,6 @@ export function widgetToArgs(spec: WidgetSpec): Record<string, unknown> {
   if (spec.kind === "number_line") {
     return { widget: "number_line", min: spec.min, max: spec.max, step: spec.step, format: spec.format, ...(spec.format === "fraction" ? { denominator: spec.denominator } : {}), marks: spec.marks, ...(spec.target !== undefined ? { target: spec.target } : {}) };
   }
+  if (spec.kind === "graph") return { widget: "graph", xmin: spec.xmin, xmax: spec.xmax, ymin: spec.ymin, ymax: spec.ymax, points: spec.points.map((p) => ({ ...p })), lines: spec.lines.map((l) => ({ ...l })) };
   return { widget: "fraction_bars", bars: spec.bars.map((b) => ({ ...b })), ...(spec.target ? { target_num: spec.target.num, target_den: spec.target.den } : {}) };
 }

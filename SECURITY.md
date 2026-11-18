@@ -144,3 +144,9 @@ Private project. Report issues to the founder directly; do not open public issue
 - A master code shorter than 16 characters switches off the brain AND all invites (fail closed). Skipped invite entries log one warning with a count only. An invite equal to the master code is dropped. /api/tts (Deepgram, lab only) accepts only the master code.
 - Known: any code holder can rotate learner ids to fill the 5,000-key table on one instance (503 for everyone until the day rolls). Bounded and authenticated; unchanged in kind.
 - Tests: `tests/invites.test.ts`.
+
+## Vendor findings and story scenes (19 Nov 2026)
+- **Anthropic API (brain):** no training on customer content by default, retention under 30 days, must disclose it is an AI (the UI does), recommends age checks, moderation and COPPA care. Parent sign-in plus consent gates it; per-parent daily caps apply.
+- **ElevenLabs (voice):** its terms say the service is not for under-18s, it may use inputs and outputs for training unless opted out, and Zero Retention is Enterprise-only. Decision (founder pending): until settled, `/api/voice` stays passcode-only (testers); real children hear the browser voice. Do not open it to parents without the founder's OK.
+- **`showScene` / `hideScene`:** the model sends a setting id, a short caption and prop ids from `src/lib/assets/manifest.ts`; nothing else. Layout is fixed in code. Real people appear only as credited public-domain pictures from `src/lib/assets/figures.ts` (empty for now). One scene per reply; caption is moderated like speech; always labelled "pretend". A failed load shows a text fallback (error boundary). Second WebGL canvas, mounted only while a scene is shown; per-asset cap 1,500 KB, per-scene cap 3,000 KB.
+- **`graph` widget:** display only; validated numbers (window -20..20, up to 6 points, 2 lines); point labels stripped to letters, digits and basic punctuation and moderated.

@@ -6,6 +6,7 @@ import type { ConnectionStatus, UsageDelta } from "@/lib/voice/provider";
 import type { TeacherId } from "@/lib/teacher/rig";
 import type { WorldId } from "@/lib/worlds/registry";
 import type { WidgetSpec } from "@/lib/widgets/spec";
+import type { StoryFrame } from "@/lib/scene/frame";
 
 export interface TranscriptLine { id: number; role: "child" | "teacher"; text: string; turnId: number }
 export interface Directive { id: number; turnId: number; command: SceneCommand }
@@ -37,6 +38,8 @@ export interface SessionStore {
   question: { id: string; world: WorldId } | null;
   /** The teaching widget on screen (number line, fraction bars), if the teacher showed one. `id` changes for each new one. */
   widget: { id: number; spec: WidgetSpec } | null;
+  /** The story picture on screen (a validated frame), if the teacher showed one. */
+  scene: { id: number; frame: StoryFrame } | null;
   /** Object the teacher has invited the child to tap. */
   invite: string | null;
   /** Object currently picked up for inspection. */
@@ -72,6 +75,7 @@ export const initialStore = (): SessionStore => ({
   choices: [],
   question: null,
   widget: null,
+  scene: null,
   invite: null,
   inspecting: null,
   results: [],
