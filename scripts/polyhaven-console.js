@@ -1,7 +1,7 @@
 // Paste into the browser console on https://polyhaven.com (F12 -> Console), press Enter.
 // Packs each starter model as a .glb (1k textures) and downloads ONE zip (gleeful-polyhaven.zip). All CC0.
 (async () => {
-  const IDS = ["SchoolDesk_01","SchoolChair_01","standing_chalkboard_01","alarm_clock_01","wall_clock","wooden_bookshelf_worn","marble_bust_01","pocket_watch","vintage_grandfather_clock_01","vintage_oil_lamp","seadogs_compass","vintage_microscope","jug_01","wicker_basket_01","wooden_crate_02","wooden_bucket_01","wooden_bowl_01","food_apple_01","potted_plant_01","tree_stump_01","rock_moss_set_01","boulder_01","fir_tree_01","moon_rock_01"];
+  const IDS = ["SchoolDesk_01","SchoolChair_01","standing_chalkboard_01","alarm_clock_01","wall_clock","wooden_bookshelf_worn","marble_bust_01","pocket_watch","vintage_grandfather_clock_01","vintage_oil_lamp","seadogs_compass","vintage_microscope","jug_01","wicker_basket_01","wooden_crate_02","wooden_bucket_01","wooden_bowl_01","food_apple_01","potted_plant_01","tree_stump_01","rock_moss_set_01","boulder_01","moon_rock_01"];
   const pad = (n) => (4 - (n % 4)) % 4;
   async function pack(id, res = "1k") {
     const f = await (await fetch("https://api.polyhaven.com/files/" + id)).json();
@@ -37,7 +37,7 @@
   }
   const files = [];
   for (const id of IDS) {
-    try { const out = await pack(id); files.push(["ph_" + id + ".glb", out]); console.log("packed", id, out.length); }
+    try { const out = await pack(id); if (out.length > 8e6) { console.log("SKIPPED (too big)", id, out.length); continue; } files.push(["ph_" + id + ".glb", out]); console.log("packed", id, out.length); }
     catch (err) { console.log("FAILED", id, String(err)); }
   }
   const a = document.createElement("a"); a.href = URL.createObjectURL(zip(files)); a.download = "gleeful-polyhaven.zip";
