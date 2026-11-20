@@ -25,7 +25,7 @@ builder ──▶ tester + reviewer (in parallel) ──▶ builder fixes ──
 This is how the agents "self-learn": not by changing the model, but by turning every finding into a written rule that the next round reads and a test that fails if the mistake returns.
 
 ## Running agents side by side
-- Ports: 3111 main session, 3222 tester, 3333/3444/3555 builders, 3199 /security-check. Use `SMOKE_URL=http://localhost:<port>/?test=1`. Never `pkill` a server you did not start.
+- Ports: 3111 main session, 3222 tester, 3333/3444/3555 builders, 3199 /security-check. Use `SMOKE_URL=http://localhost:<port>/learn?test=1`. Never `pkill` a server you did not start.
 - Two builders never share a working tree: the second one clones the repo, and runs `git pull --rebase origin main` plus the gate before pushing.
 - The tester tests a pinned commit (`git archive <sha>`) when others are editing.
 

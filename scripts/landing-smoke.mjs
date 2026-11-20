@@ -19,7 +19,7 @@ const browser = await puppeteer.launch({
 });
 
 /** stub: "live" answers with a scene; "off" = taste unavailable; "used" = already 3 used (cookie says so). */
-async function open(path, { stub = "live", rm = false } = {}) {
+async function open(path, { stub = "live", rm = false, post = null } = {}) {
   const page = await browser.newPage();
   const errors = [], posts = { count: 0, last: null };
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -34,6 +34,7 @@ async function open(path, { stub = "live", rm = false } = {}) {
     const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (r.method() === "GET") return json(200, stub === "off" ? { available: false, maxTurns: 3 } : { available: true, maxTurns: 3, used: stub === "used" ? 3 : 0 });
     posts.count++; posts.last = JSON.parse(r.postData() || "{}");
+    if (post) return json(200, post(posts.count));
     return json(200, { reply: `Here is answer ${posts.count}.`, turnsLeft: 3 - posts.count, scene: { setting: "desert", era: "Mars, today", props: [] } });
   });
   const res = await page.goto(ORIGIN + path, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -109,6 +110,40 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
   check(`${p} loads`, res.status() === 200 && re.test(await page.evaluate(() => document.body.innerText)));
   await page.close();
 }
+
+// 6. The tutor's gesture and chalkboard phrase (needs a build:test build and ?test=1: reads window.__teacher and the board texture).
+// Board text is canvas pixels, so the check hashes every canvas texture in the scene: changed = new text drawn.
+const HOOKS = `
+  window.__rec = []; setInterval(() => { const g = window.__teacher?.animator?.debug?.gesture; if (g) window.__rec.push(g); }, 16);
+  window.__boards = () => { const root = (function up(o) { while (o.parent) o = o.parent; return o; })(window.__teacher.rig.root); const out = [];
+    root.traverse((o) => { const m = o.material && o.material.map; const c = m && m.image; if (c && typeof c.toDataURL === "function") { const d = c.toDataURL(); let h = 0; for (let i = 0; i < d.length; i += 7) h = (h * 31 + d.charCodeAt(i)) | 0; out.push(h); } }); return out.join(","); };`;
+async function acts(label, body, { expectGesture = null, expectBoardChange }) {
+  const { page, errors, posts } = await open("/?test=1", { post: (n) => ({ reply: `Answer ${n}.`, turnsLeft: 2, ...body }) });
+  await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
+  await page.evaluate(HOOKS);
+  await page.click('[data-testid="pick-leo"]');
+  await page.waitForSelector("#class-q");
+  await page.waitForFunction(() => window.__teacher?.animator, { timeout: 15000 }).catch(() => {});
+  if (!(await page.evaluate(() => !!window.__teacher))) { check(`${label}: test hooks present (use npm run build:test)`, false); await page.close(); return; }
+  await sleep(1500); // let the board texture settle
+  const before = await page.evaluate(() => window.__boards());
+  await page.evaluate(() => { window.__rec = []; });
+  await page.click(".lp-chip");
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("Answer 1"), { timeout: 10000 }).catch(() => {});
+  await sleep(2500);
+  const after = await page.evaluate(() => window.__boards());
+  const seen = await page.evaluate(() => [...new Set(window.__rec)]);
+  check(`${label}: board ${expectBoardChange ? "changes" : "does not change"}`, (before !== after) === expectBoardChange, `before=${before} after=${after}`);
+  if (expectGesture) check(`${label}: teacher plays "${expectGesture}"`, seen.includes(expectGesture), `seen=${seen.join(",")}`);
+  else check(`${label}: no gesture from the stub`, !seen.some((g) => !["nod", "think"].includes(g)) || seen.length === 0, `seen=${seen.join(",")}`);
+  check(`${label}: no crash or console errors`, real(errors).length === 0 && /Answer 1/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")), real(errors).slice(0, 2).join("|"));
+  await page.close();
+}
+await acts("valid gesture + board", { gesture: "wave", board: "Coconut taller" }, { expectGesture: "wave", expectBoardChange: true });
+await acts("gesture 'backflip'", { gesture: "backflip" }, { expectBoardChange: false });
+await acts("board with a link", { board: "go to https://evil.example/x" }, { expectBoardChange: false });
+await acts("5,000-char board", { board: "A".repeat(5000) }, { expectBoardChange: false });
+await acts("HTML board and non-string gesture", { board: "<img src=x onerror=alert(1)>", gesture: { name: "wave" } }, { expectBoardChange: false });
 
 await browser.close();
 const failed = checks.filter((c) => !c.ok);

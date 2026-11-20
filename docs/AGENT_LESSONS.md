@@ -73,7 +73,7 @@ Rules for entries:
 - `kill` only the PID of your own port (find it by `/proc/<pid>/cwd` and cmdline); `pkill -f next` or a loop over every match can hit another agent's server.
 
 ## Ports
-3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
+3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/learn?test=1`, stop with `npm run stop`.
 
 ## Round log (newest first, one line each)
 - 14 Nov, tester on 88bc432: BLOCK (Prewarm early return left hidden worlds visible) + badge claimed AI while the script greeted + integer number lines with fractional steps → all fixed in 1a93baa, tests added; pushed.

@@ -1,6 +1,7 @@
 import { useSession, emptyUsage, type SessionStore } from "./store";
 import { reduce, type ConvEvent } from "@/lib/teacher/stateMachine";
-import { parseToolCall } from "@/lib/scene/commands";
+import { boardOk } from "@/lib/taste/boardText";
+import { parseToolCall, parseSceneCommand } from "@/lib/scene/commands";
 import { toResult, type TurnTiming, type TurnResult } from "@/lib/telemetry/latency";
 import type { VoiceEvents, VoiceProvider, SessionInfo } from "@/lib/voice/provider";
 import { ScriptedProvider } from "@/lib/voice/scriptedProvider";
@@ -404,6 +405,22 @@ class SessionController {
 
   closeWidget() { this.set({ widget: null }); }
   closeScene() { this.set({ scene: null }); }
+
+  /** The landing tutor's optional gesture and chalkboard phrase. Same validator as any model command; bad input is ignored. */
+  tasteActs(a: { gesture?: unknown; board?: unknown }) {
+    const turnId = this.s.conv.turnId;
+    const ctx = contextFor(this.currentWorld());
+    let board = "Ask me anything!"; // no valid new phrase = back to the default, so an old answer never lingers
+    if (boardOk(a.board)) {
+      const r = parseSceneCommand("writeOnBoard", { text: a.board }, ctx);
+      if (r.ok && r.command.name === "writeOnBoard") board = r.command.text;
+    }
+    this.set({ boardText: board });
+    if (typeof a.gesture === "string") {
+      const r = parseSceneCommand("gesture", { gesture: a.gesture }, ctx);
+      if (r.ok) this.set({ directives: [...this.s.directives, { id: ++this.seq, turnId, command: r.command }] });
+    }
+  }
 
   /** The child set the widget and told the teacher. The target the teacher asked for travels with it; code, not the model, compares them. */
   widgetAnswer(widget: "number_line" | "fraction_bars", value: string, target: string | undefined, label: string) {

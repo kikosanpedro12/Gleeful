@@ -301,10 +301,45 @@ describe("taste: per-person cookie and scene", () => {
     expect((j.scene as { setting: string }).setting).toBe("desert");
     expect(JSON.stringify(sent(f))).toContain("Your name is Mia");
   });
+  it("returns a listed gesture and a short chalkboard phrase, and strips both lines from the reply", async () => {
+    const f = model([{ type: "text", text: "Coconut trees are usually taller.\nGESTURE: think\nBOARD: Coconut taller" }]);
+    const j = await json(await handleTaste(http(body()), deps(f)));
+    expect(j.reply).toBe("Coconut trees are usually taller.");
+    expect(j.gesture).toBe("think");
+    expect(j.board).toBe("Coconut taller");
+  });
+  it("strips odd-cased or odd-spaced marker lines from the spoken reply", async () => {
+    const f = model([{ type: "text", text: "Nice question here.\nBoard : Coconut\nBOARD\u200b: x" }]);
+    const j = await json(await handleTaste(http(body()), deps(f)));
+    expect(j.reply).toBe("Nice question here.");
+  });
+  it("drops acts when the reply was cut off at max_tokens", async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: "text", text: "Short answer.\nBOARD: Coconut ta" }], stop_reason: "max_tokens", usage: { input_tokens: 400, output_tokens: 30 } }), { status: 200 }));
+    const j = await json(await handleTaste(http(body()), deps(f as unknown as ReturnType<typeof model>)));
+    expect(j.board).toBeUndefined();
+  });
+  it("drops an unknown gesture, a link on the board, and an over-long board", async () => {
+    for (const extra of ["GESTURE: backflip", "BOARD: visit bit.ly/x now", "BOARD: " + "a".repeat(80), "BOARD: Call 555 0142 now", "BOARD: add me @someone", "BOARD: fuck"]) {
+      const f = model([{ type: "text", text: "Fine answer here.\n" + extra }]);
+      const j = await json(await handleTaste(http(body()), deps(f)));
+      expect(j.reply).toBe("Fine answer here.");
+      expect(j.gesture).toBeUndefined();
+      expect(j.board).toBeUndefined();
+    }
+  });
   it("drops a scene with unknown ids or a bad teacher is a bad request", async () => {
     const f = model([{ type: "text", text: 'Hello there.\nSCENE: {"setting":"moon_base","era":"x","props":["evil"]}' }]);
     const j = await json(await handleTaste(http(body()), deps(f)));
     expect(j.scene).toBeUndefined();
     expect((await handleTaste(http(body({ teacher: "bob" })), deps(model()))).status).toBe(400);
+  });
+});
+
+import { boardOk } from "@/lib/taste/boardText";
+describe("taste: browser-side board re-check", () => {
+  it("accepts a short plain phrase", () => { expect(boardOk("Coconut taller")).toBe(true); });
+  it("refuses links, markup, handles, numbers, controls and long text", () => {
+    for (const v of ["visit bit.ly/x", "see site.com", "https://x", "<img onerror=a>", "add @me", "call 555 0142", "a".repeat(41), "x​y", "", 5, null, { a: 1 }])
+      expect(boardOk(v)).toBe(false);
   });
 });

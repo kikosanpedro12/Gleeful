@@ -17,11 +17,11 @@ import "server-only";
  */
 import { callAnthropic, UpstreamError } from "@/lib/brain/server/anthropic";
 import { MemoryUsageStore, RateLimiter, SessionCounter, type UsageStore } from "@/lib/brain/server/limits";
-import { looksLikeNarration, sanitizeSay } from "@/lib/brain/server/sanitize";
+import { looksLikeNarration, sanitizeSay, unsafeOutput } from "@/lib/brain/server/sanitize";
 import { clientIp, crossOrigin, readBody } from "@/lib/http/request";
-import { cleanText } from "@/lib/scene/commands";
+import { cleanText, GESTURES } from "@/lib/scene/commands";
 import { parseFrame, frameToArgs } from "@/lib/scene/frame";
-import { TASTE_MAX_TURNS, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
+import { BOARD_MAX, TASTE_MAX_TURNS, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
 import { TASTE_LIMITS, TASTE_MODEL, type TasteEnv } from "./config";
 import { TASTE_SYSTEM, buildTasteUser } from "./prompt";
 import { parseTasteRequest } from "./request";
@@ -111,6 +111,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   // One automatic retry if the model returned nothing usable (the visitor never sees a blank-answer error for that).
   let reply: string | null = null;
   let scene: Record<string, unknown> | undefined;
+  let acts: { gesture?: string; board?: string } = {};
   for (let attempt = 0; attempt < 2 && !reply; attempt++) {
     let up;
     try {
@@ -128,6 +129,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
     }
     reply = cleanReply(up.content);
     scene = reply ? extractScene(up.content) : undefined;
+    acts = reply ? extractActs(up.content, up.stopReason === "max_tokens") : {};
     if (!reply) {
       // Types and counts only, never the visitor's words or the model's.
       const types = Array.isArray(up.content) ? up.content.slice(0, 6).map((b) => String((b as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
@@ -136,7 +138,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   }
   if (!reply) return fail(502, "bad_model_output");
   const turnsLeft = Math.max(0, TASTE_LIMITS.perSessionTurns - Math.max(done, usedBefore) - 1);
-  const body: TasteResponse = { reply, turnsLeft, ...(scene ? { scene } : {}) };
+  const body: TasteResponse = { reply, turnsLeft, ...(scene ? { scene } : {}), ...acts };
   return new Response(JSON.stringify(body), { status: 200, headers: { ...HEADERS, "set-cookie": makeTasteCookie(usedBefore + 1, secret, now, ckExp) } });
 }
 
@@ -157,7 +159,29 @@ export function cleanReply(blocks: unknown): string | null {
 }
 
 const SCENE_RE = /SCENE:\s*(\{[^\n]*\})/;
-const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/SCENE:[^\n]*/g, "") : t);
+const MARKER_STRIP = /\b(SCENE|GESTURE|BOARD)\s*[:\uFF1A][^\n\r]*/gi;
+const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/[\u200b-\u200f\u2060\ufeff]/g, "").replace(MARKER_STRIP, "") : t);
+const GESTURE_RE = /^GESTURE:[ \t]*([a-z_]{1,16})[ \t]*$/m;
+const BOARD_RE = /BOARD:\s*([^\n]{1,120})$/m;
+
+/** Optional gesture (our fixed list only) and chalkboard phrase (sanitised like the reply; changed or empty = none). */
+export function extractActs(blocks: unknown, truncated = false): { gesture?: string; board?: string } {
+  const out: { gesture?: string; board?: string } = {};
+  if (!Array.isArray(blocks) || truncated) return out; // a cut-off last line is never shown
+  for (const b of blocks.slice(0, 8)) {
+    if (!b || typeof b !== "object" || (b as { type?: unknown }).type !== "text") continue;
+    const t = (b as { text?: unknown }).text;
+    if (typeof t !== "string" || t.length >= 2000) continue;
+    const g = GESTURE_RE.exec(t)?.[1];
+    if (g && !out.gesture && (GESTURES as readonly string[]).includes(g)) out.gesture = g;
+    const m = BOARD_RE.exec(t)?.[1]?.trim();
+    if (m && !out.board) {
+      const c = sanitizeSay(m, BOARD_MAX);
+      if (c && c === m && Array.from(m).length <= BOARD_MAX && !unsafeOutput(c) && !looksLikeNarration(c) && !/@|\d{5,}|\d[\d\s-]{6,}\d/.test(c)) out.board = c;
+    }
+  }
+  return out;
+}
 
 /** The optional picture: one SCENE line, parsed as JSON and passed through parseFrame (own ids only). Anything else = no picture. */
 export function extractScene(blocks: unknown): Record<string, unknown> | undefined {

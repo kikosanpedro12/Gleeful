@@ -72,7 +72,7 @@ export default function ClassroomHero() {
     try {
       const res = await fetch(TASTE_ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body) });
       if (res.ok) {
-        const j = (await res.json()) as { reply?: unknown; turnsLeft?: unknown; scene?: unknown };
+        const j = (await res.json()) as { reply?: unknown; turnsLeft?: unknown; scene?: unknown; gesture?: unknown; board?: unknown };
         if (typeof j.reply !== "string" || !j.reply) throw new Error("empty");
         const reply = j.reply;
         setLines((l) => [...l, { role: "visitor", text: q }, { role: "teacher", text: reply }]);
@@ -81,6 +81,7 @@ export default function ClassroomHero() {
         setText("");
         const f = j.scene ? parseFrame(j.scene) : null; // the browser re-checks: our own ids only
         if (f?.ok) useSession.setState({ scene: { id: Date.now(), frame: f.frame } }); else session.closeScene();
+        session.tasteActs({ gesture: j.gesture, board: j.board });
         const code = elevenAvailable();
         if (code) voice.current = speakElevenLine(reply, teacher, code, { onFirstSound: () => {}, onEnd: () => {}, onFail: () => {} });
         if (left <= 0) timer.current = setTimeout(() => setOver(true), 12000);

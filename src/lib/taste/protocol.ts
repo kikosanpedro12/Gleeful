@@ -7,6 +7,8 @@ export const TASTE_ENDPOINT = "/api/taste";
 export const TASTE_MAX_TURNS = 3;
 /** Longest question accepted, in characters. */
 export const TASTE_MAX_INPUT = 140;
+/** Longest chalkboard phrase the landing tutor may write. */
+export const BOARD_MAX = 40;
 export const TASTE_COOKIE = "gl_taste";
 export const TASTE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
@@ -27,6 +29,9 @@ export interface TasteResponse {
   turnsLeft: number;
   /** An optional picture for the chalkboard: already validated by parseFrame on the server, re-validated by the client. */
   scene?: Record<string, unknown>;
+  /** Optional body language and chalkboard text. Validated on the server and again in the browser. */
+  gesture?: string;
+  board?: string;
 }
 
 export interface TasteStatus {

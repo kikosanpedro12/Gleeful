@@ -298,3 +298,13 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
   .lp-class .lp-fine-print { font-size: .8rem; }
   .lp-board .story-view { height: 64px; }
 }
+
+/* 200% text zoom on a phone (about 195 CSS px wide): reflow instead of sideways scroll (WCAG 1.4.10) */
+@media (max-width: 400px) {
+  .lp-mark { padding: 6px 10px 8px; }
+  .lp-nav .lp-btn-nav { padding: 0 12px; }
+  .lp-h2 { overflow-wrap: anywhere; hyphens: auto; }
+  .lp-pick { grid-template-columns: minmax(0, 1fr); }
+  .lp-pick .lp-btn { min-width: 0; padding: 0 12px; }
+}
+@media (max-width: 280px) { .lp-nav .lp-btn-nav { display: none; } .lp-nav .lp-signin { margin-left: 0; } }
