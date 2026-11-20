@@ -4,7 +4,8 @@
  * Nothing model-written is executed as code; no remote URLs are accepted.
  */
 import { parseWidget, WIDGET_KINDS, type WidgetSpec } from "@/lib/widgets/spec";
-import { frameToArgs, parseFrame, propIds, figureIds, SETTING_IDS, MAX_PROPS, type StoryFrame } from "@/lib/scene/frame";
+import { FIGURES } from "@/lib/assets/figures";
+import { frameToArgs, parseFrame, propIds, figureIds, SETTING_IDS, MAX_PROPS, PLACEMENTS, VIEWS, type StoryFrame } from "@/lib/scene/frame";
 import { isWorldId, WORLD_IDS, type CommandContext, type WorldId } from "@/lib/worlds/registry";
 
 export const GESTURES = ["wave", "nod", "thumbs_up", "shrug", "think", "open_hands"] as const;
@@ -152,12 +153,12 @@ export function toolsFor(ctx: CommandContext) {
   if (ctx.world !== "transit") {
     const figs = figureIds();
     tools.push(tool("showScene",
-      "Show a small pretend picture (a diorama) of a place or time for a story about people, events or places, e.g. Napoleon's France. Choose a setting, a short era caption, up to " + MAX_PROPS + " props from the list, and a figure only if one is listed. Do not use it for skills like algebra. Never invent ids.",
+      "Show a small pretend picture (a diorama) of a place or time for a story about people, events or places, e.g. Napoleon's France. Choose a setting, a short era caption, up to " + MAX_PROPS + " props from the list, and, when the story is about a person on the list, that figure. A figure is a pretend 3D character (or a name card for some people); say who they were in words too. You may choose where the figure stands (placement) and how close the camera is (view): use closeup for a detail of a face, outfit or tool, full to see the whole person. Do not use it for skills like algebra. Never invent ids.",
       {
         setting: { type: "string", enum: [...SETTING_IDS] },
         era: { type: "string", description: "short caption, e.g. 'France, about 1805'" },
         props: { type: "array", items: { type: "string", enum: propIds() }, maxItems: MAX_PROPS },
-        ...(figs.length ? { figure: { type: "string", enum: figs } } : {}),
+        ...(figs.length ? { figure: { type: "string", enum: figs, description: "Who the story is about. " + FIGURES.map((f) => f.id + (f.tier === "card" ? " (name card only, no picture)" : f.tier === "portrait" ? " (credited portrait)" : " (3D character)")).join(", ") }, placement: { type: "string", enum: [...PLACEMENTS], description: "Only moves a 3D character; no effect on a name card." }, view: { type: "string", enum: [...VIEWS], description: "closeup only zooms a 3D character; no effect on a name card." } } : {}),
       }, ["setting", "era"]));
     tools.push(tool("hideScene", "Take the pretend picture off the screen.", {}, []));
   }

@@ -287,8 +287,13 @@ html:has(.vlab), body:has(.vlab) { overflow:visible; height:auto; min-height:100
 .story-view { height:200px; border-radius:16px; overflow:hidden; }
 .story-figure { margin:8px 0 0; display:flex; gap:10px; align-items:center; }
 .story-figure img { height:84px; width:auto; border-radius:8px; }
-.story-figure figcaption, .story-note { font-size:.78rem; color:#5a4a36; margin:0; }
+.story-figure figcaption, .story-note { font-size:.82rem; color:#5a4a36; margin:0; }
 .story-era { margin:6px 0 0; font-size:.95rem; }
+.story-card { margin:8px 0 0; padding:8px 10px; border-radius:12px; background:#fff7e6; border:1px solid #e6d3ae; font-size:.95rem; line-height:1.3; color:#3b2f1e; }
+.story-card span { color:#5a4a36; font-size:.85rem; margin-left:4px; }
+.story-card p { margin:2px 0 0; }
+.story-card .story-note { font-size:.82rem; }
+.widget-close + .story-card { margin-top:0; padding-right:48px; } /* name card alone: keep text clear of the close button */
 @media (max-width:640px) { .story-view { height:150px; } }
 .widget { position:relative; background:rgba(255,250,241,.97); border-radius:22px; padding:12px 14px 12px; max-width:560px; width:100%; box-shadow:0 8px 28px rgba(60,40,10,.2); }
 .widget-close { position:absolute; top:2px; right:2px; width:44px; height:44px; z-index:1; background:transparent; box-shadow:none; }

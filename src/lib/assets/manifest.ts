@@ -1,9 +1,10 @@
 /**
  * Asset library manifest: the only 3D parts a scene may use. The brain picks ids from here;
  * unknown ids are rejected. Every entry needs a matching row in ASSET_LICENSES.md first.
- * Poly Haven starter set (CC0, realistic) added 18 Nov 2026.
+ * Poly Haven starter set (CC0, realistic) added 18 Nov 2026. Tripo-generated animals, space and nature models
+ * (stylised, ids start with tp_) added 21 Nov 2026. A scene uses one look only, so a scene takes ph_ props or tp_ props, never both.
  */
-export type AssetSource = "polyhaven-cc0" | "quaternius-qal" | "own";
+export type AssetSource = "polyhaven-cc0" | "quaternius-qal" | "own" | "tripo-generated";
 export type Look = "realistic" | "stylized";
 
 export interface Asset {
@@ -41,13 +42,27 @@ export const ASSETS: readonly Asset[] = [
   { id: "ph_wooden_bowl_01", name: "Wooden bowl", source: "polyhaven-cc0", sourceUrl: "https://polyhaven.com/a/wooden_bowl_01", look: "realistic", file: "ph/wooden_bowl_01.glb", kb: 388, tags: ["kitchen", "food"] },
   { id: "ph_wooden_bucket_01", name: "Wooden bucket", source: "polyhaven-cc0", sourceUrl: "https://polyhaven.com/a/wooden_bucket_01", look: "realistic", file: "ph/wooden_bucket_01.glb", kb: 269, tags: ["water", "farm", "container"] },
   { id: "ph_wooden_crate_02", name: "Wooden crate", source: "polyhaven-cc0", sourceUrl: "https://polyhaven.com/a/wooden_crate_02", look: "realistic", file: "ph/wooden_crate_02.glb", kb: 259, tags: ["market", "container", "storage"] },
+
+  // Tripo AI models (Kiko's Pro account, 60k triangles each). Stylised look: do not mix with the ph_ realistic props.
+  { id: "tp_orca", name: "Orca (killer whale)", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/orca.glb", kb: 1040, tags: ["animals", "ocean", "whale", "sea", "mammal"] },
+  { id: "tp_elephant", name: "Elephant", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/elephant.glb", kb: 1055, tags: ["animals", "africa", "asia", "mammal", "land"] },
+  { id: "tp_t_rex", name: "Tyrannosaurus rex", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/t-rex.glb", kb: 1041, tags: ["dinosaur", "prehistoric", "fossil", "reptile"] },
+  { id: "tp_butterfly", name: "Monarch butterfly", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/butterfly.glb", kb: 1083, tags: ["insect", "animals", "life cycle", "migration", "nature"] },
+  { id: "tp_shark", name: "Great white shark", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/shark.glb", kb: 1060, tags: ["animals", "ocean", "sea", "fish"] },
+  { id: "tp_tiger", name: "Tiger", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/tiger.glb", kb: 1043, tags: ["animals", "asia", "cat", "mammal", "jungle"] },
+  { id: "tp_tree_frog", name: "Green tree frog", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/tree-frog.glb", kb: 1062, tags: ["animals", "amphibian", "life cycle", "rainforest", "pond"] },
+  { id: "tp_tarsier", name: "Tarsier", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/tarsier.glb", kb: 1094, tags: ["animals", "philippines", "primate", "nocturnal", "forest"] },
+  { id: "tp_astronaut", name: "Astronaut", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/astronaut.glb", kb: 1085, tags: ["space", "science", "explorer", "moon"] },
+  { id: "tp_rocket", name: "Rocket", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/rocket.glb", kb: 1084, tags: ["space", "science", "launch", "flight"] },
+  { id: "tp_volcano", name: "Volcano", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/volcano.glb", kb: 1043, tags: ["geology", "earth", "eruption", "lava", "mountain"] },
+  { id: "tp_planets", name: "Sun and planets", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/planets.glb", kb: 971, tags: ["space", "solar system", "astronomy", "planets"] },
 ];
 
 const byId = new Map(ASSETS.map((a) => [a.id, a]));
 export const assetById = (id: string): Asset | undefined => byId.get(id);
 
 export const MAX_ASSET_KB = 1500;
-export const MAX_SCENE_KB = 3000;
+export const MAX_SCENE_KB = 4500; // props plus the figure model, downloaded when a story picture opens
 
 /** A scene may use one look only, and stay under the size budget. Returns an error string or null. */
 export function checkAssets(ids: readonly string[]): string | null {

@@ -178,3 +178,12 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Figure plumbing already exists (`frame.figure`, `StoryPanel` card, `FIGURES` empty). Next: fetch Napoleon (David, 1812) + Rizal portraits from Wikimedia Commons via Chrome → D:\Downloads → stage, add ASSET_LICENSES rows, fill FIGURES; then placements (wall/beside/hand/zoom) + zoom regions + teacher reaction, with hostile-id and interrupt tests.
 - Blocked at 20:30: shell can't reach Wikimedia; WebFetch needed approval nobody answered. Needs Kiko back.
 - Known: landing-break.mjs has 3 flaky checks (also on HEAD); landing-a11y.mjs fails 200%-zoom phone (78px sideways scroll, pre-existing).
+
+
+## 21 Nov (night) — Tripo batch 1 wired, figure tiers live in code
+- 17 Tripo models generated (55 credits each, 935 spent, about 11,000 left), exported (free), shrunk to 60k triangles / about 1.1 MB each with the new target-based `scripts/shrink-glb.mjs`, licence rows added. 12 are props (`tp_*`, stylised look, never mixed with `ph_*`), 5 are people.
+- Figures: `src/lib/assets/figures.ts` now has tiers model / portrait / card. Napoleon, Bonifacio, Lapu-Lapu, Magellan, Curie, Newton are 3D characters; Hawking, Einstein, da Vinci are name cards (no picture). Portrait tier is built but empty.
+- showScene takes `figure`, `placement` (left/center/right) and `view` (full/closeup): the model picks words, code places and aims the camera. Scene budget raised 3000 → 4500 KB and now counts the figure model. Prompt tells the brain to use one look per scene and at most two props with a figure.
+- Tests: 1263 passed; `scripts/scene-smoke.mjs` extended (figure, zoom, card, hostile ids), all pass with no CSP errors.
+- Exports gotcha: the Tripo export dialog sometimes needs a second click; exports are free, only Generate spends credits. Downloads land in `D:\Downloads`.
+- Open: Rizal, teacher reacts to the figure, brain_signals for coverage gaps (needs Kiko's OK on what it logs).

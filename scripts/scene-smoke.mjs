@@ -51,11 +51,34 @@ const cb = await page.$eval('[data-testid="story"] button', (e) => { const r = e
 check("close button >=44px", cb[0] >= 44 && cb[1] >= 44, cb.join("x"));
 await page.click('[data-testid="story"] button'); await sleep(300);
 check("close works", !(await story()));
+// ---- figures: 3D character, zoom, move, name card (decision 19-21 Nov)
+const figBox = () => page.$eval('[data-testid="story-card"]', (e) => ({ tier: e.getAttribute("data-tier"), text: e.textContent })).catch(() => null);
+r = await call("showScene", { setting: "study", era: "France, about 1805", props: ["ph_pocket_watch"], figure: "napoleon", placement: "right", view: "full" });
+check("figure scene accepted", r.scene && !r.rej, JSON.stringify(r));
+await sleep(7000);
+const c1 = await figBox();
+check("model figure: card with name, years, pretend-likeness note", c1?.tier === "model" && /Napoleon Bonaparte/.test(c1.text) && /1769/.test(c1.text) && /not a real photo/.test(c1.text), JSON.stringify(c1));
+check("figure GLB loaded 200", glb.some((g) => /^200 tripo\/napoleon/.test(g)), glb.join(","));
+await page.screenshot({ path: `${OUT}${TAG}-scene-figure-full.png` });
+r = await call("showScene", { setting: "study", era: "France, about 1805", props: [], figure: "napoleon", placement: "left", view: "closeup" });
+check("same figure moved and zoomed (a second showScene replaces the first)", r.scene && !r.rej, JSON.stringify(r));
+await sleep(2500);
+await page.screenshot({ path: `${OUT}${TAG}-scene-figure-closeup.png` });
+r = await call("showScene", { setting: "study", era: "England, 2000s", figure: "stephen_hawking" });
+await sleep(1500);
+const c2 = await figBox();
+check("name card figure: no model, card only", c2?.tier === "card" && /Stephen Hawking/.test(c2.text) && !/not a real photo/.test(c2.text), JSON.stringify(c2));
+await page.screenshot({ path: `${OUT}${TAG}-scene-figure-card.png` });
+r = await call("showScene", { setting: "ancient_city", era: "Mactan, 1521", props: ["tp_orca"], figure: "lapu_lapu" });
+await sleep(6000);
+check("tp_ props and a figure together", r.scene && !r.rej, JSON.stringify(r));
+check("tripo prop GLB loaded 200", glb.some((g) => /^200 tripo\/orca/.test(g)), glb.join(","));
+await page.evaluate(() => window.__ctl.closeScene()); await sleep(300);
 // hostile
 for (const [n, a] of [
   ["unknown prop", { ...good, props: ["nope"] }], ["url prop", { ...good, props: ["https://evil.example/x.glb"] }],
   ["proto setting", { setting: "__proto__", era: "x" }], ["constructor setting", { setting: "constructor", era: "x" }],
-  ["7 props", { ...good, props: Array(7).fill("ph_pocket_watch") }], ["figure unknown", { ...good, figure: "napoleon" }],
+  ["7 props", { ...good, props: Array(7).fill("ph_pocket_watch") }], ["figure unknown", { ...good, figure: "nobody" }], ["figure proto", { ...good, figure: "__proto__" }], ["placement bad", { ...good, figure: "napoleon", placement: "behind" }], ["view bad", { ...good, figure: "napoleon", view: "../x" }],
   ["era object", { ...good, era: { a: 1 } }], ["era empty", { ...good, era: "  " }], ["props string", { ...good, props: "ph_pocket_watch" }],
   ["extra coords ignored", { ...good, x: 5, url: "http://e.x" }],
 ]) {

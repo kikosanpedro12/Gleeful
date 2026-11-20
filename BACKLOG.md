@@ -4,8 +4,8 @@ Rule: pick the first unblocked item, build it with the agent workflow (tester + 
 ## Now
 - [ ] ELEVEN_PUBLIC on (set in Vercel; redeploy needs Kiko's passkey) → test spoken answer, pick real Leo/Mia voices.
 - [ ] `tests/evals/` + `npm run evals` (docs/BRAIN_LEARNING.md step 1).
-- [ ] Figure tiers: 3D character → portrait → name card; napoleon.glb wired as first character (decision 19 Nov: 3D characters; painting only as fallback).
-- [ ] Figures batch 1 via Tripo (Rizal, Magellan, Marie Curie, Newton), shrink, licence rows.
+- [x] Figure tiers: 3D character → portrait → name card; napoleon.glb wired as first character (21 Nov). Placement (left/center/right) and view (full/closeup) are validated words; code places. Still open: teacher reacts to the figure, compare two figures, wall/hand placements, portrait tier has no rows yet.
+- [x] Tripo batch 1 (17 models: 12 animals/space/nature props tp_*, 5 people) shrunk, licensed, wired. Rizal added (realistic draft, 694 KB). Next batch: driven by what kids ask.
 - [ ] Portrait fallback: Wikimedia public-domain files (needs approval to browse), licence rows.
 
 ## Next

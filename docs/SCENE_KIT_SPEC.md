@@ -35,7 +35,7 @@ Fallback in every mode: speech + text board, and log "could not visualize: X".
 ### What a frame is (a scene spec, data only)
 `{ mode, environment, era/place label, props[], figure?, backdrop, narration beats[], question? }`
 - `environment` and every `prop` id must exist in the asset library manifest (validated server-side; unknown ids rejected, never loaded).
-- `figure`: historical people are shown as a public-domain painting/portrait in a frame with a credit line, never a made-up 3D face. No likenesses of living people. Leo and Mia are the only animated characters.
+- `figure`: SUPERSEDED 21 Nov 2026. A historical person is a pretend 3D character first (tier "model"), a credited public-domain portrait only when we have no character (tier "portrait"), and a name card with no picture for recent or living people or anyone we have not made (tier "card"). No side-by-side painting. The model picks `figure`, `placement` (left/center/right) and `view` (full/closeup) from fixed words; code places and aims the camera. Leo and Mia are the only animated characters. See src/lib/assets/figures.ts.
 - Every story scene carries a visible label: "A pretend picture to help us imagine, not the real thing."
 - No model-written code, HTML or remote URLs. The model only picks ids.
 
@@ -50,4 +50,4 @@ Note: the build sandbox cannot download from polyhaven.com or quaternius.com; fi
 Which 30 starter assets; who fetches them; painting sources for historical figures (Wikimedia Commons public-domain, credited).
 
 ## Update 19 Nov (founder decision)
-Historical people are shown as a **3D character** in the era scene (not only a painting). One character look for all people, not low-poly; a credited public-domain painting may sit beside it as the reference. Source of characters is open (Quaternius stylised, Mixamo/Sketchfab with licence check, or Blender); each needs an ASSET_LICENSES.md row first, and the figures manifest stays empty until then. Also built 19 Nov: `showScene`/`hideScene`, the display-only graph widget, per-asset cap 1,500 KB and per-scene cap 3,000 KB. The full, current spec is the project doc `10_SCENE_KIT_SPEC.md`.
+Historical people are shown as a **3D character** in the era scene (not only a painting). One character look for all people, not low-poly; a credited public-domain painting may sit beside it as the reference. Source of characters is open (Quaternius stylised, Mixamo/Sketchfab with licence check, or Blender); each needs an ASSET_LICENSES.md row first, and the figures manifest stays empty until then. Also built 19 Nov: `showScene`/`hideScene`, the display-only graph widget, per-asset cap 1,500 KB and per-scene cap 3,000 KB (raised to 4,500 KB on 21 Nov; props plus the figure model). The full, current spec is the project doc `10_SCENE_KIT_SPEC.md`.

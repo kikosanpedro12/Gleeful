@@ -104,7 +104,7 @@ describe("asset manifest", () => {
     expect(assetById("__proto__")).toBeUndefined();
     expect(checkAssets(["nope"])).toBe("unknown asset id");
     expect(checkAssets([])).toBeNull();
-    expect(MAX_SCENE_KB).toBe(3000);
+    expect(MAX_SCENE_KB).toBe(4500);
   });
 });
 
@@ -142,7 +142,7 @@ describe("story scene frame", () => {
     expect(parseFrame({ ...ok, setting: "constructor" }).ok).toBe(false);
     expect(parseFrame({ ...ok, props: ["https://evil.example/a.glb"] }).ok).toBe(false);
     expect(parseFrame({ ...ok, props: ["nope"] }).ok).toBe(false);
-    expect(parseFrame({ ...ok, figure: "napoleon" }).ok).toBe(false);
+    expect(parseFrame({ ...ok, figure: "nobody" }).ok).toBe(false);
     expect(parseFrame({ ...ok, props: Array(7).fill("ph_jug_01") }).ok).toBe(false);
     expect(parseFrame({ ...ok, era: "" }).ok).toBe(false);
   });
@@ -179,7 +179,7 @@ describe("graph widget", () => {
 describe("scene size and failure safety", () => {
   it("every asset is within the per-asset cap and a six-heavy-prop scene is refused", () => {
     expect(ASSETS.every((a) => a.kb <= MAX_ASSET_KB)).toBe(true);
-    expect(checkAssets(["ph_boulder_01", "ph_potted_plant_01", "ph_moon_rock_01"])).toBe("scene too large");
+    expect(checkAssets(["ph_boulder_01", "ph_potted_plant_01", "ph_rock_moss_set_01", "ph_vintage_microscope", "ph_vintage_grandfather_clock_01"])).toBe("scene too large");
   });
 });
 

@@ -3,7 +3,7 @@
  * ids and short text only; every id must exist in our own manifests, and no coordinates, code, markup or URLs are
  * accepted. Layout is decided here, by code. Pure data, safe on client and server.
  */
-import { ASSETS, assetById, checkAssets } from "@/lib/assets/manifest";
+import { ASSETS, assetById, checkAssets, MAX_SCENE_KB } from "@/lib/assets/manifest";
 import { figureById, FIGURES } from "@/lib/assets/figures";
 
 export const SETTINGS = {
@@ -22,12 +22,21 @@ export const SETTING_IDS = Object.keys(SETTINGS) as SettingId[];
 export const MAX_PROPS = 6;
 export const PRETEND_LABEL = "A pretend picture to help us imagine, not the real thing.";
 
+/** Where a 3D figure stands and how close the camera is. The model picks one of these words; code does the rest. */
+export const PLACEMENTS = ["left", "center", "right"] as const;
+export const VIEWS = ["full", "closeup"] as const;
+export type Placement = (typeof PLACEMENTS)[number];
+export type View = (typeof VIEWS)[number];
+
 export interface StoryFrame {
   setting: SettingId;
   /** Short plain-text caption, e.g. "France, about 1805". */
   era: string;
   props: string[];
   figure?: string;
+  /** Only used with a 3D figure. Default: right, full. */
+  placement?: Placement;
+  view?: View;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -60,10 +69,26 @@ export function parseFrame(args: unknown): FrameResult {
     if (typeof args.figure !== "string" || !figureById.has(args.figure)) return { ok: false, error: "unknown figure id" };
     figure = args.figure;
   }
-  return { ok: true, frame: { setting: setting as SettingId, era, props, ...(figure ? { figure } : {}) } };
+  let placement: Placement | undefined;
+  if (args.placement !== undefined) {
+    if (typeof args.placement !== "string" || !(PLACEMENTS as readonly string[]).includes(args.placement)) return { ok: false, error: `placement must be one of ${PLACEMENTS.join(", ")}` };
+    placement = args.placement as Placement;
+  }
+  let view: View | undefined;
+  if (args.view !== undefined) {
+    if (typeof args.view !== "string" || !(VIEWS as readonly string[]).includes(args.view)) return { ok: false, error: `view must be one of ${VIEWS.join(", ")}` };
+    view = args.view as View;
+  }
+  // The figure's model downloads with the picture, so it counts toward the same budget as the props.
+  const fig = figure ? figureById.get(figure) : undefined;
+  if (fig?.kb && props.reduce((n, id) => n + (assetById(id)?.kb ?? 0), 0) + fig.kb > MAX_SCENE_KB) return { ok: false, error: "scene too large" };
+  return { ok: true, frame: { setting: setting as SettingId, era, props, ...(figure ? { figure } : {}), ...(placement ? { placement } : {}), ...(view ? { view } : {}) } };
 }
 
-export const frameToArgs = (f: StoryFrame): Record<string, unknown> => ({ setting: f.setting, era: f.era, props: [...f.props], ...(f.figure ? { figure: f.figure } : {}) });
+export const frameToArgs = (f: StoryFrame): Record<string, unknown> => ({
+  setting: f.setting, era: f.era, props: [...f.props],
+  ...(f.figure ? { figure: f.figure } : {}), ...(f.placement ? { placement: f.placement } : {}), ...(f.view ? { view: f.view } : {}),
+});
 
 /** For the tool schema and the prompt: the ids the model may use. */
 export const propIds = () => ASSETS.map((a) => a.id);
