@@ -193,8 +193,8 @@ describe("Filipino and language rules", () => {
   });
 });
 describe("language rule in prompt", () => {
-  it("tells the brain to match English, Filipino or Taglish", () => {
+  it("tells the brain to reply in any language the child uses", () => {
     const sys = buildSystem({ teacher: "leo", world: "classroom", session: 1, skills: [], history: [], hintsUsed: 0, input: { kind: "session_start" } } as never);
-    expect(JSON.stringify(sys)).toMatch(/Filipino \(Tagalog\), or Taglish/);
+    expect(JSON.stringify(sys)).toMatch(/any language/);
   });
 });

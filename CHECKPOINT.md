@@ -158,3 +158,9 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Still open: painting figures, privacy page vendor wording, curriculum gaps, live launch checks.
 - Public ElevenLabs voice taste (landing "ask" box, demo lesson, consenting parents) built behind `ELEVEN_PUBLIC=on` (OFF). Go-live precondition: credit cap on the ElevenLabs key (only real ceiling) + training opt-out in the account. Caps: anon 700/addr, 6,000 pool, parent 3,000 per day.
 - 20 Nov: brain told to reply in the child's language (English, Filipino, Taglish); Filipino profanity/self-harm words added to output moderation. NOT verified: quality of Filipino replies, Filipino voice (ElevenLabs multilingual / browser fil-PH), child-input moderation in Filipino. Needs a Filipino-speaking reviewer.
+
+
+## 20 Nov (evening) — Supabase + Vercel check
+- Supabase (ref ptuglrngmovoryqqmtsw): all 3 migrations already live (kindergarten check 0-12, parental_consents + RLS policies verified). Revoked EXECUTE on public.rls_auto_enable() from public/anon/authenticated; auto-RLS still works (probe table got RLS, then dropped). Security advisor now only shows leaked-password protection (Pro-only feature). Site URL = https://getgleeful.com; redirect URLs set; email provider on, confirm email on, anonymous sign-ins off. **Custom SMTP still NOT set** (needs an email provider + DNS: founder).
+- Vercel env vars present (9): ANTHROPIC_API_KEY, BRAIN_TESTER_CODE, NEXT_PUBLIC_BRAIN, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, ELEVENLABS_API_KEY, DEEPGRAM_API_KEY, TESTER_INVITES. Not set on purpose: ELEVEN_PUBLIC (voice taste off), SITE_INDEXING (launch).
+- Prompt now tells the brain to reply in any language the child uses (typecheck + 797 tests pass).
