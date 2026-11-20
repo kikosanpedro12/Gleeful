@@ -164,3 +164,9 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Supabase (ref ptuglrngmovoryqqmtsw): all 3 migrations already live (kindergarten check 0-12, parental_consents + RLS policies verified). Revoked EXECUTE on public.rls_auto_enable() from public/anon/authenticated; auto-RLS still works (probe table got RLS, then dropped). Security advisor now only shows leaked-password protection (Pro-only feature). Site URL = https://getgleeful.com; redirect URLs set; email provider on, confirm email on, anonymous sign-ins off. **Custom SMTP still NOT set** (needs an email provider + DNS: founder).
 - Vercel env vars present (9): ANTHROPIC_API_KEY, BRAIN_TESTER_CODE, NEXT_PUBLIC_BRAIN, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, ELEVENLABS_API_KEY, DEEPGRAM_API_KEY, TESTER_INVITES. Not set on purpose: ELEVEN_PUBLIC (voice taste off), SITE_INDEXING (launch).
 - Prompt now tells the brain to reply in any language the child uses (typecheck + 797 tests pass).
+
+## 20 Nov (night) — Classroom landing live
+- `/` is now the 3D classroom: pick Leo or Mia, 3 tries per person (signed httpOnly `gl_taste` cookie; clearing cookies resets it, IP/global caps and the $20 Anthropic cap still bound cost), pretend picture on the chalkboard (validated SCENE line), then a hard paywall ("Start 7-day free trial", nothing charged, payments not on). /pricing and /faq are separate pages, noindex for now (CLAUDE.md: only `/` indexed).
+- Tested: 832 unit tests, mutate 28/28, landing smoke 19/19 desktop + phone, tester + reviewer + final QA agents. Live: getgleeful.com shows it; /api/taste says available.
+- NOT verified: real model replies with scenes, ElevenLabs voice (ELEVEN_PUBLIC off), real-device speed.
+- Next: signed-in sidebar/burger, per-lesson summaries table (RLS), then Tripo figures.
