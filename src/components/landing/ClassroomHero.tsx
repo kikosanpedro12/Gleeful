@@ -39,6 +39,7 @@ export default function ClassroomHero() {
   const id = useRef(randomId());
   const voice = useRef<ElevenLine | null>(null);
   const flash = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busyNote, setBusyNote] = useState(false);
 
@@ -60,7 +61,7 @@ export default function ClassroomHero() {
   }, []);
 
   /** Only the chosen tutor stays on stage. Status is set on the store directly: no lesson provider runs on the landing. */
-  function pick(t: Teacher) { setTeacher(t); session.chooseTeacher(t); useSession.setState({ status: "connected", world: "classroom", boardText: "Ask me anything!" }); }
+  function pick(t: Teacher) { setTeacher(t); setTimeout(() => document.getElementById("class-q")?.focus({ preventScroll: true }), 50); session.chooseTeacher(t); useSession.setState({ status: "connected", world: "classroom", boardText: "Ask me anything!" }); }
 
   async function send(raw: string) {
     const q = raw.trim();
@@ -100,7 +101,10 @@ export default function ClassroomHero() {
         <div ref={flash} className="flash" aria-hidden />
       </div>
       <div className="lp-class-ui">
-        <h1 id="class-h" className="lp-class-h">{name ? `Ask ${name} anything.` : "Meet your tutor."}</h1>
+        <div className="lp-class-head">
+          <h1 id="class-h" className="lp-class-h">{name ? `Ask ${name} anything.` : "Meet your tutor."}</h1>
+          {!name && <p className="lp-class-sub">A real AI tutor for kids. Pick one and ask away.</p>}
+        </div>
 
         {phase === "unavailable" && (
           <div className="lp-card" data-testid="taste-unavailable">
@@ -122,7 +126,7 @@ export default function ClassroomHero() {
         )}
 
         {phase === "live" && !over && teacher && (
-          <div className="lp-card" data-testid="taste-live">
+          <div className="lp-card" data-testid="taste-live" ref={cardRef}>
             <div className="lp-say" aria-live="polite" aria-atomic="true">
               {busy ? <p data-testid="taste-thinking" className="lp-wait">{name} is thinking…</p>
                 : last ? <p data-testid="taste-reply"><b>{name}:</b> {last.text}</p>
@@ -147,7 +151,7 @@ export default function ClassroomHero() {
         )}
 
         {over && (
-          <div className="lp-card lp-paywall" data-testid="paywall">
+          <div className="lp-card lp-paywall" data-testid="paywall" role="region" aria-label="Keep learning" tabIndex={-1} ref={(el) => { el?.focus({ preventScroll: true }); }}>
             <h2 className="lp-paywall-h">{name ?? "Your tutor"} has so much more to show you.</h2>
             <p>Keep going with the same tutor: live voice, pictures on the board, and a parent view of what stuck.</p>
             <a className="lp-btn lp-btn-main" href="/sign-in" data-testid="start-trial">Start 7-day free trial</a>

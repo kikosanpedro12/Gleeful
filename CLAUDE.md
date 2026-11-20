@@ -5,7 +5,7 @@ Product name: **Gleeful** (chosen 13 Nov 2026; quick USPTO + Google screen clean
 Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHITECTURE.md → SECURITY.md. Workflow: docs/AGENT_WORKFLOW.md. **Before any build, test or review: read docs/AGENT_LESSONS.md** (recurring mistakes and how each is enforced). Database: docs/DATABASE.md.
 
 - Founder is non-technical and wants short updates: status, decisions, real blockers, exact next action. Details go in files.
-- Every change goes through the **tester** and **reviewer** agents (`.claude/agents/`, run in parallel by the main session) before it is called done, then `/retro` folds new lessons into docs/AGENT_LESSONS.md.
+- Every change goes through the **tester** and **reviewer** agents (and the **designer** agent for anything visible: UI, UX, accessibility) (`.claude/agents/`, run in parallel by the main session) before it is called done, then `/retro` folds new lessons into docs/AGENT_LESSONS.md.
 - Agents running side by side use their own ports (3111 main, 3222 tester, 3333+ builders) and never `pkill` another agent's server. A second builder works in its own clone.
 - Crawlers: only the landing page (`/`) may be indexed (`src/lib/seo/site.ts`). /learn (the lesson app), /parent, /tester and /api are always noindex. Indexing is off until `SITE_INDEXING=on`.
 - Routes: `/` is the public landing page (`src/app/(marketing)`, `src/components/landing/`); the lesson app lives at `/learn`.

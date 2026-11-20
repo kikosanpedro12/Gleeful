@@ -211,35 +211,35 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 
 /* ---- Classroom landing: the 3D classroom is the page ---- */
 .lp-class { position: relative; min-height: 100svh; background: #f3e7d3; overflow: hidden; }
+.lp-class::after { content: ""; position: absolute; inset: auto 0 0 0; height: 45%; background: linear-gradient(to top, rgba(20,33,61,.45), rgba(20,33,61,0)); pointer-events: none; z-index: 2; }
 .lp-class-stage { position: absolute; inset: 0; }
 .lp-class-stage canvas { display: block; width: 100%; height: 100%; }
 .lp-class-still { position: absolute; inset: 0; background: linear-gradient(#f6e9d0, #d9bf94); }
-.lp-class-ui { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px; min-height: 100svh; padding: 96px 16px 28px; }
-.lp-class-ui .lp-card { margin-top: auto; }
-.lp-class-h { font-family: var(--display); font-size: clamp(1.6rem, 5vw, 2.8rem); margin: 0; text-align: center; text-shadow: 0 2px 0 rgba(255,255,255,.7); }
-.lp-card { width: min(560px, 100%); background: #fffaf1; border-radius: 22px; padding: 16px 18px; box-shadow: 0 10px 30px rgba(20, 33, 61, .25); display: grid; gap: 10px; }
+.lp-class-ui { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 100svh; padding: 92px 16px 28px; }
+.lp-class-head { background: rgba(255,250,241,.94); border-radius: 22px; padding: 12px 22px; text-align: center; box-shadow: 0 6px 20px rgba(20,33,61,.18); max-width: 640px; }
+.lp-class-h { font-family: var(--display); font-size: clamp(1.4rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0; }
+.lp-class-sub { margin: 4px 0 0; font-size: var(--t0); }
+.lp-card { margin-top: auto; width: min(600px, 100%); background: #fffaf1; border-radius: 24px; padding: 18px 20px; box-shadow: 0 14px 40px rgba(20,33,61,.35); display: grid; gap: 12px; }
 .lp-card p { margin: 0; }
-.lp-pick { display: flex; gap: 12px; }
-.lp-pick .lp-btn { flex: 1; }
-.lp-say { min-height: 3.2em; }
-.lp-wait { opacity: .7; }
-.lp-pip { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--night); margin-right: 5px; vertical-align: middle; }
+.lp-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lp-pick .lp-btn { min-height: 64px; font-size: var(--t1); }
+.lp-say { min-height: 3.2em; font-size: var(--t0); }
+.lp-wait { opacity: .75; }
+.lp-chip { min-height: 44px; }
+.lp-pip { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--night); margin-right: 5px; vertical-align: middle; }
 .lp-pip-on { background: var(--night); }
-.lp-taste-meta { font-size: var(--t-1); }
-.lp-paywall-h { font-family: var(--display); font-size: var(--t2); margin: 0; }
-.lp-fine-print { font-size: var(--t-1); opacity: .8; }
+.lp-taste-meta { font-size: var(--t-1); color: #3b4660; }
+.lp-paywall-h { font-family: var(--display); font-size: var(--t2); line-height: 1.15; margin: 0; }
+.lp-fine-print { font-size: var(--t-1); color: #3b4660; }
 .lp-link { font-weight: 700; }
-.lp-board { position: absolute; z-index: 4; top: 84px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); pointer-events: none; }
+.lp-board { position: absolute; z-index: 4; top: 92px; right: 24px; width: min(360px, calc(100% - 32px)); pointer-events: none; }
 .lp-board > * { pointer-events: auto; }
-@media (min-width: 900px) { .lp-board { left: auto; right: 24px; transform: none; } }
-@media (min-width: 900px) {
-  .lp-class-ui { align-items: flex-start; padding-left: 48px; }
-  .lp-class-h { text-align: left; font-size: clamp(1.6rem, 3vw, 2.4rem); max-width: 420px; }
-  .lp-class-ui .lp-card { margin-top: 0; width: 420px; }
-}
+.lp-board .story-view { height: 170px; }
 @media (max-width: 899px) {
-  .lp-board { top: 70px; width: min(300px, calc(100% - 24px)); }
+  .lp-board { left: 50%; right: auto; transform: translateX(-50%); top: 84px; width: min(300px, calc(100% - 24px)); }
   .lp-board .story-view { height: 110px; }
-  .lp-class-h { font-size: 1.3rem; margin-top: 150px; }
+  .lp-class:has(.story) .lp-class-head { visibility: hidden; }
+  .lp-class-head { padding: 8px 14px; }
+  .lp-class-sub { display: none; }
 }
-@media (max-width: 899px) { .lp-class:has(.story) .lp-class-h { visibility: hidden; } }
+@media (prefers-reduced-motion: no-preference) { .lp-btn { transition: transform .12s, box-shadow .12s; } }
