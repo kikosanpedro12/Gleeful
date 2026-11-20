@@ -170,3 +170,11 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Tested: 832 unit tests, mutate 28/28, landing smoke 19/19 desktop + phone, tester + reviewer + final QA agents. Live: getgleeful.com shows it; /api/taste says available.
 - NOT verified: real model replies with scenes, ElevenLabs voice (ELEVEN_PUBLIC off), real-device speed.
 - Next: signed-in sidebar/burger, per-lesson summaries table (RLS), then Tripo figures.
+
+## 20 Nov (evening) — Visual pass live, Tripo pipeline, figure plan
+- Landing visual pass pushed (4e137e2): mint classroom, pill/button states, "3 free tries" counter, phone card. Tester PASS, reviewer notes fixed. Vercel success.
+- Tripo: Napoleon-style figure shrunk 60 MB → 1.47 MB (`scripts/shrink-glb.mjs`, simplify + quantize; sloppy decimation tears UV seams, do not use). In `public/assets/tripo/napoleon.glb`, HELD (not wired): spec says historical people are credited paintings, not 3D faces.
+- Decision (Claude's recommendation, Kiko said "you be the judge"): real people = credited public-domain paintings; Tripo for props/artefacts/landmarks/animals only.
+- Figure plumbing already exists (`frame.figure`, `StoryPanel` card, `FIGURES` empty). Next: fetch Napoleon (David, 1812) + Rizal portraits from Wikimedia Commons via Chrome → D:\Downloads → stage, add ASSET_LICENSES rows, fill FIGURES; then placements (wall/beside/hand/zoom) + zoom regions + teacher reaction, with hostile-id and interrupt tests.
+- Blocked at 20:30: shell can't reach Wikimedia; WebFetch needed approval nobody answered. Needs Kiko back.
+- Known: landing-break.mjs has 3 flaky checks (also on HEAD); landing-a11y.mjs fails 200%-zoom phone (78px sideways scroll, pre-existing).
