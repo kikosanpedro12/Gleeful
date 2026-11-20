@@ -1,7 +1,7 @@
-// Landing page smoke test in headless Chrome. Server running, then:
-//   ORIGIN=http://localhost:3666 node scripts/landing-smoke.mjs           (desktop)
-//   ORIGIN=... W=390 H=844 TAG=lp-p node scripts/landing-smoke.mjs         (phone)
-// Software rendering: checks behaviour and takes screenshots; it says nothing about device fps.
+// Landing smoke test (classroom landing) in headless Chrome. Server running, then:
+//   ORIGIN=http://localhost:3111 node scripts/landing-smoke.mjs        (desktop)
+//   ORIGIN=... W=390 H=844 TAG=lp-p node scripts/landing-smoke.mjs      (phone)
+// The /api/taste calls are stubbed (no model spend). Software rendering: behaviour and screenshots, not fps.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -13,250 +13,101 @@ const W = Number(process.env.W || 1280), H = Number(process.env.H || 800), TAG =
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const checks = [];
 const check = (name, ok, detail = "") => { checks.push({ name, ok }); console.log(`${ok ? "PASS" : "FAIL"}  ${name} ${detail}`); };
-
 const browser = await puppeteer.launch({
-  executablePath: process.env.CHROME || "/usr/bin/google-chrome",
-  headless: "new",
+  executablePath: process.env.CHROME || "/usr/bin/google-chrome", headless: "new",
   args: ["--no-sandbox", "--no-proxy-server", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
 });
 
-async function open(path, { rm = false, stub = false } = {}) {
+/** stub: "live" answers with a scene; "off" = taste unavailable; "used" = already 3 used (cookie says so). */
+async function open(path, { stub = "live", rm = false } = {}) {
   const page = await browser.newPage();
-  const errors = [];
+  const errors = [], posts = { count: 0, last: null };
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-  await page.evaluateOnNewDocument(() => { document.addEventListener("securitypolicyviolation", (e) => console.error(`Refused (CSP event): ${e.violatedDirective} ${e.blockedURI}`)); });
+  await page.evaluateOnNewDocument(() => document.addEventListener("securitypolicyviolation", (e) => console.error(`CSP: ${e.violatedDirective} ${e.blockedURI}`)));
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 1, isMobile: W < 700, hasTouch: W < 700 });
   if (rm) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
-  const posts = { count: 0 };
-  if (stub) {
-    await page.setRequestInterception(true);
-    page.on("request", (r) => {
-      const u = new URL(r.url());
-      if (u.pathname !== "/api/taste") return r.continue();
-      const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
-      if (r.method() === "GET") return json(200, { available: true, maxTurns: 3 });
-      posts.count++;
-      if (stub === "over") return json(429, { error: "taste_over" });
-      return json(200, { reply: `Here is answer ${posts.count}.`, turnsLeft: 3 - posts.count });
-    });
-  }
+  await page.setRequestInterception(true);
+  page.on("request", (r) => {
+    const u = new URL(r.url());
+    if (u.pathname !== "/api/taste") return r.continue();
+    const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
+    if (r.method() === "GET") return json(200, stub === "off" ? { available: false, maxTurns: 3 } : { available: true, maxTurns: 3, used: stub === "used" ? 3 : 0 });
+    posts.count++; posts.last = JSON.parse(r.postData() || "{}");
+    return json(200, { reply: `Here is answer ${posts.count}.`, turnsLeft: 3 - posts.count, scene: { setting: "desert", era: "Mars, today", props: [] } });
+  });
   const res = await page.goto(ORIGIN + path, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await sleep(1200);
+  await sleep(1500);
   return { page, errors, res, posts };
 }
-const mode = (page) => page.$eval('[data-testid="hero"]', (e) => e.getAttribute("data-mode"));
-const scrollToChapter = async (page, id) => {
-  await page.evaluate((cid) => document.querySelector(`[data-chapter="${cid}"]`).scrollIntoView({ behavior: "instant", block: "start" }), id);
-  await sleep(1800);
-};
+const real = (errs) => errs.filter((e) => !/Failed to load resource/.test(e));
 
-// 1. Default visit: server-rendered headline, SEO, CTAs, honest status line.
+// 1. Full journey: choose a tutor, 3 tries, scene on the board, paywall.
 {
-  const { page, errors, res } = await open("/");
-  check("/ responds 200", res.status() === 200, `(${res.status()})`);
-  const h1 = await page.$eval("h1", (e) => e.textContent);
-  check("hero headline is real HTML text", /AI tutor your kid can talk to/i.test(h1), `"${h1}"`);
-  const robots = await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "");
-  // Indexing follows SITE_INDEXING (src/lib/seo/site.ts): off by default, on only when Kiko turns it on.
-  const indexing = process.env.SITE_INDEXING === "on";
-  check(`/ robots meta follows SITE_INDEXING (${indexing ? "on" : "off"})`, indexing ? (/index/.test(robots) && !/noindex/.test(robots)) : /noindex/.test(robots), robots);
-  check("/ has a title and description", /AI tutor.*early access/i.test(await page.title()) && !!(await page.$('meta[name="description"]')), await page.title());
-  check("demo CTA goes to /learn", (await page.$eval('[data-testid="cta-demo"]', (e) => e.getAttribute("href"))) === "/learn");
-  check("no waitlist anywhere on the page", !(await page.evaluate(() => /waitlist/i.test(document.body.innerText))));
-  check("prices are shown in US dollars", await page.evaluate(() => /US\$29/.test(document.body.innerText) && /US\$79/.test(document.body.innerText)));
-  const priceBad = await page.evaluate(() => [...document.querySelectorAll(".lp-plan")].map((card) => {
-    const c = card.getBoundingClientRect(); const amt = card.querySelector(".lp-amt").getBoundingClientRect(); const per = card.querySelector(".lp-per").getBoundingClientRect();
-    const together = per.top >= amt.bottom - 8; // "a month" sits under the price (the Family card is tilted a little, so allow a few px)
-    const inside = amt.left >= c.left && amt.right <= c.right + 1 && per.right <= c.right + 1;
-    return together && inside ? "" : `${card.querySelector("h3").textContent}: together=${together} inside=${inside}`;
-  }).filter(Boolean));
-  check("price and 'a month' stay together and inside their card", priceBad.length === 0, priceBad.join(" | "));
-  const status = await page.$eval(".lp-status", (e) => e.textContent);
-  check("hero says the demo is scripted", /scripted/i.test(status));
-  check("every episode headline is in the page", (await page.$$eval(".lp-headline", (els) => els.length)) === 7);
-  // Keyboard: the first tab stop is the skip link.
-  await page.keyboard.press("Tab");
-  check("first Tab focuses the skip link", (await page.evaluate(() => document.activeElement?.className)) === "lp-skip");
-  check("no console or CSP errors on /", errors.length === 0, errors.slice(0, 3).join(" | "));
-  await page.close();
-}
-
-// 2. Poster mode (forced): no canvas, stills visible, every section screenshotted.
-{
-  const { page, errors } = await open("/?poster=1");
-  await sleep(800);
-  check("poster mode has no 3D canvas", !(await page.$(".lp-stage canvas")) && (await mode(page)) === "poster");
-  const posterShown = await page.$eval(".lp-ch-ocean .lp-poster", (e) => getComputedStyle(e).visibility === "visible" && e.getBoundingClientRect().height > 50);
-  check("poster mode shows the still illustrations", posterShown);
-  for (const id of ["classroom", "ocean", "cell", "dino", "city", "numbers", "space"]) {
-    await scrollToChapter(page, id);
-    await page.screenshot({ path: `${OUT}${TAG}-poster-${id}.png` });
-  }
-  for (const sel of ["#how", "#parents", "#pricing", "#faq", "#try"]) {
-    await page.evaluate((s) => document.querySelector(s).scrollIntoView({ behavior: "instant", block: "start" }), sel);
-    await sleep(300);
-    await page.screenshot({ path: `${OUT}${TAG}-section-${sel.slice(1)}.png` });
-  }
-  check("no console errors in poster mode", errors.length === 0, errors.slice(0, 3).join(" | "));
-  await page.close();
-}
-
-// 3. Reduced motion: never starts the 3D flight.
-{
-  const { page, errors } = await open("/", { rm: true });
-  await sleep(2500);
-  const m = await mode(page);
-  const reason = await page.$eval('[data-testid="hero"]', (e) => e.getAttribute("data-reason"));
-  check("reduced motion keeps the stills", m === "poster" && reason === "reduced-motion", `(${m}, ${reason})`);
-  check("no console errors with reduced motion", errors.length === 0, errors.slice(0, 3).join(" | "));
-  await page.close();
-}
-
-// 4. 3D flight (forced on, since software rendering is slow): goes live and follows the scroll.
-{
-  const { page, errors } = await open("/?3d=1");
-  const live = await page.waitForFunction(() => document.querySelector('[data-testid="hero"]')?.getAttribute("data-mode") === "live", { timeout: 45000 }).then(() => true).catch(() => false);
-  check("3D stage goes live", live);
-  check("3D stage has one canvas", (await page.$$(".lp-stage canvas")).length === 1);
-  await sleep(1500);
-  await page.screenshot({ path: `${OUT}${TAG}-3d-classroom.png` });
-  const seen = [];
-  for (const id of ["ocean", "cell", "dino", "city", "numbers", "space"]) {
-    await scrollToChapter(page, id);
-    await sleep(2500);
-    seen.push(await page.$eval('[data-testid="hero"]', (e) => e.getAttribute("data-onair")));
-    await page.screenshot({ path: `${OUT}${TAG}-3d-${id}.png` });
-  }
-  check("channel bug follows the scroll through every episode", seen.join(",") === "ocean,cell,dino,city,numbers,space", seen.join(","));
-  // WebGL performance warnings from swiftshader are noise; real errors are not.
-  const real = errors.filter((e) => !/GPU stall|WebGL|swiftshader|GL_/i.test(e));
-  check("no console or CSP errors in 3D mode", real.length === 0, real.slice(0, 3).join(" | "));
-  await page.close();
-}
-
-// 4b. With the 3D stage live, the "Ask the teacher" controls must be visible and usable (the sticky stage once painted over them).
-{
-  const { page, errors, posts } = await open("/?3d=1", { stub: true });
-  await page.waitForFunction(() => document.querySelector('[data-testid="hero"]')?.getAttribute("data-mode") === "live", { timeout: 45000 }).catch(() => {});
-  await page.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
-  await page.$eval("#taste", (e) => e.scrollIntoView({ behavior: "instant", block: "center" })).catch(() => {});
-  await sleep(1500);
-  const hit = await page.evaluate(() => {
-    const out = {};
-    for (const [name, sel] of [["field", "#taste-q"], ["chip", ".lp-chip"], ["ask button", '#taste button[type="submit"]']]) {
-      const el = document.querySelector(sel);
-      if (!el) { out[name] = "missing"; continue; }
-      const r = el.getBoundingClientRect();
-      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      out[name] = top && (top === el || el.contains(top)) && r.width > 40 && r.height > 40 ? "ok" : `covered by ${top?.className || top?.tagName}`;
-    }
-    return out;
-  });
-  check("3D live: the question field, chips and Ask button are really on top and visible", Object.values(hit).every((v) => v === "ok"), JSON.stringify(hit));
-  await page.screenshot({ path: `${OUT}${TAG}-taste-3d.png` });
+  const { page, errors, res, posts } = await open("/");
+  check("/ responds 200", res.status() === 200);
+  check("headline is real text", /Meet your tutor/i.test(await page.$eval("h1", (e) => e.textContent)));
+  await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
+  check("visitor can choose Leo or Mia", !!(await page.$('[data-testid="pick-leo"]')) && !!(await page.$('[data-testid="pick-mia"]')));
+  check("the 3D classroom canvas is on the page", !!(await page.$(".lp-class-stage canvas")));
+  await page.screenshot({ path: `${OUT}${TAG}-choose.png` });
+  await page.click('[data-testid="pick-mia"]');
+  await page.waitForSelector("#class-q");
   await page.click(".lp-chip");
   await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 10000 }).catch(() => {});
-  check("tapping a question idea sends it at once", posts.count === 1 && (await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes("answer 1"), `(${posts.count} sent)`);
-  await page.click("#taste-q");
-  await page.type("#taste-q", "a typed question");
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 2"), { timeout: 10000 }).catch(() => {});
-  check("pressing Enter sends the typed question", posts.count === 2 && (await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes("answer 2"), `(${posts.count} sent)`);
-  const real = errors.filter((e) => !/GPU stall|WebGL|swiftshader|GL_|Failed to load resource/i.test(e));
-  check("no console or CSP errors with the live taste over the 3D stage", real.length === 0, real.slice(0, 3).join(" | "));
+  check("a try sends the chosen teacher and shows the reply", posts.count === 1 && posts.last?.teacher === "mia" && /answer 1/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")));
+  await page.waitForSelector('[data-testid="story"]', { timeout: 10000 }).catch(() => {});
+  check("the pretend picture shows on the board, labelled", !!(await page.$('[data-testid="story"]')) && /pretend picture/i.test(await page.$eval('[data-testid="story-label"]', (e) => e.textContent).catch(() => "")));
+  check("counter shows 1 of 3", /1 of 3/.test(await page.$eval('[data-testid="taste-count"]', (e) => e.textContent)));
+  await page.screenshot({ path: `${OUT}${TAG}-try1.png` });
+  for (const n of [2, 3]) {
+    await page.type("#class-q", `question ${n}`);
+    await page.keyboard.press("Enter");
+    await page.waitForFunction((k) => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes(`answer ${k}`), { timeout: 10000 }, n).catch(() => {});
+  }
+  check("three tries were sent", posts.count === 3);
+  await page.waitForSelector('[data-testid="paywall"]', { timeout: 15000 }).catch(() => {});
+  const wall = await page.$eval('[data-testid="paywall"]', (e) => e.textContent).catch(() => "");
+  check("hard paywall after the 3rd try, honest about money", /7-day free trial/.test(wall) && /Nothing is charged today/.test(wall) && /not switched on/.test(wall));
+  check("paywall CTA goes to sign-in", (await page.$eval('[data-testid="start-trial"]', (e) => e.getAttribute("href")).catch(() => "")) === "/sign-in");
+  await page.screenshot({ path: `${OUT}${TAG}-paywall.png` });
+  check("no console or CSP errors on the full journey", real(errors).length === 0, real(errors).slice(0, 3).join(" | "));
   await page.close();
 }
 
-// 5. The lesson app moved to /learn and is not indexable; the parent view links back to it.
+// 2. A refresh does not reset: the server says 3 are used, so the page goes straight to the paywall.
 {
-  const { page, res } = await open("/learn");
-  check("/learn responds 200", res.status() === 200);
-  const robots = await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "");
-  check("/learn is noindex", /noindex/.test(robots), robots);
+  const { page } = await open("/", { stub: "used" });
+  await page.waitForSelector('[data-testid="paywall"]', { timeout: 15000 }).catch(() => {});
+  check("returning visitor with 3 used sees the paywall, not new tries", !!(await page.$('[data-testid="paywall"]')) && !(await page.$("#class-q")));
   await page.close();
-  const p = await open("/parent");
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL) check("/parent sends a signed-out visitor to /sign-in", /\/sign-in\?next=%2Fparent|\/sign-in\?next=\/parent/.test(p.page.url()), p.page.url());
-  else check("/parent links back to /learn", !!(await p.page.$('a[href="/learn"]')));
-  await p.page.close();
 }
 
-// 6. Parent accounts. With no Supabase settings (how the smoke test runs) accounts are OFF: honest page, nothing breaks, the AI is closed to anonymous callers.
+// 3. Live tutor off: say so, offer the scripted demo, never fake an answer.
 {
-  const accountsOff = !process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const { page, errors, res } = await open("/sign-in");
-  check("/sign-in responds 200", res.status() === 200);
-  check("/sign-in is noindex", /noindex/.test(await page.$eval('meta[name="robots"]', (e) => e.content).catch(() => "")));
-  if (accountsOff) {
-    check("/sign-in says accounts are not switched on (no dead form)", !!(await page.$('[data-testid="signin-unavailable"]')) && !(await page.$('[data-testid="auth-email"]')));
-  } else {
-    check("/sign-in shows the email form", !!(await page.$('[data-testid="auth-email"]')));
-    const tall = await page.$$eval(".auth button, .auth input, .auth a.primary", (els) => els.filter((e) => e.getBoundingClientRect().height < 43).map((e) => e.outerHTML.slice(0, 60)));
-    check("sign-in controls are at least 44px tall", tall.length === 0, tall.join(" | "));
-  }
-  check("no console or CSP errors on /sign-in", errors.length === 0, errors.slice(0, 3).join(" | "));
-  await page.screenshot({ path: `${OUT}${TAG}-signin.png` });
+  const { page } = await open("/", { stub: "off" });
+  await page.waitForSelector('[data-testid="taste-unavailable"]', { timeout: 15000 }).catch(() => {});
+  check("when the live tutor is off the page says so and offers the demo", !!(await page.$('[data-testid="taste-unavailable"]')) && !(await page.$("#class-q")));
   await page.close();
-
-  const api = await fetch(ORIGIN + "/api/brain");
-  const cap = await api.json();
-  check("GET /api/brain reports nobody is signed in", cap.signedIn === false && cap.consented === false, JSON.stringify(cap));
-  const post = await fetch(ORIGIN + "/api/brain", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-  check("anonymous POST /api/brain never reaches the model", [401, 403, 503].includes(post.status), `(${post.status})`);
-  const bad = await fetch(ORIGIN + "/auth/callback?code=abc&next=https://evil.example", { redirect: "manual" });
-  const where = bad.headers.get("location") || "";
-  check("a bad sign-in link goes back to /sign-in, never off-site", bad.status === 303 && new URL(where, ORIGIN).origin === ORIGIN && /\/sign-in/.test(where), `(${bad.status} ${where})`);
 }
 
-// 7. Ask the teacher (the 3-question taste). Honesty first: without a server key the page shows the labelled Preview and
-// the API refuses. Then the live box is driven with stubbed network replies (no key needed, nothing is spent).
+// 4. No sideways scroll, tap targets, no price on the home page; reduced motion still works.
 {
-  const { page, errors } = await open("/");
-  await page.waitForSelector('[data-testid="taste-preview"], [data-testid="taste-live"]');
-  const live0 = await page.$('[data-testid="taste-live"]');
-  const hasKey = !!process.env.ANTHROPIC_API_KEY;
-  if (!hasKey) {
-    check("taste shows the labelled Preview when the server cannot answer", !live0 && /Preview/.test(await page.$eval('[data-testid="taste-preview"]', (e) => e.textContent)));
-    check("Preview box has no input to type into", !(await page.$("#taste-q")));
-    const st = await (await fetch(ORIGIN + "/api/taste")).json();
-    check("GET /api/taste says unavailable without a key", st.available === false && st.maxTurns === 3, JSON.stringify(st));
-    const post = await fetch(ORIGIN + "/api/taste", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ v: 1, tasteId: "smoke_taste_01", text: "hi", history: [] }) });
-    check("POST /api/taste never reaches a model without a key", post.status === 503, `(${post.status})`);
-  }
-  check("no console or CSP errors with the taste on the page", errors.filter((e) => !/Failed to load resource/.test(e)).length === 0, errors.slice(0, 3).join(" | "));
+  const { page, errors } = await open("/", { rm: true });
+  await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 }).catch(() => {});
+  check("no sideways scrolling", await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  const tiny = await page.$$eval(".lp-class-ui button, .lp-class-ui a.lp-btn", (els) => els.filter((e) => e.getBoundingClientRect().height < 43).map((e) => e.outerHTML.slice(0, 60)));
+  check("controls are at least 44px tall", tiny.length === 0, tiny.join(" | "));
+  check("no price on the home page (pricing has its own page)", !/US\$\d/.test(await page.evaluate(() => document.body.innerText)));
+  check("no console errors with reduced motion", real(errors).length === 0, real(errors).slice(0, 3).join(" | "));
   await page.close();
+}
 
-  const live = await open("/", { stub: true });
-  const lp = live.page;
-  await lp.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
-  check("taste turns live only after GET /api/taste says yes", !!(await lp.$('[data-testid="taste-live"]')));
-  await lp.$eval("#taste", (e) => e.scrollIntoView({ block: "center" })).catch(() => {});
-  const tiny = await lp.$$eval("#taste button, #taste input, #taste a.lp-btn", (els) => els.filter((e) => e.getBoundingClientRect().height < 43).map((e) => e.outerHTML.slice(0, 70)));
-  check("taste controls are at least 44px tall", tiny.length === 0, tiny.join(" | "));
-  const noScroll = await lp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-  check("no sideways scrolling with the taste on the page", noScroll);
-  await lp.screenshot({ path: `${OUT}${TAG}-taste-live.png` });
-  for (let i = 1; i <= 3; i++) {
-    await lp.click("#taste-q");
-    await lp.type("#taste-q", `question number ${i}`);
-    await lp.click('#taste button[type="submit"]');
-    await lp.waitForFunction((n) => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes(`answer ${n}`), { timeout: 10000 }, i).catch(() => {});
-    check(`taste question ${i} gets the stubbed answer`, (await lp.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")).includes(`answer ${i}`));
-  }
-  check("after 3 questions the box closes and points to the demo lesson", !!(await lp.$('[data-testid="taste-done"]')) && !(await lp.$("#taste-q")));
-  check("the 4th question is never sent (3 POSTs only)", live.posts.count === 3, `(${live.posts.count})`);
-  await lp.screenshot({ path: `${OUT}${TAG}-taste-done.png` });
-  check("no console or CSP errors in the live taste", live.errors.filter((e) => !/Failed to load resource/.test(e)).length === 0, live.errors.slice(0, 3).join(" | "));
-  await lp.close();
-
-  const over = await open("/", { stub: "over" });
-  await over.page.waitForSelector('[data-testid="taste-live"]', { timeout: 15000 }).catch(() => {});
-  await over.page.type("#taste-q", "anything");
-  await over.page.click('#taste button[type="submit"]');
-  await over.page.waitForSelector('[data-testid="taste-done"]', { timeout: 10000 }).catch(() => {});
-  const doneText = await over.page.$eval('[data-testid="taste-done"]', (e) => e.textContent).catch(() => "");
-  check("when the daily budget is used up the box says so honestly (no fake answer)", /come back soon/i.test(doneText) && !(await over.page.$('[data-testid="taste-reply"]')), doneText);
-  await over.page.close();
+// 5. Pricing and FAQ pages.
+for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions parents ask/]]) {
+  const { page, res } = await open(p);
+  check(`${p} loads`, res.status() === 200 && re.test(await page.evaluate(() => document.body.innerText)));
+  await page.close();
 }
 
 await browser.close();

@@ -35,6 +35,8 @@ export interface TasteEnv {
   disabled: boolean;
   perIpDaily: number;
   globalDaily: number;
+  /** Signs the tries cookie. Falls back to a key derived from the API key. */
+  cookieSecret?: string;
 }
 
 const flag = (v: string | undefined) => ["1", "true", "yes"].includes((v ?? "").trim().toLowerCase());
@@ -53,5 +55,6 @@ export function readTasteEnv(env: Record<string, string | undefined> = process.e
     disabled: flag(env.TASTE_DISABLED) || flag(env.BRAIN_DISABLED),
     perIpDaily: boundedInt(env.TASTE_DAILY_TURNS_PER_IP, TASTE_LIMITS.defaultPerIpDaily, 1, TASTE_LIMITS.maxPerIpDaily),
     globalDaily: boundedInt(env.TASTE_DAILY_TURNS_GLOBAL, TASTE_LIMITS.defaultGlobalDaily, 1, TASTE_LIMITS.maxGlobalDaily),
+    cookieSecret: env.TASTE_COOKIE_SECRET?.trim() || undefined,
   };
 }

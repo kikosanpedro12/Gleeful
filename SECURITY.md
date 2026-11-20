@@ -106,7 +106,7 @@ Private project. Report issues to the founder directly; do not open public issue
 - Not done: a lawyer must confirm the consent wording and flow (COPPA / PH Data Privacy Act) before real children use it.
 
 ## Anonymous landing taste: `/api/taste` (13 Nov)
-- Separate from `/api/brain` on purpose; no shared budgets, no shared code path to the lesson. It accepts no tester code and reads no cookies, so a passcode or session grants nothing here.
+- Separate from `/api/brain` on purpose; no shared budgets, no shared code path to the lesson. It accepts no tester code and reads only its own signed `gl_taste` cookie (HMAC-SHA256, httpOnly, Secure, Path=/api/taste, no personal data; holds only the tries used). Cookie secret: `TASTE_COOKIE_SECRET`, falling back to a key derived from the API key. It is a brake, not a limit: clearing cookies gives a new count; the per-address, global and Console spend caps bound cost. A passcode or session grants nothing here.
 - Cannot reach Sonnet or tools: the model is the constant `MODELS.default`; the upstream request carries no `tools`/`tool_choice`; `max_tokens` is 150. Request fields `model`, `tools`, `system`, `max_tokens` are ignored (tested).
 - Input: same-origin browsers only, JSON only, 2 KB body, 3 s read timeout. The question is stripped of control characters and angle brackets (so it can never close a prompt tag), capped at 140 characters; history lines get the same treatment and are labelled as data.
 - Output: only `text` blocks are used (a `tool_use` block is ignored), links and markup are stripped by the lesson sanitizer, at most 2 parts and 280 characters. A reply with nothing usable is an error, never a made-up answer.

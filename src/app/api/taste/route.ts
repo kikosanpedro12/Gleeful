@@ -16,6 +16,6 @@ export async function POST(req: Request) {
 }
 
 /** Can a question be answered right now? Two booleans/numbers, no secrets, never cached. The landing page shows the live box only when this says yes. */
-export async function GET() {
-  return Response.json(await tasteStatus({ ...base, env: readTasteEnv() }), { headers: { "cache-control": "no-store" } });
+export async function GET(req: Request) {
+  return Response.json(await tasteStatus({ ...base, env: readTasteEnv() }, req), { headers: { "cache-control": "no-store" } });
 }

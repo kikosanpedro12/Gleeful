@@ -4,7 +4,7 @@ import "server-only";
  *
  * A SEPARATE path from /api/brain, on purpose. Anyone can reach it, so it can do almost nothing:
  *  - the cheap model only (constant TASTE_MODEL), no tools, a small reply cap;
- *  - no sign-in, no tester code, no cookies, no learner data, no lesson state;
+ *  - no sign-in, no tester code, no learner data, no lesson state; its only cookie is the signed tries counter (cookie.ts);
  *  - at most 3 questions per page view, a small daily budget per client address, and a daily
  *    budget for the whole deployment (env-tunable, hard-capped in config.ts);
  *  - every table is bounded and FAILS CLOSED: when it is full of live keys, a new key is refused.
@@ -20,10 +20,12 @@ import { MemoryUsageStore, RateLimiter, SessionCounter, type UsageStore } from "
 import { looksLikeNarration, sanitizeSay } from "@/lib/brain/server/sanitize";
 import { clientIp, crossOrigin, readBody } from "@/lib/http/request";
 import { cleanText } from "@/lib/scene/commands";
+import { parseFrame, frameToArgs } from "@/lib/scene/frame";
 import { TASTE_MAX_TURNS, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
 import { TASTE_LIMITS, TASTE_MODEL, type TasteEnv } from "./config";
 import { TASTE_SYSTEM, buildTasteUser } from "./prompt";
 import { parseTasteRequest } from "./request";
+import { cookieSecret, makeTasteCookie, readCookieHeader, verifyTasteCookie } from "./cookie";
 
 export interface TasteDeps {
   fetchImpl: typeof fetch;
@@ -53,11 +55,14 @@ const fail = (status: number, error: TasteErrorCode, extra: Record<string, strin
   new Response(JSON.stringify({ error }), { status, headers: { ...HEADERS, ...extra } });
 
 /** Can a question sent right now be answered? Reads counters, never writes (a GET must not fill a table). */
-export async function tasteStatus(d: Pick<TasteDeps, "env" | "usage" | "now">): Promise<TasteStatus> {
+export async function tasteStatus(d: Pick<TasteDeps, "env" | "usage" | "now">, req?: Request): Promise<TasteStatus> {
   const e = d.env;
   if (!e.apiKey || e.disabled) return { available: false, maxTurns: TASTE_MAX_TURNS };
   const g = await d.usage.globalToday(d.now());
-  return { available: g.turns < e.globalDaily, maxTurns: TASTE_MAX_TURNS };
+  const secret = cookieSecret({ TASTE_COOKIE_SECRET: e.cookieSecret, ANTHROPIC_API_KEY: e.apiKey });
+  const c = secret && req ? verifyTasteCookie(readCookieHeader(req.headers.get("cookie")), secret, d.now()) : null;
+  const used = c && c !== "bad" ? Math.min(c.used, TASTE_MAX_TURNS) : 0;
+  return { available: g.turns < e.globalDaily && used < TASTE_MAX_TURNS, maxTurns: TASTE_MAX_TURNS, used };
 }
 
 export async function handleTaste(req: Request, d: TasteDeps): Promise<Response> {
@@ -79,6 +84,14 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   if (!parsed.ok) return fail(400, "bad_request");
   const r = parsed.req;
 
+  // The signed cookie is the per-person count: a refresh does not reset it. Forged or damaged = all used.
+  const secret = cookieSecret({ TASTE_COOKIE_SECRET: d.env.cookieSecret, ANTHROPIC_API_KEY: d.env.apiKey });
+  if (!secret) return fail(503, "taste_unavailable");
+  const ck = verifyTasteCookie(readCookieHeader(req.headers.get("cookie")), secret, now);
+  const usedBefore = ck && ck !== "bad" ? ck.used : 0; // damaged/forged/old-secret cookie = a fresh window (self-heals); omitting it would gain the same
+  const ckExp = ck && ck !== "bad" ? ck.exp : undefined;
+  if (usedBefore >= TASTE_LIMITS.perSessionTurns) return fail(429, "taste_over");
+
   // Budgets, cheapest check first. Anything refused here costs nothing.
   const sessionKey = `${ip}:${r.tasteId}`;
   const done = d.sessions.count(sessionKey, now);
@@ -86,7 +99,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   if (done >= TASTE_LIMITS.perSessionTurns) return fail(429, "taste_over");
   const ipDay = await d.usage.ipToday(ip, now);
   if (!ipDay) return fail(503, "taste_busy");
-  if (ipDay.turns >= d.env.perIpDaily) return fail(429, "taste_over");
+  if (ipDay.turns >= d.env.perIpDaily) return fail(503, "taste_busy"); // this address is out for today: not "your 3 are used"
   const global = await d.usage.globalToday(now);
   if (global.turns >= d.env.globalDaily) return fail(503, "taste_busy");
 
@@ -97,6 +110,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
 
   // One automatic retry if the model returned nothing usable (the visitor never sees a blank-answer error for that).
   let reply: string | null = null;
+  let scene: Record<string, unknown> | undefined;
   for (let attempt = 0; attempt < 2 && !reply; attempt++) {
     let up;
     try {
@@ -113,6 +127,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
       return fail(502, "upstream_failed");
     }
     reply = cleanReply(up.content);
+    scene = reply ? extractScene(up.content) : undefined;
     if (!reply) {
       // Types and counts only, never the visitor's words or the model's.
       const types = Array.isArray(up.content) ? up.content.slice(0, 6).map((b) => String((b as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
@@ -120,8 +135,9 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
     }
   }
   if (!reply) return fail(502, "bad_model_output");
-  const body: TasteResponse = { reply, turnsLeft: Math.max(0, TASTE_LIMITS.perSessionTurns - (done + 1)) };
-  return new Response(JSON.stringify(body), { status: 200, headers: HEADERS });
+  const turnsLeft = Math.max(0, TASTE_LIMITS.perSessionTurns - Math.max(done, usedBefore) - 1);
+  const body: TasteResponse = { reply, turnsLeft, ...(scene ? { scene } : {}) };
+  return new Response(JSON.stringify(body), { status: 200, headers: { ...HEADERS, "set-cookie": makeTasteCookie(usedBefore + 1, secret, now, ckExp) } });
 }
 
 /**
@@ -133,9 +149,31 @@ export function cleanReply(blocks: unknown): string | null {
   const parts: string[] = [];
   for (const b of blocks.slice(0, 8)) {
     if (!b || typeof b !== "object" || (b as { type?: unknown }).type !== "text") continue;
-    const s = sanitizeSay((b as { text?: unknown }).text, TASTE_LIMITS.maxReplyChars);
+    const s = sanitizeSay(stripSceneLine((b as { text?: unknown }).text), TASTE_LIMITS.maxReplyChars);
     if (s && !looksLikeNarration(s)) parts.push(s);
     if (parts.length >= 2) break;
   }
   return cleanText(parts.join(" "), TASTE_LIMITS.maxReplyChars);
+}
+
+const SCENE_RE = /SCENE:\s*(\{[^\n]*\})/;
+const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/SCENE:[^\n]*/g, "") : t);
+
+/** The optional picture: one SCENE line, parsed as JSON and passed through parseFrame (own ids only). Anything else = no picture. */
+export function extractScene(blocks: unknown): Record<string, unknown> | undefined {
+  if (!Array.isArray(blocks)) return undefined;
+  for (const b of blocks.slice(0, 8)) {
+    if (!b || typeof b !== "object" || (b as { type?: unknown }).type !== "text") continue;
+    const t = (b as { text?: unknown }).text;
+    const m = typeof t === "string" && t.length < 2000 ? SCENE_RE.exec(t) : null;
+    if (!m) continue;
+    try {
+      const f = parseFrame(JSON.parse(m[1]));
+      if (f.ok) {
+        const era = sanitizeSay(f.frame.era, 60); // same link/contact stripping as the reply; changed or empty = no picture
+        if (era && era === f.frame.era) return frameToArgs(f.frame);
+      }
+    } catch { /* no picture */ }
+  }
+  return undefined;
 }

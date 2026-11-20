@@ -26,5 +26,6 @@ export function parseTasteRequest(v: unknown): { ok: true; req: TasteRequest } |
     if (!t) return { ok: false };
     history.push({ role: h.role, text: t });
   }
-  return { ok: true, req: { v: 1, tasteId: v.tasteId, text, history } };
+  if (v.teacher !== undefined && v.teacher !== "leo" && v.teacher !== "mia") return { ok: false };
+  return { ok: true, req: { v: 1, tasteId: v.tasteId, text, history, ...(v.teacher ? { teacher: v.teacher } : {}) } };
 }

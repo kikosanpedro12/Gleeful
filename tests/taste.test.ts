@@ -266,3 +266,45 @@ describe("taste: the prompt and the logs", () => {
     expect(logs.length).toBeGreaterThan(0);
   });
 });
+
+describe("taste: per-person cookie and scene", () => {
+  const cookieOf = (r: Response) => (r.headers.get("set-cookie") ?? "").split(";")[0];
+  it("counts tries in a signed cookie so a new page view (new tasteId) does not reset them", async () => {
+    const f = model();
+    const d = deps(f, { ipLimiter: new RateLimiter(100, 60_000) });
+    let ck = "";
+    for (let i = 0; i < 3; i++) {
+      const r = await handleTaste(http(body({ tasteId: `taste_page_${i}_xx` }), ck ? { cookie: ck } : {}), d);
+      expect(r.status).toBe(200);
+      ck = cookieOf(r);
+      expect(r.headers.get("set-cookie")).toMatch(/HttpOnly/);
+    }
+    const r4 = await handleTaste(http(body({ tasteId: "taste_page_fresh_1" }), { cookie: ck }), d);
+    expect(r4.status).toBe(429);
+    expect(f).toHaveBeenCalledTimes(3);
+  });
+  it("a forged cookie is a fresh window that the IP caps still bound, and it is replaced", async () => {
+    const f = model();
+    const r = await handleTaste(http(body(), { cookie: "gl_taste=0.9999999999999.AAAA" }), deps(f));
+    expect(r.status).toBe(200);
+    expect(r.headers.get("set-cookie")).toMatch(/^gl_taste=1\./);
+  });
+  it("drops a scene whose caption carries a link", async () => {
+    const f = model([{ type: "text", text: 'Hi.\nSCENE: {"setting":"desert","era":"visit bit.ly/x now","props":[]}' }]);
+    expect((await json(await handleTaste(http(body()), deps(f)))).scene).toBeUndefined();
+  });
+  it("passes the teacher name and returns only a validated scene", async () => {
+    const f = model([{ type: "text", text: 'Mars is red because of rusty dust.\nSCENE: {"setting":"desert","era":"Mars, today","props":[]}' }]);
+    const r = await handleTaste(http(body({ teacher: "mia" })), deps(f));
+    const j = await json(r);
+    expect(j.reply).toBe("Mars is red because of rusty dust.");
+    expect((j.scene as { setting: string }).setting).toBe("desert");
+    expect(JSON.stringify(sent(f))).toContain("Your name is Mia");
+  });
+  it("drops a scene with unknown ids or a bad teacher is a bad request", async () => {
+    const f = model([{ type: "text", text: 'Hello there.\nSCENE: {"setting":"moon_base","era":"x","props":["evil"]}' }]);
+    const j = await json(await handleTaste(http(body()), deps(f)));
+    expect(j.scene).toBeUndefined();
+    expect((await handleTaste(http(body({ teacher: "bob" })), deps(model()))).status).toBe(400);
+  });
+});
