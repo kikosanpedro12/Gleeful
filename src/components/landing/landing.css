@@ -209,37 +209,92 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-taste-err a { color: #fff; }
 .lp-taste-done p { margin: 0 0 18px; font-weight: 700; }
 
-/* ---- Classroom landing: the 3D classroom is the page ---- */
-.lp-class { position: relative; min-height: 100svh; background: #f3e7d3; overflow: hidden; }
-.lp-class::after { content: ""; position: absolute; inset: auto 0 0 0; height: 45%; background: linear-gradient(to top, rgba(20,33,61,.45), rgba(20,33,61,0)); pointer-events: none; z-index: 2; }
+/* ---- Classroom landing: the 3D classroom is the page ----
+ * Pills share one language: a 2px night outline, a hard night "pressed" shadow on actions, and a sun tint for hover.
+ * Contrast (checked): night on pink 5.5:1, night on cream 12.9:1, night on sun 9.1:1, #4a5368 on #ece6da 6.2:1.
+ * Chosen after comparing three palettes (honey, sky, mint) at 1280x800 and 390x844: mint + night headline pill. */
+.lp-class { --paper: #fff7ea; --edge: var(--night); --tint: #d9f3ea; --off-bg: #ece6da; --off-ink: #4a5368; --off-edge: #b9b09c;
+  --head-bg: var(--night); --head-ink: #fff; --chip-bg: #fffdf8; --card-shadow: 0 18px 40px rgba(20,33,61,.38);
+  position: relative; min-height: 100svh; background: #f3e7d3; overflow: hidden; }
+.lp-class::after { content: ""; position: absolute; inset: auto 0 0 0; height: 40%; background: linear-gradient(to top, rgba(20,33,61,.32), rgba(20,33,61,0)); pointer-events: none; z-index: 2; }
 .lp-class-stage { position: absolute; inset: 0; }
 .lp-class-stage canvas { display: block; width: 100%; height: 100%; }
-.lp-class-still { position: absolute; inset: 0; background: linear-gradient(#f6e9d0, #d9bf94); }
+.lp-class-still { position: absolute; inset: 0; background: linear-gradient(#fbe8c8, #e6bf8a); }
 .lp-class-ui { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 100svh; padding: 92px 16px 28px; }
-.lp-class-head { background: rgba(255,250,241,.94); border-radius: 22px; padding: 12px 22px; text-align: center; box-shadow: 0 6px 20px rgba(20,33,61,.18); max-width: 640px; }
-.lp-class-h { font-family: var(--display); font-size: clamp(1.4rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0; }
-.lp-class-sub { margin: 4px 0 0; font-size: var(--t0); }
-.lp-card { margin-top: auto; width: min(600px, 100%); background: #fffaf1; border-radius: 24px; padding: 18px 20px; box-shadow: 0 14px 40px rgba(20,33,61,.35); display: grid; gap: 12px; }
+.lp-class-head { background: var(--head-bg); color: var(--head-ink); border: 3px solid var(--edge); border-radius: 26px; padding: 10px 24px 12px; text-align: center; box-shadow: 0 4px 0 var(--night); max-width: 640px; }
+.lp-class-h { font-family: var(--display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(1.4rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0; text-wrap: balance; }
+.lp-class-sub { margin: 4px 0 0; font-size: var(--t0); font-weight: 700; }
+.lp-card { margin-top: auto; width: min(600px, 100%); background: var(--paper); border: 3px solid var(--edge); border-radius: 28px; padding: 18px 20px 16px; box-shadow: var(--card-shadow); display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.lp-class .lp-card:focus-visible { border-radius: 28px; outline-offset: 5px; }
 .lp-card p { margin: 0; }
+.lp-card .lp-tag { justify-self: start; border: 2px solid var(--night); background: var(--sun); color: var(--night); padding: 4px 14px; }
+.lp-card .lp-tag:not(.lp-tag-live) { background: #fff; }
 .lp-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .lp-pick .lp-btn { min-height: 64px; font-size: var(--t1); }
 .lp-say { min-height: 3.2em; font-size: var(--t0); }
-.lp-wait { opacity: .75; }
-.lp-chip { min-height: 44px; }
-.lp-pip { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--night); margin-right: 5px; vertical-align: middle; }
-.lp-pip-on { background: var(--night); }
-.lp-taste-meta { font-size: var(--t-1); color: #3b4660; }
-.lp-paywall-h { font-family: var(--display); font-size: var(--t2); line-height: 1.15; margin: 0; }
+.lp-wait { color: #3b4660; }
+
+/* Buttons in the classroom: default / hover / focus / pressed / disabled / busy */
+.lp-class .lp-btn-main { border: 2px solid var(--night); background: var(--pink); color: var(--night); box-shadow: 0 4px 0 var(--night); }
+.lp-class .lp-btn-main:hover:not(:disabled) { background: #ff7a9f; transform: translateY(-1px); box-shadow: 0 5px 0 var(--night); }
+.lp-class .lp-btn-main:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--night); }
+.lp-class .lp-btn-main:focus-visible { outline: 3px solid var(--night); outline-offset: 4px; }
+.lp-class .lp-btn-main:disabled { background: var(--off-bg); color: var(--off-ink); border-color: var(--off-edge); box-shadow: none; opacity: 1; cursor: not-allowed; transform: none; }
+.lp-taste-row [type="submit"] { min-width: 96px; }
+.lp-taste-row[aria-busy="true"] [type="submit"]::after { content: ""; width: 14px; height: 14px; margin-left: 10px; border-radius: 50%; border: 3px solid var(--off-edge); border-top-color: var(--night); animation: lp-spin .8s linear infinite; }
+@keyframes lp-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .lp-taste-row[aria-busy="true"] [type="submit"]::after { animation: none; border-top-color: var(--off-edge); } }
+
+/* Chips */
+.lp-class .lp-chip { min-height: 44px; padding: 8px 16px; border: 2px solid var(--night); background: var(--chip-bg); color: var(--night); font-family: var(--body); font-size: var(--t-1); font-weight: 700; border-radius: 999px; box-shadow: 0 3px 0 var(--night); transition: transform .12s, box-shadow .12s, background-color .12s; }
+.lp-class .lp-chip:hover:not(:disabled) { background: var(--tint); transform: translateY(-1px); box-shadow: 0 4px 0 var(--night); }
+.lp-class .lp-chip:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--night); }
+.lp-class .lp-chip:focus-visible { outline: 3px solid var(--night); outline-offset: 3px; }
+.lp-class .lp-chip:disabled { background: var(--off-bg); color: var(--off-ink); border-color: var(--off-edge); box-shadow: none; opacity: 1; cursor: not-allowed; }
+.lp-class .lp-chips { margin: 0; padding-bottom: 3px; }
+
+/* Input */
+.lp-class .lp-taste-input { border: 3px solid var(--night); background: #fff; }
+.lp-class .lp-taste-input:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.lp-class .lp-taste-input:disabled { background: var(--off-bg); color: var(--off-ink); border-color: var(--off-edge); }
+.lp-class .lp-taste-input::placeholder { color: #55607a; }
+
+/* Counter: three dots plus words, one pill. No bare "0" (the body font draws a slashed zero). */
+.lp-taste-meta { display: grid; gap: 6px; }
+.lp-count { display: inline-flex; align-items: center; gap: 10px; justify-self: start; padding: 4px 14px 4px 10px; border: 2px solid var(--night); border-radius: 999px; background: var(--tint); font-weight: 700; font-size: var(--t-1); color: var(--night); font-variant-numeric: lining-nums proportional-nums; }
+.lp-pips { display: inline-flex; gap: 5px; }
+.lp-pip { display: block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--night); background: #fff; margin: 0; }
+.lp-pip-on { background: var(--sun); }
+.lp-paywall-h { text-wrap: balance; font-family: var(--display); font-weight: 760; letter-spacing: -0.03em; font-size: var(--t2); line-height: 1.15; margin: 0; }
 .lp-fine-print { font-size: var(--t-1); color: #3b4660; }
 .lp-link { font-weight: 700; }
+.lp-taste-err { color: #9b1c3f; }
 .lp-board { position: absolute; z-index: 4; top: 92px; right: 24px; width: min(360px, calc(100% - 32px)); pointer-events: none; }
 .lp-board > * { pointer-events: auto; }
 .lp-board .story-view { height: 170px; }
+/* Desktop: the headline sits top-left in its own column so it never covers the chalkboard text behind it. */
+@media (min-width: 900px) {
+  .lp-class-head { position: absolute; left: clamp(16px, 4vw, 56px); top: 92px; max-width: min(340px, 30vw); text-align: left; }
+  /* While choosing, both tutors stand left of centre and the board text is centred: the headline moves to the free window side. */
+  .lp-class:has([data-testid="choose-teacher"]) .lp-class-head { left: auto; right: clamp(16px, 4vw, 56px); }
+}
 @media (max-width: 899px) {
   .lp-board { left: 50%; right: auto; transform: translateX(-50%); top: 84px; width: min(300px, calc(100% - 24px)); }
   .lp-board .story-view { height: 110px; }
   .lp-class:has(.story) .lp-class-head { visibility: hidden; }
-  .lp-class-head { padding: 8px 14px; }
+  .lp-class-head { padding: 6px 16px 8px; }
   .lp-class-sub { display: none; }
 }
-@media (prefers-reduced-motion: no-preference) { .lp-btn { transition: transform .12s, box-shadow .12s; } }
+@media (prefers-reduced-motion: reduce) { .lp-class .lp-chip, .lp-class .lp-btn { transition: none; } }
+/* Phones: keep the card short so the teacher's face stays visible above it. */
+@media (max-width: 560px) {
+  .lp-card { padding: 14px 14px 12px; gap: 10px; }
+  .lp-say { min-height: 2.6em; }
+  .lp-class .lp-chip { padding: 6px 12px; font-size: .82rem; }
+  .lp-chips { gap: 8px; }
+  .lp-taste-row { flex-wrap: nowrap; gap: 8px; }
+  .lp-class .lp-taste-input { flex: 1 1 0; min-width: 0; padding: 0 16px; }
+  .lp-taste-row [type="submit"] { min-width: 0; padding: 0 20px; }
+  .lp-class .lp-fine-print { font-size: .8rem; }
+  .lp-board .story-view { height: 64px; }
+}

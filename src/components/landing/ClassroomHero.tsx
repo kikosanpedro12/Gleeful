@@ -88,7 +88,7 @@ export default function ClassroomHero() {
         const err = (await res.json().catch(() => ({}))) as { error?: unknown };
         if (err.error === "rate_limited") setTrouble(true); else if (err.error === "taste_over") { setUsed(TASTE_MAX_TURNS); setOver(true); } else setBusyNote(true);
       } else setTrouble(true);
-    } catch { setTrouble(true); } finally { setBusy(false); }
+    } catch { setTrouble(true); } finally { setBusy(false); setTimeout(() => document.getElementById("class-q")?.focus({ preventScroll: true }), 60); }
   }
 
   const last = [...lines].reverse().find((l) => l.role === "teacher");
@@ -116,7 +116,7 @@ export default function ClassroomHero() {
 
         {phase === "live" && !over && !teacher && (
           <div className="lp-card" data-testid="choose-teacher">
-            <p className="lp-tag lp-tag-live"><span aria-hidden className="lp-dot" /> Live AI tutor · 3 free tries</p>
+            <p className="lp-tag lp-tag-live"><span aria-hidden className="lp-dot" /> Live AI tutor · {TASTE_MAX_TURNS} free tries</p>
             <p>Choose who teaches you today.</p>
             <div className="lp-pick">
               <button type="button" className="lp-btn lp-btn-main" onClick={() => pick("leo")} data-testid="pick-leo">Leo</button>
@@ -135,16 +135,19 @@ export default function ClassroomHero() {
             <div className="lp-chips" role="group" aria-label="Question ideas">
               {IDEAS.map((i) => <button key={i} type="button" className="lp-chip" disabled={busy} onClick={() => void send(i)}>{i}</button>)}
             </div>
-            <form className="lp-taste-row" onSubmit={(e) => { e.preventDefault(); void send(text); }}>
+            <form className="lp-taste-row" aria-busy={busy} onSubmit={(e) => { e.preventDefault(); void send(text); }}>
               <label className="lp-sr" htmlFor="class-q">Your question</label>
               <input id="class-q" className="lp-taste-input" type="text" autoComplete="off" enterKeyHint="send" maxLength={TASTE_MAX_INPUT}
                 value={text} onChange={(e) => setText(e.target.value)} placeholder={`Ask ${name}…`} disabled={busy} />
               <button className="lp-btn lp-btn-main" type="submit" disabled={busy || !text.trim()}>Ask</button>
             </form>
-            <p className="lp-taste-meta" data-testid="taste-count">
-              {Array.from({ length: TASTE_MAX_TURNS }, (_, i) => <span key={i} className={i < used ? "lp-pip lp-pip-on" : "lp-pip"} aria-hidden />)}
-              <span>{used} of {TASTE_MAX_TURNS} used · it&apos;s an AI and can be wrong. Please don&apos;t type private details.</span>
-            </p>
+            <div className="lp-taste-meta">
+              <p className="lp-count" data-testid="taste-count">
+                <span className="lp-pips" aria-hidden>{Array.from({ length: TASTE_MAX_TURNS }, (_, i) => <span key={i} className={i < used ? "lp-pip lp-pip-on" : "lp-pip"} />)}</span>
+                <span>{used === 0 ? `${TASTE_MAX_TURNS} free tries` : `${used} of ${TASTE_MAX_TURNS} used`}</span>
+              </p>
+              <p className="lp-fine-print">It&apos;s an AI and can be wrong. Please don&apos;t type private details.</p>
+            </div>
             {busyNote && <p className="lp-taste-err" role="status">The tutor is busy right now. Please try again a little later.</p>}
             {trouble && <p className="lp-taste-err" role="status">{name} didn&apos;t hear that. Wait a moment and try again.</p>}
           </div>

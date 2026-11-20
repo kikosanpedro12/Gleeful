@@ -64,6 +64,14 @@ Rules for entries:
 ## Styling
 - **Bare element selectors in globals.css leak across surfaces** (a lesson-icon `svg { width:1.35em; path fill:none }` rule blanked the landing illustrations) → scope app styles under `.app`, landing styles under `.lp`; never style a bare element globally except resets → `npm run smoke:landing` ("poster mode shows the still illustrations").
 
+## Classroom landing UI (Nov 2026)
+- A `display:grid` card with one auto column grows to its widest child's min-content (a text input pushed the Ask button out of the card on a 390px phone) -> `grid-template-columns: minmax(0, 1fr)` on card grids; check the right edge in the phone screenshot.
+- Where the headline pill goes depends on the state: it hid Leo's face (left) in the choose state and the board text (centre) otherwise. Read BOTH the choose and chat screenshots after moving any overlay; never judge from one state.
+- Body font Atkinson draws a slashed zero: do not show a bare "0" counter; say "3 free tries" instead of "0 of 3 used".
+- A disabled pill must still look like a pill: solid neutral fill, 2px edge, 5.6:1 text, no 3D shadow; never `opacity` on a pink button (reads as broken).
+- Bare `.lp :focus-visible { border-radius: 6px }` squares the focus ring of rounded cards: set the card radius on its own `:focus-visible`.
+- `kill` only the PID of your own port (find it by `/proc/<pid>/cwd` and cmdline); `pkill -f next` or a loop over every match can hit another agent's server.
+
 ## Ports
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/?test=1`, stop with `npm run stop`.
 

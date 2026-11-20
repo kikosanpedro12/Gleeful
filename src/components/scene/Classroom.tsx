@@ -5,15 +5,17 @@ import * as THREE from "three";
 import { useSession } from "@/lib/session/store";
 import { drawMarsTexture, fx, Highlight, registry, useCanvasTexture, useRegister } from "./shared";
 
+// Warm mint classroom: sun-yellow board frame, pink rug, brand colours (kept in one place).
+const PAL = { wall: "#e3f6ec", side: "#d3efe0", dado: "#8fd3b4", floor: "#f0d3a8", rug: "#ff5e8a", ring: "#ffffff", board: "#2a5a4e", frame: "#ffb627", chalk: "#fffbe8" };
 function Board() {
   const text = useSession((s) => s.boardText);
   const ref = useRegister("board");
   const tex = useCanvasTexture((ctx, w, h) => {
-    ctx.fillStyle = "#24443f";
+    ctx.fillStyle = PAL.board;
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     for (let i = 0; i < 40; i++) ctx.fillRect((i * 97) % w, (i * 53) % h, 120, 3);
-    ctx.fillStyle = "#f4f1e6";
+    ctx.fillStyle = PAL.chalk;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const font = (n: number) => `600 ${n}px "Comic Sans MS", "Chalkboard SE", "Segoe Print", sans-serif`;
@@ -45,7 +47,7 @@ function Board() {
     <group ref={ref} position={[0.25, 2.12, -2.94]}>
       <mesh position={[0, 0, -0.02]} castShadow>
         <boxGeometry args={[2.9, 1.5, 0.06]} />
-        <meshStandardMaterial color="#b98a5a" roughness={0.7} />
+        <meshStandardMaterial color={PAL.frame} roughness={0.7} />
       </mesh>
       <mesh position={[0, 0, 0.012]}>
         <planeGeometry args={[2.72, 1.32]} />
@@ -192,7 +194,7 @@ export default function Classroom() {
       <group ref={floor}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[12, 10]} />
-          <meshStandardMaterial color="#d9b48a" roughness={0.85} />
+          <meshStandardMaterial color={PAL.floor} roughness={0.85} />
         </mesh>
         {/* Desk */}
         <group position={[1.75, 0, -1.25]}>
@@ -216,22 +218,22 @@ export default function Classroom() {
       <group ref={rug}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-0.1, 0.006, -0.6]} receiveShadow>
           <circleGeometry args={[1.5, 48]} />
-          <meshStandardMaterial color="#7fb7b0" roughness={1} />
+          <meshStandardMaterial color={PAL.rug} roughness={1} />
         </mesh>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-0.1, 0.007, -0.6]}>
           <ringGeometry args={[1.38, 1.46, 64]} />
-          <meshStandardMaterial color="#f4f1e6" roughness={1} />
+          <meshStandardMaterial color={PAL.ring} roughness={1} />
         </mesh>
       </group>
       {/* Back wall, hinged at its base */}
       <group ref={back} position={[0, 0, -3]}>
         <mesh position={[0, 3, 0]}>
           <planeGeometry args={[12, 6]} />
-          <meshStandardMaterial color="#f3e7d3" roughness={1} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={PAL.wall} roughness={1} side={THREE.DoubleSide} />
         </mesh>
         <mesh position={[0, 0.5, 0.01]}>
           <planeGeometry args={[12, 1]} />
-          <meshStandardMaterial color="#e3cfae" roughness={1} />
+          <meshStandardMaterial color={PAL.dado} roughness={1} />
         </mesh>
         <group position={[0, 0, 3]}>
           <Board />
@@ -243,13 +245,13 @@ export default function Classroom() {
       <group ref={left} position={[-4.5, 0, 0]}>
         <mesh position={[0, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
           <planeGeometry args={[10, 6]} />
-          <meshStandardMaterial color="#efe1ca" roughness={1} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={PAL.side} roughness={1} side={THREE.DoubleSide} />
         </mesh>
       </group>
       <group ref={right} position={[4.5, 0, 0]}>
         <mesh position={[0, 3, 0]} rotation={[0, -Math.PI / 2, 0]}>
           <planeGeometry args={[10, 6]} />
-          <meshStandardMaterial color="#efe1ca" roughness={1} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={PAL.side} roughness={1} side={THREE.DoubleSide} />
         </mesh>
       </group>
     </group>

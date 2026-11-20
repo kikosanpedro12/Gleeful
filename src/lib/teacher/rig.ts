@@ -33,13 +33,13 @@ export const LOOKS: Record<TeacherId, TeacherLook> = {
   leo: {
     id: "leo", name: "Leo", height: 1,
     skin: "#c68a5e", skinShade: "#a86f49", hair: "#1c1715", hairStyle: "short_curly",
-    top: "#1f6b5f", topShade: "#185449", topStyle: "cardigan", shirt: "#f1e9d8",
+    top: "#0e8a8c", topShade: "#0b6e70", topStyle: "cardigan", shirt: "#f1e9d8",
     trousers: "#1d2747", shoes: "#f6f6f3", iris: "#4a2a17", glasses: true, beard: true, earrings: false,
   },
   mia: {
     id: "mia", name: "Mia", height: 0.955,
     skin: "#c98f68", skinShade: "#ad7552", hair: "#2b1c16", hairStyle: "wavy_long",
-    top: "#e8735a", topShade: "#c95c45", topStyle: "overshirt", shirt: "#f3ead9",
+    top: "#ff8a5e", topShade: "#dd7048", topStyle: "overshirt", shirt: "#f3ead9",
     trousers: "#1d2747", shoes: "#f6f6f3", iris: "#4a2a17", glasses: false, beard: false, earrings: true,
   },
 };

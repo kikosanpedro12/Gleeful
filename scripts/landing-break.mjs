@@ -72,7 +72,7 @@ await run([], async (page, st, errors) => {
     check(`error ${status} ${JSON.stringify(body).slice(0, 24)}: box not stuck`, !thinking && !disabled);
     await page.$eval("#class-q", (e) => { e.value = ""; }).catch(() => {});
   }
-  check("errors never count a try", /0 of 3|^$/.test(await page.$eval('[data-testid="taste-count"]', (e) => e.textContent).catch(() => "0 of 3")));
+  check("errors never count a try", /3 free tries|0 of 3/.test(await page.$eval('[data-testid="taste-count"]', (e) => e.textContent).catch(() => "0 of 3")));
   check("no pageerror on failures", errors.length === 0, errors.slice(0, 2).join("|"));
 });
 
