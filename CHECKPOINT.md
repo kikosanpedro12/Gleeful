@@ -157,3 +157,4 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Per-asset cap 1,500 KB, per-scene 3,000 KB. Tester + reviewer passed after fixes. `scripts/scene-smoke.mjs` runs on a build:test with `?test=1`.
 - Still open: painting figures, privacy page vendor wording, curriculum gaps, live launch checks.
 - Public ElevenLabs voice taste (landing "ask" box, demo lesson, consenting parents) built behind `ELEVEN_PUBLIC=on` (OFF). Go-live precondition: credit cap on the ElevenLabs key (only real ceiling) + training opt-out in the account. Caps: anon 700/addr, 6,000 pool, parent 3,000 per day.
+- 20 Nov: brain told to reply in the child's language (English, Filipino, Taglish); Filipino profanity/self-harm words added to output moderation. NOT verified: quality of Filipino replies, Filipino voice (ElevenLabs multilingual / browser fil-PH), child-input moderation in Filipino. Needs a Filipino-speaking reviewer.

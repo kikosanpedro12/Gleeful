@@ -182,3 +182,19 @@ describe("scene size and failure safety", () => {
     expect(checkAssets(["ph_boulder_01", "ph_potted_plant_01", "ph_moon_rock_01"])).toBe("scene too large");
   });
 });
+
+import { unsafeOutput } from "@/lib/brain/server/sanitize";
+describe("Filipino and language rules", () => {
+  it("moderates Filipino profanity and self-harm in replies, not normal Tagalog", () => {
+    expect(unsafeOutput("Tangina naman")).toBe(true);
+    expect(unsafeOutput("ang gago mo")).toBe(true);
+    expect(unsafeOutput("Magandang umaga! Ano ang gusto mong matutunan ngayon?")).toBe(false);
+    expect(unsafeOutput("Ang gagamba ay may walong paa.")).toBe(false); // gagamba (spider) is not 'gago'
+  });
+});
+describe("language rule in prompt", () => {
+  it("tells the brain to match English, Filipino or Taglish", () => {
+    const sys = buildSystem({ teacher: "leo", world: "classroom", session: 1, skills: [], history: [], hintsUsed: 0, input: { kind: "session_start" } } as never);
+    expect(JSON.stringify(sys)).toMatch(/Filipino \(Tagalog\), or Taglish/);
+  });
+});

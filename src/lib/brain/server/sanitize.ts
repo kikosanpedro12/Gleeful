@@ -76,6 +76,8 @@ const UNSAFE: RegExp[] = [
   /\bwhere do you live\b|\bsend (me )?(a )?(photo|picture|pic|selfie)\b|\bmeet (me|up) (in person|somewhere|after)\b/i,
   /\bkeep (it|this) (a )?secret\b|\bdon'?t tell (your )?(mom|mum|dad|parents?|anyone)\b/i, // grooming-style secrecy
   /\b(cut|cutting|hang|hanging|overdose|kill) (yourself|myself)\b|\bhow to (kill|hurt|poison)\b/i,
+  /\b(put(a|ang)\s?ina\w*|tangina\w*|gago|tarantado\w*|ulol|pakyu|kantot\w*|jakol|puki|pekpek|titi|burat|hubad)\b/i, // Filipino profanity / sexual words
+  /\b(magpakamatay|patayin mo ang sarili|papatayin kita)\b/i, // Filipino self-harm / threats
   /\b(gunpowder|detonat\w*|pipe bomb|make a (bomb|gun|weapon))\b/i,
 ];
 export const SAFE_REDIRECT = "Let's get back to our lesson. If something is worrying you, please talk to a grown-up you trust.";
