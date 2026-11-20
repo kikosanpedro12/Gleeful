@@ -2,6 +2,7 @@
 
 Product name: **Gleeful** (chosen 13 Nov 2026; quick USPTO + Google screen clean in classes 9 and 41, attorney clearance still needed). Mascot name idea: Glee.
 
+Brain learning loop: docs/BRAIN_LEARNING.md. Work queue: BACKLOG.md.
 Read first: PRODUCT_VISION.md → CHECKPOINT.md → BUILD_PLAN.md → docs/ARCHITECTURE.md → SECURITY.md. Workflow: docs/AGENT_WORKFLOW.md. **Before any build, test or review: read docs/AGENT_LESSONS.md** (recurring mistakes and how each is enforced). Database: docs/DATABASE.md.
 
 - Founder is non-technical and wants short updates: status, decisions, real blockers, exact next action. Details go in files.
