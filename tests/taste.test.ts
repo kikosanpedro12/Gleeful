@@ -318,6 +318,19 @@ describe("taste: per-person cookie and scene", () => {
     const j = await json(await handleTaste(http(body()), deps(f as unknown as ReturnType<typeof model>)));
     expect(j.board).toBeUndefined();
   });
+  it("replaces an unsafe reply with the redirect, with no scene, gesture or board, and still counts the try", async () => {
+    const f = model([{ type: "text", text: 'Okay, here you go: fuck.\nSCENE: {"setting":"desert","era":"Mars, today","props":[]}\nGESTURE: wave\nBOARD: hello' }]);
+    const j = await json(await handleTaste(http(body()), deps(f)));
+    expect(j.reply).toBe("Let's ask something else. If something is worrying you, please talk to a grown-up you trust.");
+    expect(j.scene).toBeUndefined(); expect(j.gesture).toBeUndefined(); expect(j.board).toBeUndefined();
+    expect(j.turnsLeft).toBe(2);
+  });
+  it("does not redirect harmless science and history (naked eye, gunpowder, plant reproduction, titi monkey)", async () => {
+    for (const t of ["Venus is visible to the naked eye at dusk.", "Gunpowder was invented in China long ago.", "Flowers use sexual reproduction with pollen.", "A titi monkey lives in South American forests."]) {
+      const j = await json(await handleTaste(http(body()), deps(model([{ type: "text", text: t }]))));
+      expect(j.reply).toBe(t);
+    }
+  });
   it("drops an unknown gesture, a link on the board, and an over-long board", async () => {
     for (const extra of ["GESTURE: backflip", "BOARD: visit bit.ly/x now", "BOARD: " + "a".repeat(80), "BOARD: Call 555 0142 now", "BOARD: add me @someone", "BOARD: fuck"]) {
       const f = model([{ type: "text", text: "Fine answer here.\n" + extra }]);

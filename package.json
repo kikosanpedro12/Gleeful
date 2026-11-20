@@ -16,6 +16,7 @@
     "build:test": "NEXT_PUBLIC_TEST_HOOKS=1 next build",
     "mutate": "node scripts/mutate-rls.mjs",
     "stop": "node scripts/stop-server.mjs",
+    "evals": "node scripts/evals.mjs",
     "smoke:widgets": "node scripts/widgets-smoke.mjs"
   },
   "dependencies": {

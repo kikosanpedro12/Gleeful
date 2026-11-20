@@ -128,8 +128,9 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
       return fail(502, "upstream_failed");
     }
     reply = cleanReply(up.content);
-    scene = reply ? extractScene(up.content) : undefined;
-    acts = reply ? extractActs(up.content, up.stopReason === "max_tokens") : {};
+    const redirected = reply === TASTE_REDIRECT; // a moderated reply carries no picture, gesture or board
+    scene = reply && !redirected ? extractScene(up.content) : undefined;
+    acts = reply && !redirected ? extractActs(up.content, up.stopReason === "max_tokens") : {};
     if (!reply) {
       // Types and counts only, never the visitor's words or the model's.
       const types = Array.isArray(up.content) ? up.content.slice(0, 6).map((b) => String((b as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
@@ -155,10 +156,18 @@ export function cleanReply(blocks: unknown): string | null {
     if (s && !looksLikeNarration(s)) parts.push(s);
     if (parts.length >= 2) break;
   }
-  return cleanText(parts.join(" "), TASTE_LIMITS.maxReplyChars);
+  const joined = parts.join(" ");
+  if (joined && unsafeForLanding(joined)) return TASTE_REDIRECT; // same moderation as the lessons: an unsafe line is never shown or spoken
+  return cleanText(joined, TASTE_LIMITS.maxReplyChars);
 }
 
 const SCENE_RE = /SCENE:\s*(\{[^\n]*\})/;
+/** Shown instead of an unsafe reply. The landing has no "lesson", so it says something that fits a first visit. */
+export const TASTE_REDIRECT = "Let's ask something else. If something is worrying you, please talk to a grown-up you trust.";
+/** Open-world questions: the lesson filter, minus harmless science and history phrases it would otherwise trip on. */
+const BENIGN = /\bnaked[- ]eyes?\b|\bgunpowder\b|\bsexual (?:reproduction|organs?)\b|\btiti monkeys?\b/gi;
+export const unsafeForLanding = (t: string) => unsafeOutput(t.replace(BENIGN, " "));
+
 const MARKER_STRIP = /\b(SCENE|GESTURE|BOARD)\s*[:\uFF1A][^\n\r]*/gi;
 const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/[\u200b-\u200f\u2060\ufeff]/g, "").replace(MARKER_STRIP, "") : t);
 const GESTURE_RE = /^GESTURE:[ \t]*([a-z_]{1,16})[ \t]*$/m;
