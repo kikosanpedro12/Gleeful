@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { JointName, TeacherRig } from "./rig";
 import { JOINTS } from "./rig";
 import type { TeacherState } from "./stateMachine";
-import type { Gesture, SceneCommand } from "@/lib/scene/commands";
+import type { Action, Gesture, SceneCommand } from "@/lib/scene/commands";
 
 /**
  * Drives the rig every frame from conversation state + validated directives.
@@ -37,11 +37,15 @@ const BEATS: Pose[] = [
 
 const GESTURE_SEC: Record<Gesture, number> = { wave: 1.9, nod: 1.2, thumbs_up: 1.6, shrug: 1.5, think: 1.8, open_hands: 1.7 };
 
+/** Nominal seconds per action (halved with reduced motion). Pretend acting: nothing here moves the teacher across the floor. */
+export const ACTION_SEC: Record<Action, number> = { run: 2.6, jump: 1.3, eat: 3.4, sit: 3.4, clap: 2.2, swim: 3.6, climb: 3.6 };
+const smooth = (x: number) => { const c = Math.min(1, Math.max(0, x)); return c * c * (3 - 2 * c); };
 
 type Active =
   | { kind: "walk"; to: THREE.Vector3; turnId: number }
   | { kind: "point"; target: string; t: number; turnId: number }
-  | { kind: "gesture"; gesture: Gesture; t: number; turnId: number };
+  | { kind: "gesture"; gesture: Gesture; t: number; turnId: number }
+  | { kind: "act"; action: Action; t: number; turnId: number };
 
 export interface FrameInput {
   dt: number;
@@ -88,16 +92,39 @@ export class TeacherAnimator {
   private beatAt = 0;
   private walkPhase = 0;
   private bob = 0;
+  private lift = 0; // action height offset (jump arc, sit, climb)
+  private actPhase = 0;
+  private chew = 0;
+  private snapGround = false;
+  private footBase: number;
+  private pt = new THREE.Vector3();
   private seed = 1234567;
   private announced = -1;
   private lookObject: string | null = null;
   /** Read by the scene to highlight the object being pointed at. */
   pointed: string | null = null;
   /** For tests / dev panel. */
-  debug = { mouthOpen: 0, walking: false, gesture: null as string | null, pointing: null as string | null };
+  debug = { mouthOpen: 0, walking: false, gesture: null as string | null, action: null as string | null, pointing: null as string | null };
 
   constructor(private rig: TeacherRig) {
     rig.root.position.set(-0.15, 0, -0.7);
+    rig.root.updateMatrixWorld(true);
+    this.footBase = this.lowest() - rig.root.position.y; // sole height below the root when standing
+  }
+
+  /**
+   * World height of the lowest of a few reference points (both soles' corners, the knees, the pelvis).
+   * A handful of points instead of a bounding box of the whole rig, so it is cheap enough for every frame.
+   * Needs up-to-date world matrices.
+   */
+  private lowest(): number {
+    const J = this.rig.joints;
+    let min = Infinity;
+    for (const k of [J.kneeL, J.kneeR]) {
+      for (const [y, z] of [[-0.5055, 0.18], [-0.5055, -0.09]]) min = Math.min(min, k.localToWorld(this.pt.set(0, y, z)).y);
+      min = Math.min(min, k.localToWorld(this.pt.set(0, -0.07, 0)).y);
+    }
+    return Math.min(min, J.hips.localToWorld(this.pt.set(0, -0.178, 0)).y);
   }
 
   /** Teleport (used during a world change, while the view is hidden). Cancels any action. */
@@ -109,6 +136,7 @@ export class TeacherAnimator {
     this.queue = [];
     this.pointed = null;
     this.lookObject = null;
+    this.lift = 0; this.snapGround = false; this.actPhase = 0; this.chew = 0;
   }
 
   /** Where the teacher is walking to, or null when standing (the camera leads the walk). */
@@ -150,9 +178,13 @@ export class TeacherAnimator {
       this.stateTime = 0;
     }
     this.stateTime += dt;
+    // The child is speaking: stop acting at once and attend.
+    if (f.state === "listening" && this.active?.kind === "act") this.active = null;
     this.react = Math.max(0, this.react - dt);
 
     for (const d of f.takeDirectives()) if (d.turnId === f.turnId) this.queue.push(d);
+    // An action never starts for a frame while the child is speaking.
+    if (f.state === "listening" && this.queue.some((d) => d.command.name === "act")) this.queue = this.queue.filter((d) => d.command.name !== "act");
     if (!this.active && this.queue.length) this.begin(this.queue.shift()!, f);
 
     // --- locomotion ----------------------------------------------------------------
@@ -291,8 +323,120 @@ export class TeacherAnimator {
       pose.elbowL = [-0.35, 0, 0]; pose.elbowR = [-0.35, 0, 0];
       this.bob = Math.abs(Math.sin(this.walkPhase)) * 0.018;
     } else this.bob += (0 - this.bob) * damp(10, dt);
+
+    // --- action overlay (run, jump, eat, sit, clap, swim, climb) -----------------------
+    let liftTarget = 0, liftK = 12, chewTarget = 0, snap = false;
+    if (this.active?.kind === "act") {
+      const a = this.active;
+      const red = f.reducedMotion;
+      const dur = ACTION_SEC[a.action] * (red ? 0.5 : 1);
+      a.t += dt;
+      const u = a.t * (ACTION_SEC[a.action] / dur); // time on the nominal timeline
+      const nd = ACTION_SEC[a.action];
+      const env = Math.min(1, u / 0.4, (nd - u) / 0.4); // ease in and out
+      const e = Math.max(0, env);
+      const amp = red ? 0.4 : 1;
+      switch (a.action) {
+        case "run": {
+          this.actPhase += dt * (red ? 6.5 : 11);
+          const s = Math.sin(this.actPhase), c = Math.cos(this.actPhase), k2 = amp * e;
+          pose.thighL = [-s * 0.95 * k2 - 0.1, 0, 0]; pose.thighR = [s * 0.95 * k2 - 0.1, 0, 0];
+          pose.kneeL = [Math.max(0, c) * 1.5 * k2, 0, 0]; pose.kneeR = [Math.max(0, -c) * 1.5 * k2, 0, 0];
+          pose.shoulderL = [s * 0.9 * k2, 0, 0.1]; pose.shoulderR = [-s * 0.9 * k2, 0, -0.1];
+          pose.elbowL = [-1.5 * e, 0, 0]; pose.elbowR = [-1.5 * e, 0, 0];
+          add("spine", 0.22 * k2, 0, 0);
+          liftTarget = Math.abs(s) * 0.06 * k2; liftK = 30;
+          break;
+        }
+        case "jump": {
+          // crouch 0-0.3, airborne 0.3-0.85, land 0.85-1.15, recover to 1.3
+          const crouch = (d: number) => {
+            pose.thighL = [-1.0 * d, 0, 0]; pose.thighR = [-1.0 * d, 0, 0];
+            pose.kneeL = [1.9 * d, 0, 0]; pose.kneeR = [1.9 * d, 0, 0];
+            snap = d > 0.02; // feet stay on the floor while the knees bend
+          };
+          const cd = red ? 0.3 : 1;
+          if (u < 0.3) {
+            const d = smooth(u / 0.3); crouch(d * cd);
+            pose.shoulderL = [0.5 * d * cd, 0, 0.1]; pose.shoulderR = [0.5 * d * cd, 0, -0.1];
+            pose.elbowL = [-0.3, 0, 0]; pose.elbowR = [-0.3, 0, 0];
+          } else if (u < 0.85) {
+            const q = (u - 0.3) / 0.55;
+            liftTarget = 4 * (red ? 0.05 : 0.42) * q * (1 - q); liftK = 70;
+            pose.thighL = [-0.35, 0, 0]; pose.thighR = [-0.35, 0, 0]; pose.kneeL = [0.7, 0, 0]; pose.kneeR = [0.7, 0, 0];
+            const up = red ? -1.2 : -2.8;
+            pose.shoulderL = [up, 0, 0.3]; pose.shoulderR = [up, 0, -0.3];
+            pose.elbowL = [-0.2, 0, 0]; pose.elbowR = [-0.2, 0, 0];
+          } else if (u < 1.3) {
+            const p = (u - 0.85) / 0.45;
+            crouch(Math.sin(Math.min(1, p) * Math.PI) * 0.7 * cd);
+            pose.shoulderL = [-0.3, 0, 0.15]; pose.shoulderR = [-0.3, 0, -0.15];
+          }
+          break;
+        }
+        case "eat": {
+          // Pretend food, no prop: hand to mouth, hand down, chew. Left hand holds the "snack" at the chest.
+          const cyc = 0.5 - 0.5 * Math.cos((u / 1.7) * Math.PI * 2);
+          const up = smooth(cyc * 1.6) * e;
+          pose.shoulderR = [-0.55 - 0.65 * up, 0, -0.1 + 0.45 * up]; pose.elbowR = [-1.2 - 0.85 * up, 0, 0.3 * up];
+          pose.shoulderL = [-0.5 * e, 0, 0.2]; pose.elbowL = [-1.3 * e, 0, -0.2];
+          add("head", 0.05 * up, 0, 0);
+          chewTarget = up > 0.8 ? (0.15 + Math.abs(Math.sin(u * 10)) * 0.3) * (red ? 0.6 : 1) : 0;
+          break;
+        }
+        case "sit": {
+          // On the floor, legs out in front (no chair needed, so it works in every world).
+          const d = smooth(u / 0.9) * smooth((nd - u) / 0.8);
+          pose.thighL = [-1.45 * d, 0, 0.08 * d]; pose.thighR = [-1.45 * d, 0, -0.08 * d];
+          pose.kneeL = [0.12 * d, 0, 0]; pose.kneeR = [0.12 * d, 0, 0];
+          pose.shoulderL = [-0.35 * d, 0, 0.2]; pose.shoulderR = [-0.35 * d, 0, -0.2];
+          pose.elbowL = [-0.5 * d, 0, 0]; pose.elbowR = [-0.5 * d, 0, 0];
+          snap = true;
+          break;
+        }
+        case "clap": {
+          const c = 0.5 + 0.5 * Math.sin(u * Math.PI * 2 * 2.0); // 0 apart, 1 together
+          const k2 = amp * e;
+          pose.shoulderL = [-0.9 * e, 0, (0.45 - 1.1 * c) * k2]; pose.shoulderR = [-0.9 * e, 0, -(0.45 - 1.1 * c) * k2];
+          pose.elbowL = [-1.35 * e, 0, 0]; pose.elbowR = [-1.35 * e, 0, 0];
+          add("head", 0.04 * e, 0, 0);
+          break;
+        }
+        case "swim": {
+          // Face-down front crawl at hip height. Needs water scenery to look right; no world declares swim yet.
+          this.actPhase += dt * (red ? 2.5 : 4.5);
+          const ph = this.actPhase, k2 = amp * e;
+          add("hips", 1.35 * e, 0, 0);
+          add("neck", -0.35 * e, 0, 0); add("head", -0.95 * e, 0, 0);
+          const TAU = Math.PI * 2; // arm angle -PI (reach forward) -> under -> back -> over; the two arms half a stroke apart
+          pose.shoulderL = [(-Math.PI + (ph % TAU)) * e, 0, 0.1]; pose.shoulderR = [(-Math.PI + ((ph + Math.PI) % TAU)) * e, 0, -0.1];
+          pose.elbowL = [-0.3 * e, 0, 0]; pose.elbowR = [-0.3 * e, 0, 0];
+          pose.thighL = [Math.sin(ph * 3) * 0.28 * k2, 0, 0]; pose.thighR = [-Math.sin(ph * 3) * 0.28 * k2, 0, 0];
+          pose.kneeL = [0.15 + Math.max(0, -Math.sin(ph * 3)) * 0.25 * k2, 0, 0]; pose.kneeR = [0.15 + Math.max(0, Math.sin(ph * 3)) * 0.25 * k2, 0, 0];
+          liftTarget = Math.sin(ph * 1.5) * 0.03 * k2; liftK = 10;
+          break;
+        }
+        case "climb": {
+          // Hand-over-hand and step-up in place with a slow rise and return. Needs something climbable in the scene.
+          this.actPhase += dt * (red ? 2 : 3.2);
+          const sL = Math.sin(this.actPhase), k2 = amp * e;
+          const reachL = 0.5 + 0.5 * sL, reachR = 0.5 - 0.5 * sL;
+          pose.shoulderL = [-(1.3 + 1.2 * reachL) * e, 0, 0.15]; pose.shoulderR = [-(1.3 + 1.2 * reachR) * e, 0, -0.15];
+          pose.elbowL = [-0.5 * e, 0, 0]; pose.elbowR = [-0.5 * e, 0, 0];
+          pose.thighL = [-(0.2 + 0.8 * reachR) * k2, 0, 0]; pose.thighR = [-(0.2 + 0.8 * reachL) * k2, 0, 0];
+          pose.kneeL = [1.2 * reachR * k2, 0, 0]; pose.kneeR = [1.2 * reachL * k2, 0, 0];
+          add("spine", 0.12 * e, 0, 0);
+          liftTarget = 0.28 * amp * Math.sin(Math.PI * Math.min(1, u / nd)); liftK = 10;
+          break;
+        }
+      }
+      if (a.t >= dur) this.active = null;
+    }
+    this.snapGround = snap;
+    if (!snap) this.lift += (liftTarget - this.lift) * damp(liftK, dt);
+    this.chew = chewTarget;
     const ground = f.groundY ? f.groundY(rig.root.position.x, rig.root.position.z) : 0;
-    rig.root.position.y = ground + this.bob;
+    rig.root.position.y = ground + this.bob + this.lift;
 
     // --- head look (after yaw so it is relative to the body) ------------------------
     const lookAt = (this.lookObject && f.resolveTarget(this.lookObject)) || f.camera;
@@ -306,13 +450,24 @@ export class TeacherAnimator {
     }
 
     // --- apply joints ----------------------------------------------------------------
-    const k = damp(this.react > 0 ? 16 : walking ? 14 : 8, dt);
+    const acting = this.active?.kind === "act";
+    const k = damp(this.react > 0 ? 16 : walking || acting ? 14 : 8, dt);
     for (const name of JOINTS) {
       if (pointArm && (name === `shoulder${pointArm}` || name === `elbow${pointArm}`)) continue;
       const p = pose[name], o = off[name];
       e1.set((p?.[0] ?? 0) + (o?.[0] ?? 0), (p?.[1] ?? 0) + (o?.[1] ?? 0), (p?.[2] ?? 0) + (o?.[2] ?? 0));
       q1.setFromEuler(e1);
       J[name].quaternion.slerp(q1, k);
+    }
+
+    // Bent legs (crouch, sit) are lowered until the lowest part of the body touches the ground again,
+    // whatever the joint blend is doing this frame, so the feet never sink through or hover above the floor.
+    if (this.snapGround) {
+      rig.root.position.y = ground + this.bob + this.lift;
+      rig.root.updateMatrixWorld(true);
+      const dy = THREE.MathUtils.clamp(ground + this.footBase - this.lowest(), -0.2, 0.2);
+      this.lift += dy;
+      rig.root.position.y += dy;
     }
 
     // Pointing arm aims at the actual object position (overrides the pose).
@@ -330,7 +485,7 @@ export class TeacherAnimator {
 
     // --- face ------------------------------------------------------------------------
     // Mouth: loudness-driven (NOT phoneme lip sync). Closed the moment we are not speaking.
-    const targetOpen = f.state === "speaking" ? level : 0;
+    const targetOpen = Math.max(f.state === "speaking" ? level : 0, this.chew);
     this.mouthOpen += (targetOpen - this.mouthOpen) * damp(targetOpen > this.mouthOpen ? 38 : f.state === "speaking" ? 16 : 60, dt);
     const open = this.mouthOpen;
     rig.mouth.scale.set(1 - open * 0.25, 0.08 + open * 0.75, 0.3);
@@ -370,6 +525,7 @@ export class TeacherAnimator {
     this.debug.mouthOpen = open;
     this.debug.walking = walking;
     this.debug.gesture = this.active?.kind === "gesture" ? this.active.gesture : null;
+    this.debug.action = this.active?.kind === "act" ? this.active.action : null;
     this.debug.pointing = this.active?.kind === "point" ? this.active.target : null;
   }
 
@@ -386,6 +542,9 @@ export class TeacherAnimator {
         break;
       case "gesture":
         this.active = { kind: "gesture", gesture: c.gesture, t: 0, turnId: d.turnId };
+        break;
+      case "act":
+        this.active = { kind: "act", action: c.action, t: 0, turnId: d.turnId };
         break;
       case "inviteTap":
         // Gesture toward the object the child should tap.

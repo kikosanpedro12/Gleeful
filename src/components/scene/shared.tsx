@@ -104,6 +104,37 @@ export function drawMarsTexture(ctx: CanvasRenderingContext2D, w: number, h: num
   ctx.fillRect(0, h * 0.965, w, h * 0.035);
 }
 
+/** Our own stylised Earth texture (not a real map): blue ocean, green and brown land blobs, white poles, soft clouds. */
+export function drawEarthTexture(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.fillStyle = "#2f7fd1";
+  ctx.fillRect(0, 0, w, h);
+  const r = rng(7);
+  const blob = (cx: number, cy: number, rad: number, fill: string, squash = 0.7) => {
+    ctx.fillStyle = fill;
+    for (let i = 0; i < 14; i++) {
+      const a = r() * 6.28, d = r() * rad * 0.8;
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.cos(a) * d * 1.3, cy + Math.sin(a) * d * squash, rad * (0.3 + r() * 0.4), rad * squash * (0.3 + r() * 0.4), r() * 3, 0, 7);
+      ctx.fill();
+    }
+  };
+  // Rough continent positions (stylised): Americas, Africa/Europe, Asia, Australia.
+  const lands: [number, number, number][] = [[0.17, 0.3, 0.1], [0.24, 0.62, 0.08], [0.5, 0.36, 0.09], [0.53, 0.6, 0.08], [0.7, 0.3, 0.13], [0.82, 0.68, 0.05]];
+  for (const [x, y, rad] of lands) {
+    blob(x * w, y * h, rad * w, "#4fa24a");
+    blob(x * w, y * h, rad * w * 0.55, "#8a8a45", 0.6);
+  }
+  ctx.fillStyle = "#f4f8fb";
+  ctx.fillRect(0, 0, w, h * 0.07);
+  ctx.fillRect(0, h * 0.93, w, h * 0.07);
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  for (let i = 0; i < 18; i++) {
+    ctx.beginPath();
+    ctx.ellipse(r() * w, h * 0.12 + r() * h * 0.76, 20 + r() * 40, 4 + r() * 7, r() * 0.5 - 0.25, 0, 7);
+    ctx.fill();
+  }
+}
+
 /**
  * Shared, per-frame visual state for world travel, written by the transit
  * director and read by the scene pieces. Kept outside React so a 60 fps
@@ -123,3 +154,26 @@ export const fx = {
   /** Camera mode. */
   shot: "indoor" as "indoor" | "outdoor" | "space",
 };
+
+/** Soft round contact shadow laid on the floor so furniture reads as standing there. */
+export function useShadowTexture() {
+  return useCanvasTexture((ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    g.addColorStop(0, "rgba(40,25,10,0.55)");
+    g.addColorStop(0.6, "rgba(40,25,10,0.25)");
+    g.addColorStop(1, "rgba(40,25,10,0)");
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }, 128, 128, []);
+}
+
+export function ContactShadow({ position, size }: { position: [number, number, number]; size: [number, number] }) {
+  const tex = useShadowTexture();
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={size} />
+      <meshBasicMaterial map={tex} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+    </mesh>
+  );
+}

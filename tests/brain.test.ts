@@ -267,3 +267,38 @@ describe("market: full working sentences", () => {
     expect(c.profile.attempts.at(-1)).toMatchObject({ answerId: "four", correct: true });
   });
 });
+
+describe("scripted brain can act things out, only where the world allows it", () => {
+  it("'can you jump' acts, says so in words, and still leads to a next step", () => {
+    for (const world of ["classroom", "mars", "market"] as const) {
+      const r = new ScriptedBrain().respond({ kind: "text", text: "can you jump?" }, ctx(world));
+      allValid(r, world);
+      expect(names(r)).toContain("act");
+      expect(r.segments[0].say).toMatch(/jump/i);
+    }
+  });
+  it("'eat' on Mars is not allowed there, so no act is sent", () => {
+    const r = new ScriptedBrain().respond({ kind: "text", text: "can you eat something?" }, ctx("mars"));
+    allValid(r, "mars");
+    expect(names(r)).not.toContain("act");
+  });
+});
+
+describe("a pending question's answer wins over the act intent", () => {
+  it("a sentence that answers the question AND contains eat/sit counts as the answer, not an action", () => {
+    const b = new ScriptedBrain(); const c = ctx("mars");
+    b.respond({ kind: "tap", target: "rock_1" }, c); // opens q_red
+    const r = b.respond({ kind: "text", text: "it is the heat, I need to sit" }, c);
+    // "hot" is a wrong answer: the first miss gives the hint and asks again (nothing recorded yet), and never acts.
+    expect(r.segments[0].say).toMatch(/not quite/i);
+    expect(names(r)).toContain("askQuestion");
+    expect(names(r)).not.toContain("act");
+  });
+  it("text that matches no option closes the question and may then act", () => {
+    const b = new ScriptedBrain(); const c = ctx("market");
+    b.respond({ kind: "tap", target: "crate" }, c);
+    const r = b.respond({ kind: "text", text: "sit" }, c);
+    expect(c.profile.attempts).toHaveLength(0);
+    expect(names(r)).toContain("act");
+  });
+});

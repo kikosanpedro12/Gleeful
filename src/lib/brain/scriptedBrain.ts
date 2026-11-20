@@ -1,5 +1,6 @@
 import type { Action, Brain, BrainContext, BrainInput, BrainReply, Segment } from "./types";
-import { WORLDS, type Question } from "@/lib/worlds/registry";
+import type { Action as ActId } from "@/lib/scene/commands";
+import { contextFor, WORLDS, type Question } from "@/lib/worlds/registry";
 import { skillStatus } from "@/lib/learner/profile";
 import { matches } from "@/lib/widgets/spec";
 
@@ -25,6 +26,7 @@ const INTENTS: [string, RegExp][] = [
   ["fractions", /\b(fractions?|halves|half|quarters?)\b/i],
   ["market", /\b(market|shar(e[sd]?|ing)|divid(e[sd]?|ing)|division|split(ting)?|equal groups?|fair share|oranges)\b/i],
   ["mars", /\b(mars|planet|space)\b/i],
+  ["act", /\b(run|jump|clap|eat|sit)\b/i],
   ["yes", /^(yes|yeah|yep|ok|okay|sure|let'?s go|go)\b/i],
   ["hello", /\b(hello|hi|hey)\b/i],
 ];
@@ -131,6 +133,13 @@ export class ScriptedBrain implements Brain {
     switch (intent) {
       case "stop":
         return { segments: [S("Okay. I'm listening.", A("gesture", { gesture: "nod" }))] };
+      case "act": {
+        // Acting out is pretend and only what this world allows; otherwise fall through to the honest fallback.
+        const word = (raw.toLowerCase().match(/\b(run|jump|clap|eat|sit)\b/) ?? [])[1] as ActId | undefined;
+        if (!word || !contextFor(ctx.world).actions.includes(word)) break;
+        const say: Record<string, string> = { run: "Watch me run on the spot!", jump: "Here's a big jump!", clap: "Clap, clap, clap!", eat: "Yum, a pretend snack!", sit: "Let me sit down for a moment." };
+        return { segments: [S(say[word], A("act", { action: word })), this.nudge(ctx)] };
+      }
       case "hello":
         return { segments: [S(`Hi! I'm ${ctx.teacherName}.`, A("gesture", { gesture: "wave" })), this.nudge(ctx)] };
       case "numberline":

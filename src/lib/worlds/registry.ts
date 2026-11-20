@@ -6,6 +6,8 @@
  * ids declared here. Adding a subject = adding a world entry + (if needed) a
  * new reusable environment. Nothing here is executable.
  */
+import type { Action } from "@/lib/scene/commands";
+
 export type WorldId = "classroom" | "mars" | "market";
 export type Environment = "classroom" | "planet_surface" | "market";
 /** How the camera frames a world: indoors (close) or outdoors (higher, wider). */
@@ -35,6 +37,12 @@ export interface WorldDef {
   /** The teacher wears a space helmet here (honesty: no unprotected humans in space). */
   helmet: boolean;
   arrivalSpot: string;
+  /**
+   * Whole-body actions the teacher may act out here. Default safe set is run/jump/eat/sit/clap.
+   * Add "swim" only where the scene has water and "climb" only where something is climbable
+   * (neither exists in any world yet). Mars has no "eat": the teacher wears a helmet there.
+   */
+  actions: Action[];
   spots: Record<string, [x: number, z: number]>;
   /** Things the teacher may point at. Positions are live (from the scene); labels are for the brain. */
   targets: Record<string, string>;
@@ -63,8 +71,9 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     transit: "fade",
     helmet: false,
     arrivalSpot: "center",
+    actions: ["run", "jump", "eat", "sit", "clap"],
     spots: { center: [-0.15, -0.7], board_side: [-1.35, -1.75], desk_side: [0.95, -0.9] },
-    targets: { board: "the classroom board", mars_globe: "a small Mars globe on the desk", bookshelf: "the bookshelf", window: "the window" },
+    targets: { board: "the classroom board", mars_globe: "a small globe on the desk", bookshelf: "the bookshelf", window: "the window" },
     interactive: {},
     questions: {
       q_red_recall: {
@@ -106,6 +115,7 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     transit: "space_flight",
     helmet: true,
     arrivalSpot: "landing",
+    actions: ["run", "jump", "sit", "clap"],
     spots: { landing: [0, 0], rock_side: [0.55, -0.55], crater_edge: [-2.9, -4.9], mountain_view: [3.0, -4.2] },
     targets: { rock_1: "a reddish rock near you", crater: "a crater", mountain: "Olympus Mons, a giant volcano far away", ground: "the red dusty ground", sky: "the Martian sky" },
     interactive: {
@@ -155,6 +165,7 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     transit: "fade",
     helmet: false,
     arrivalSpot: "center",
+    actions: ["run", "jump", "eat", "sit", "clap"],
     spots: { center: [-0.15, -0.7], stall_side: [-0.35, -0.9], basket_side: [2.25, -0.9] },
     targets: { crate: "a crate of 12 oranges", basket_1: "the first basket", basket_2: "the second basket", basket_3: "the third basket", stall: "the market stall" },
     interactive: {
@@ -203,17 +214,20 @@ export interface CommandContext {
   world: WorldId | "transit";
   targets: string[];
   spots: string[];
+  /** Action ids this world allows ([] while travelling). */
+  actions: string[];
   interactive: string[];
   questions: string[];
 }
 
 export function contextFor(world: WorldId | "transit"): CommandContext {
-  if (world === "transit") return { world, targets: Object.keys(TRANSIT_TARGETS), spots: [], interactive: [], questions: [] };
+  if (world === "transit") return { world, targets: Object.keys(TRANSIT_TARGETS), spots: [], actions: [], interactive: [], questions: [] };
   const w = WORLDS[world];
   return {
     world,
     targets: Object.keys(w.targets),
     spots: Object.keys(w.spots),
+    actions: [...w.actions],
     interactive: Object.keys(w.interactive),
     questions: Object.keys(w.questions),
   };

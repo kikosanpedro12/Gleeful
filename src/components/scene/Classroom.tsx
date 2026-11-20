@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useSession } from "@/lib/session/store";
-import { drawMarsTexture, fx, Highlight, registry, useCanvasTexture, useRegister } from "./shared";
+import { ContactShadow, drawEarthTexture, fx, Highlight, registry, useCanvasTexture, useRegister } from "./shared";
 
 // Warm mint classroom: sun-yellow board frame, pink rug, brand colours (kept in one place).
 const PAL = { wall: "#e3f6ec", side: "#d3efe0", dado: "#8fd3b4", floor: "#f0d3a8", rug: "#ff5e8a", ring: "#ffffff", board: "#2a5a4e", frame: "#ffb627", chalk: "#fffbe8" };
@@ -65,13 +65,13 @@ function Board() {
 function MarsGlobe() {
   const ref = useRegister("mars_globe");
   const ball = useRef<THREE.Mesh>(null);
-  const tex = useCanvasTexture(drawMarsTexture, 512, 256, []);
+  const tex = useCanvasTexture(drawEarthTexture, 512, 256, []);
   useFrame((_, dt) => { if (ball.current) ball.current.rotation.y += dt * 0.25; });
   return (
     <group ref={ref} position={[1.75, 1.07, -1.25]}>
       <mesh ref={ball} castShadow>
         <sphereGeometry args={[0.19, 40, 28]} />
-        <meshStandardMaterial map={tex} roughness={0.9} />
+        <meshStandardMaterial map={tex} roughness={0.6} />
       </mesh>
       <mesh position={[0, -0.215, 0]}>
         <cylinderGeometry args={[0.02, 0.02, 0.06, 10]} />
@@ -102,7 +102,7 @@ function Bookshelf() {
     return out;
   }, []);
   return (
-    <group ref={ref} position={[-2.45, 0.95, -2.7]}>
+    <group ref={ref} position={[-2.45, 0.75, -2.85]}>
       <mesh castShadow position={[0, 0, -0.02]}>
         <boxGeometry args={[0.95, 1.5, 0.3]} />
         <meshStandardMaterial color="#c9a274" roughness={0.8} />
@@ -119,6 +119,12 @@ function Bookshelf() {
           <meshStandardMaterial color={b.c} roughness={0.85} />
         </mesh>
       ))}
+      {/* plinth so the base visibly meets the floor, and a soft contact shadow */}
+      <mesh position={[0, -0.72, 0.02]}>
+        <boxGeometry args={[0.99, 0.06, 0.34]} />
+        <meshStandardMaterial color="#8a6a48" roughness={0.9} />
+      </mesh>
+      <ContactShadow position={[0.05, -0.745, 0.1]} size={[1.5, 0.8]} />
       <Highlight name="bookshelf" radius={0.75} />
     </group>
   );
@@ -197,6 +203,7 @@ export default function Classroom() {
           <meshStandardMaterial color={PAL.floor} roughness={0.85} />
         </mesh>
         {/* Desk */}
+        <ContactShadow position={[1.75, 0.004, -1.2]} size={[1.9, 1.2]} />
         <group position={[1.75, 0, -1.25]}>
           <mesh position={[0, 0.78, 0]} castShadow receiveShadow>
             <boxGeometry args={[1.25, 0.06, 0.65]} />

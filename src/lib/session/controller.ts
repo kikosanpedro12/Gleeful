@@ -234,8 +234,8 @@ class SessionController {
         case "hideScene": this.set({ scene: null }); break;
         case "openWorld": this.beginTransit(c.world); break;
       }
-      // Body/scene actions go to the animator queue (gesture, pointAt, moveTeacherTo, inviteTap).
-      if (c.name === "gesture" || c.name === "pointAt" || c.name === "moveTeacherTo" || c.name === "inviteTap" || c.name === "writeOnBoard")
+      // Body/scene actions go to the animator queue (gesture, act, pointAt, moveTeacherTo, inviteTap).
+      if (c.name === "gesture" || c.name === "act" || c.name === "pointAt" || c.name === "moveTeacherTo" || c.name === "inviteTap" || c.name === "writeOnBoard")
         this.set({ directives: [...this.s.directives, { id: ++this.seq, turnId, command: c }] });
       this.provider?.submitToolResult(callId, JSON.stringify({ ok: true }));
     },

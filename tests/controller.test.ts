@@ -327,3 +327,36 @@ describe("session controller", () => {
     expect(s().choices).toHaveLength(0);
   });
 });
+
+describe("act commands at the controller", () => {
+  const acts = (s: () => { directives: { command: { name: string } }[] }) => s().directives.filter((d) => d.command.name === "act");
+  it("a valid act for the current turn is queued for the animator", async () => {
+    const { session, s, p } = await load();
+    session.sendText("hi");
+    p.reply("r1", [["act", { action: "jump" }]], false);
+    expect(acts(s)).toHaveLength(1);
+    expect(s().rejectedCommands).toBe(0);
+  });
+  it("a stale-turn act is dropped, never queued", async () => {
+    const { session, s, p } = await load();
+    session.sendText("hi");
+    p.ev.onResponseCreated("r1");
+    p.ev.onAudioStart("r1", 0);
+    session.interrupt();
+    p.ev.onToolCall("r1", "c", "act", JSON.stringify({ action: "jump" }));
+    expect(acts(s)).toHaveLength(0);
+    expect(s().staleDropped).toBeGreaterThan(0);
+  });
+  it("swim on Mars (and any id the world does not allow) is rejected, never queued", async () => {
+    const { session, s, p } = await load();
+    const { useSession } = await import("@/lib/session/store");
+    useSession.setState({ world: "mars" });
+    session.sendText("hi");
+    p.reply("r1", [["act", { action: "swim" }], ["act", { action: "eat" }], ["act", { action: "__proto__" }]], false);
+    expect(acts(s)).toHaveLength(0);
+    expect(s().rejectedCommands).toBe(3);
+    p.reply("r2", [["act", { action: "jump" }]], false);
+    expect(acts(s)).toHaveLength(1);
+  });
+});
+

@@ -61,3 +61,60 @@ describe("scene command validation is world-aware", () => {
     expect(names(transit)).not.toContain("openWorld");
   });
 });
+
+import { ACTIONS } from "@/lib/scene/commands";
+import { buildReply } from "@/lib/brain/server/sanitize";
+import { WORLDS, type CommandContext } from "@/lib/worlds/registry";
+
+describe("act: whole-body actions are an id from a fixed list, allowed per world", () => {
+  const market = contextFor("market");
+  // A made-up world with water and a climbing frame (no real world has either yet).
+  const lake: CommandContext = { ...room, actions: [...ACTIONS] };
+  it("accepts allowed ids", () => {
+    for (const a of ["run", "jump", "eat", "sit", "clap"]) expect(parseToolCall("act", JSON.stringify({ action: a }), room)).toEqual({ ok: true, command: { name: "act", action: a } });
+    expect(parseToolCall("act", '{"action":"jump"}', mars).ok).toBe(true);
+    expect(parseToolCall("act", '{"action":"eat"}', market).ok).toBe(true);
+  });
+  it("world gating: swim and climb only where a world declares them; Mars has no eating", () => {
+    for (const w of Object.values(WORLDS)) { expect(w.actions).not.toContain("swim"); expect(w.actions).not.toContain("climb"); }
+    expect(parseToolCall("act", '{"action":"swim"}', room).ok).toBe(false);
+    expect(parseToolCall("act", '{"action":"climb"}', market).ok).toBe(false);
+    expect(parseToolCall("act", '{"action":"eat"}', mars).ok).toBe(false);
+    expect(parseToolCall("act", '{"action":"swim"}', lake).ok).toBe(true);
+    expect(parseToolCall("act", '{"action":"climb"}', lake).ok).toBe(true);
+  });
+  it("no acting while travelling", () => {
+    expect(parseToolCall("act", '{"action":"jump"}', transit).ok).toBe(false);
+    expect(toolsFor(transit).some((t) => t.name === "act")).toBe(false);
+  });
+  it("hostile ids are rejected, even when the list would let a string through", () => {
+    for (const bad of ["__proto__", "constructor", "toString", "hasOwnProperty", "RUN", " run", "run ", "run;alert(1)", "https://evil.example/x.glb", "<script>", "", "fly", "dance"])
+      expect(parseSceneCommand("act", { action: bad }, lake).ok, JSON.stringify(bad)).toBe(false);
+    for (const bad of [undefined, null, 5, true, ["run"], { id: "run" }, { toString: () => "run" }])
+      expect(parseSceneCommand("act", { action: bad }, lake).ok).toBe(false);
+    expect(parseSceneCommand("act", {}, lake).ok).toBe(false);
+    // A world that (wrongly) listed a non-action id still cannot make it valid.
+    expect(parseSceneCommand("act", { action: "fly" }, { ...room, actions: ["fly"] }).ok).toBe(false);
+  });
+  it("extra fields (coordinates, code, urls) are never carried into the command", () => {
+    const r = parseSceneCommand("act", { action: "run", x: 5, z: 9, url: "https://evil.example", code: "alert(1)" }, room);
+    expect(r).toEqual({ ok: true, command: { name: "act", action: "run" } });
+  });
+  it("the tool schema lists only this world's actions", () => {
+    const enumOf = (c: CommandContext) => (toolsFor(c).find((t) => t.name === "act")!.input_schema.properties as { action: { enum: string[] } }).action.enum;
+    expect(enumOf(room)).toEqual(["run", "jump", "eat", "sit", "clap"]);
+    expect(enumOf(mars)).toEqual(["run", "jump", "sit", "clap"]);
+    expect(enumOf(lake)).toEqual([...ACTIONS]);
+    expect(toolsFor({ ...room, actions: [] }).some((t) => t.name === "act")).toBe(false);
+  });
+  it("model replies: an act for another world is dropped, and only one act per reply survives", () => {
+    const text = (t: string) => ({ type: "text", text: t });
+    const tool = (name: string, input: unknown) => ({ type: "tool_use", id: "t", name, input });
+    const r = buildReply([text("Watch this!"), tool("act", { action: "jump" }), tool("act", { action: "clap" }), tool("act", { action: "swim" })], "mars", { kind: "text", text: "x" })!;
+    const acts = r.segments.flatMap((s) => s.actions ?? []).filter((a) => a.name === "act");
+    expect(acts).toEqual([{ name: "act", args: { action: "jump" } }]);
+    expect(r.dropped).toBe(2);
+    const eatOnMars = buildReply([text("Yum."), tool("act", { action: "eat" })], "mars", { kind: "text", text: "x" })!;
+    expect(eatOnMars.segments.flatMap((s) => s.actions ?? [])).toEqual([]);
+  });
+});

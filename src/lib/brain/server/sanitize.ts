@@ -97,6 +97,7 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
   let interactive = 0;
   let widgets = 0;
   let scenes = 0;
+  let acts = 0;
 
   const attach = (a: Action) => {
     if (total >= LIMITS.maxActionsPerReply) { dropped++; return; }
@@ -157,6 +158,10 @@ export function buildReply(blocks: unknown, world: WorldId | "transit", input: W
         widgets++;
         attach({ name: "showWidget", args: widgetToArgs(cmd.spec) });
         continue;
+      }
+      if (cmd.name === "act") {
+        if (acts >= 1) { dropped++; continue; } // one action at a time, enforced here
+        acts++;
       }
       const { name, ...args } = cmd;
       attach({ name, args });

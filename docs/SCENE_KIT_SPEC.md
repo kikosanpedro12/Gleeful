@@ -3,7 +3,7 @@
 Copy of the project doc `10_SCENE_KIT_SPEC.md`; code comments cite this file.
 
 ## Principle
-Scenes are not generated live. We build a kit of reusable parts once; the brain composes lessons from it with validated tool calls (openWorld, pointAt, gesture, writeOnBoard, showWidget, hideWidget). Per-session scene cost is about $0 (renders on-device). Image/video tools are used OFFLINE only (textures, skyboxes, concept art), never during a lesson.
+Scenes are not generated live. We build a kit of reusable parts once; the brain composes lessons from it with validated tool calls (openWorld, pointAt, gesture, act, writeOnBoard, showWidget, hideWidget). Per-session scene cost is about $0 (renders on-device). Image/video tools are used OFFLINE only (textures, skyboxes, concept art), never during a lesson.
 
 ## Widgets (priority order)
 1. Text/equation board (writeOnBoard), later step-by-step reveal
@@ -51,3 +51,9 @@ Which 30 starter assets; who fetches them; painting sources for historical figur
 
 ## Update 19 Nov (founder decision)
 Historical people are shown as a **3D character** in the era scene (not only a painting). One character look for all people, not low-poly; a credited public-domain painting may sit beside it as the reference. Source of characters is open (Quaternius stylised, Mixamo/Sketchfab with licence check, or Blender); each needs an ASSET_LICENSES.md row first, and the figures manifest stays empty until then. Also built 19 Nov: `showScene`/`hideScene`, the display-only graph widget, per-asset cap 1,500 KB and per-scene cap 3,000 KB (raised to 4,500 KB on 21 Nov; props plus the figure model). The full, current spec is the project doc `10_SCENE_KIT_SPEC.md`.
+
+## Acting out (phase 1, 21 Nov 2026)
+- `act` takes one id from `ACTIONS` (run, jump, eat, sit, swim, climb, clap). Never coordinates, code or URLs.
+- A world lists the ones it allows in `actions` (data, `src/lib/worlds/registry.ts`). Default safe set: run, jump, eat, sit, clap. Add `swim` only to a world with water and `climb` only where something is climbable; no world has either yet. Mars omits `eat` (helmet).
+- The animator (`src/lib/teacher/animator.ts`) plays each as a pose overlay that returns to idle. All motion is in place and pretend; no props yet. Labelled simulated: the prompt tells the brain not to claim it is really swimming, climbing or eating, and to say the key facts in words.
+- One action per reply (cleaner enforces). Reduced motion: half the length, small motion. A new turn or the child speaking stops it.

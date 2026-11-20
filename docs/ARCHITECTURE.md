@@ -11,7 +11,7 @@ child taps / speaks / types
   → each action validated against the CURRENT world                                 src/lib/scene/commands.ts
   → store (Zustand)             (conv state, world, transit, directives, UI)        src/lib/session/store.ts
   → 3D scene reads the store every frame                                            src/components/scene/
-       TeacherActor → TeacherAnimator (walk, point, gesture, gaze, mouth, helmet)
+       TeacherActor → TeacherAnimator (walk, point, gesture, act, gaze, mouth, helmet)
        Director     → world travel timeline (walls open → space → land)
        CameraRig    → shots per world, portrait and landscape
 ```
@@ -33,7 +33,7 @@ Known gap: the scripted brain has hand-written lessons per world (Mars, Fair Sha
 
 ## Key rules
 - **Turn ids everywhere.** Every child input bumps the turn. Speech, captions, tool calls, directives, choices and invites from an older turn are dropped. Teacher-initiated lines (the greeting, mid-flight remarks, the arrival) wait until the teacher stops talking.
-- **The brain cannot run code.** It only gets prepared commands: gesture, pointAt, moveTeacherTo, writeOnBoard, openWorld, offerChoices, askQuestion and inviteTap. Board and choice text is plain text, sanitised and capped, and drawn to a canvas, never rendered as HTML.
+- **The brain cannot run code.** It only gets prepared commands: gesture, act (whole-body acting, ids per world), pointAt, moveTeacherTo, writeOnBoard, openWorld, offerChoices, askQuestion and inviteTap. Board and choice text is plain text, sanitised and capped, and drawn to a canvas, never rendered as HTML.
 - **Honest learner evidence.** Attempts record correctness, hints used and context (`taught` vs `later_check`). One assisted correct answer is never shown as mastery.
 - **Measurement built in.** Per turn we log input → first audio and input → first animation; frame stats include the 1% low and stalls. Scripted timings never count as AI latency.
 

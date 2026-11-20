@@ -2,6 +2,8 @@
 Rule: pick the first unblocked item, build it with the agent workflow (tester + reviewer, designer for visuals), push to main, tick it, update CHECKPOINT.md.
 
 ## Now
+- [x] Phase 1 acting out (21 Nov): `act` command (run, jump, eat, sit, clap; swim and climb built but no world allows them yet), per-world `actions` in the registry, procedural overlays in the animator, prompt + scripted "can you jump?", unit tests + `npm run smoke:act`. Awaiting tester/reviewer/designer.
+- [ ] Acting phase 2: water scenery (a pool or lake world) so `swim` can be declared; a climbable (ladder, tree, rock wall) so `climb` can be declared; small procedural food props for `eat` (own primitives, no paid assets); a run that travels between spots; designer review of how sit and crouch frame on a phone (legs sit under the choice buttons).
 - [ ] ELEVEN_PUBLIC on (set in Vercel; redeploy needs Kiko's passkey) → test spoken answer, pick real Leo/Mia voices.
 - [ ] `tests/evals/` + `npm run evals` (docs/BRAIN_LEARNING.md step 1).
 - [x] Figure tiers: 3D character → portrait → name card; napoleon.glb wired as first character (21 Nov). Placement (left/center/right) and view (full/closeup) are validated words; code places. Still open: teacher reacts to the figure, compare two figures, wall/hand placements, portrait tier has no rows yet.

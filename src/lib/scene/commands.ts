@@ -11,10 +11,15 @@ import { isWorldId, WORLD_IDS, type CommandContext, type WorldId } from "@/lib/w
 export const GESTURES = ["wave", "nod", "thumbs_up", "shrug", "think", "open_hands"] as const;
 export type Gesture = (typeof GESTURES)[number];
 
+/** Whole-body acting. An id only: the animator owns the motion; the brain never sends coordinates, code or URLs. */
+export const ACTIONS = ["run", "jump", "eat", "sit", "swim", "climb", "clap"] as const;
+export type Action = (typeof ACTIONS)[number];
+
 export interface Choice { id: string; label: string }
 
 export type SceneCommand =
   | { name: "gesture"; gesture: Gesture }
+  | { name: "act"; action: Action }
   | { name: "pointAt"; target: string }
   | { name: "moveTeacherTo"; spot: string }
   | { name: "writeOnBoard"; text: string }
@@ -50,6 +55,10 @@ export function parseSceneCommand(name: unknown, args: unknown, ctx: CommandCont
       return oneOf(GESTURES, args.gesture)
         ? { ok: true, command: { name, gesture: args.gesture } }
         : { ok: false, error: `gesture must be one of ${GESTURES.join(", ")}` };
+    case "act":
+      return oneOf(ACTIONS, args.action) && ctx.actions.includes(args.action)
+        ? { ok: true, command: { name, action: args.action } }
+        : { ok: false, error: `actions here: ${list(ctx.actions)}` };
     case "pointAt":
       return oneOf(ctx.targets, args.target)
         ? { ok: true, command: { name, target: args.target } }
@@ -127,6 +136,7 @@ export function toolsFor(ctx: CommandContext) {
     tool("gesture", "Make a body gesture that fits what you are saying.", { gesture: { type: "string", enum: [...GESTURES] } }, ["gesture"]),
     tool("offerChoices", "Show the child 1-4 tappable reply options.", { choices: { type: "array", items: { type: "object", properties: { id: { type: "string" }, label: { type: "string" } }, required: ["id", "label"] } } }, ["choices"]),
   ];
+  if (ctx.actions.length) tools.push(tool("act", "Act something out with your whole body, like a pretend demonstration (one action at a time, never two in a reply). Say the key facts in words too.", { action: { type: "string", enum: ctx.actions } }, ["action"]));
   if (ctx.targets.length) tools.push(tool("pointAt", "Turn and point at an object in this world.", { target: { type: "string", enum: ctx.targets } }, ["target"]));
   if (ctx.spots.length) tools.push(tool("moveTeacherTo", "Walk to a spot in this world.", { spot: { type: "string", enum: ctx.spots } }, ["spot"]));
   if (ctx.interactive.length) tools.push(tool("inviteTap", "Highlight an object and invite the child to tap and inspect it.", { target: { type: "string", enum: ctx.interactive } }, ["target"]));
