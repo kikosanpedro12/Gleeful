@@ -241,6 +241,16 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-class .lp-btn-main:focus-visible { outline: 3px solid var(--night); outline-offset: 4px; }
 .lp-class .lp-btn-main:disabled { background: var(--off-bg); color: var(--off-ink); border-color: var(--off-edge); box-shadow: none; opacity: 1; cursor: not-allowed; transform: none; }
 .lp-taste-row [type="submit"] { min-width: 96px; }
+/* Mic: same pill family, round. Listening = sun fill so it reads as "on" without colour alone (aria-pressed + label change). */
+.lp-class .lp-mic { width: 56px; min-width: 56px; padding: 0; flex: 0 0 auto; }
+.lp-class .lp-mic-on, .lp-class .lp-mic-on:hover:not(:disabled) { background: var(--sun); box-shadow: 0 0 0 3px var(--night); }
+/* Stop / voice toggle: quiet secondary pills, 44px tall. */
+.lp-taste-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lp-taste-actions .lp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.lp-class .lp-btn-soft { min-height: 44px; padding: 0 18px; font-size: var(--t-1); border: 2px solid var(--night); background: #fff; color: var(--night); box-shadow: 0 3px 0 var(--night); }
+.lp-class .lp-btn-soft:hover { background: var(--tint); }
+.lp-class .lp-btn-soft:focus-visible { outline: 3px solid var(--night); outline-offset: 3px; }
+.lp-class .lp-btn-soft[aria-pressed="true"] { background: var(--off-bg); color: var(--night); }
 .lp-taste-row[aria-busy="true"] [type="submit"]::after { content: ""; width: 14px; height: 14px; margin-left: 10px; border-radius: 50%; border: 3px solid var(--off-edge); border-top-color: var(--night); animation: lp-spin .8s linear infinite; }
 @keyframes lp-spin { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .lp-taste-row[aria-busy="true"] [type="submit"]::after { animation: none; border-top-color: var(--off-edge); } }
@@ -255,7 +265,7 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 
 /* Input */
 .lp-class .lp-taste-input { border: 3px solid var(--night); background: #fff; }
-.lp-class .lp-taste-input:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.lp-class .lp-taste-input:focus-visible { outline: 3px solid var(--night); outline-offset: 3px; box-shadow: 0 0 0 7px rgba(255, 94, 138, .5); border-radius: 999px; } /* pink alone is 2.6:1 on the card; the night ring is the 3:1 indicator */
 .lp-class .lp-taste-input:disabled { background: var(--off-bg); color: var(--off-ink); border-color: var(--off-edge); }
 .lp-class .lp-taste-input::placeholder { color: #55607a; }
 
@@ -272,6 +282,10 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-board { position: absolute; z-index: 4; top: 92px; right: 24px; width: min(360px, calc(100% - 32px)); pointer-events: none; }
 .lp-board > * { pointer-events: auto; }
 .lp-board .story-view { height: 170px; }
+/* The card is 600px wide and centred, so a right-hand picture must start right of it or the card hides the first words of the 'pretend picture' label. */
+@media (min-width: 900px) { .lp-board { right: 16px; width: min(360px, calc(50vw - 334px)); } }
+@media (min-width: 900px) and (max-width: 1239px) { .lp-board { width: 300px; } .lp-board .story-view { height: 100px; } }
+@media (min-width: 900px) and (max-height: 700px) { .lp-board .story-view { height: 100px; } }
 /* Desktop: the headline sits top-left in its own column so it never covers the chalkboard text behind it. */
 @media (min-width: 900px) {
   .lp-class-head { position: absolute; left: auto; right: clamp(16px, 4vw, 56px); top: 92px; max-width: min(340px, 30vw); text-align: left; }
@@ -286,17 +300,21 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
   .lp-class-sub { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-class .lp-chip, .lp-class .lp-btn { transition: none; } }
-/* Phones: keep the card short so the teacher's face stays visible above it. */
+/* Phones: keep the card short so the teacher's face stays visible above it (a long spoken reply used to cover it). */
 @media (max-width: 560px) {
-  .lp-card { padding: 14px 14px 12px; gap: 10px; }
-  .lp-say { min-height: 2.6em; }
+  .lp-card { padding: 12px 14px 10px; gap: 8px; }
+  .lp-say { min-height: 2.6em; font-size: 1rem; line-height: 1.4; }
   .lp-class .lp-chip { padding: 6px 12px; font-size: .82rem; }
-  .lp-chips { gap: 8px; }
+  .lp-class .lp-btn-soft { padding: 0 12px; font-size: .82rem; }
+  .lp-chips, .lp-taste-actions { gap: 6px; }
   .lp-taste-row { flex-wrap: nowrap; gap: 8px; }
   .lp-class .lp-taste-input { flex: 1 1 0; min-width: 0; padding: 0 16px; }
   .lp-taste-row [type="submit"] { min-width: 0; padding: 0 20px; }
-  .lp-class .lp-fine-print { font-size: .8rem; }
-  .lp-board .story-view { height: 64px; }
+  .lp-taste-meta { gap: 4px; margin-top: 0; }
+  .lp-class .lp-fine-print { font-size: .78rem; line-height: 1.3; }
+  .lp-board .story-view { height: 80px; }
+  /* A story card with a figure is ~300px tall: cap the answer card so it never covers the story's "pretend picture" label; a long answer scrolls inside the card (its controls are focusable, so keyboard users can reach it). */
+  .lp-class:has(.story) .lp-card { max-height: max(240px, calc(100svh - 430px)); overflow-y: auto; overscroll-behavior: contain; }
 }
 
 /* 200% text zoom on a phone (about 195 CSS px wide): reflow instead of sideways scroll (WCAG 1.4.10) */
@@ -308,3 +326,4 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
   .lp-pick .lp-btn { min-width: 0; padding: 0 12px; }
 }
 @media (max-width: 280px) { .lp-nav .lp-btn-nav { display: none; } .lp-nav .lp-signin { margin-left: 0; } }
+

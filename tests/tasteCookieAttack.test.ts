@@ -141,12 +141,14 @@ describe("taste: teacher field", () => {
     const r = await handleTaste(http(body({ teacher: t })), deps(f));
     expect(r.status).toBe(400); expect(f).not.toHaveBeenCalled();
   });
-  it("accepts leo and mia only and only changes the name line", async () => {
+  it("accepts leo and mia only; the name goes in the system prompt (the character), never the user turn", async () => {
     for (const t of ["leo", "mia"]) {
       const f = model();
       expect((await handleTaste(http(body({ teacher: t })), deps(f))).status).toBe(200);
-      const user = JSON.stringify(JSON.parse((f.mock.calls[0] as unknown as [string, { body: string }])[1].body).messages);
-      expect(user).toContain(`Your name is ${t === "leo" ? "Leo" : "Mia"}.`);
+      const sentBody = JSON.parse((f.mock.calls[0] as unknown as [string, { body: string }])[1].body);
+      const n = t === "leo" ? "Leo" : "Mia";
+      expect(sentBody.system[0].text).toContain(`You are ${n}, a friendly cartoon tutor character`);
+      expect(JSON.stringify(sentBody.messages)).not.toContain(n);
     }
   });
   it("an undefined/omitted teacher is allowed", async () => {

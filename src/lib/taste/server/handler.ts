@@ -19,11 +19,13 @@ import { callAnthropic, UpstreamError } from "@/lib/brain/server/anthropic";
 import { MemoryUsageStore, RateLimiter, SessionCounter, type UsageStore } from "@/lib/brain/server/limits";
 import { looksLikeNarration, sanitizeSay, unsafeOutput } from "@/lib/brain/server/sanitize";
 import { clientIp, crossOrigin, readBody } from "@/lib/http/request";
-import { cleanText, GESTURES } from "@/lib/scene/commands";
+import { cleanText, GESTURES, parseSceneCommand } from "@/lib/scene/commands";
+import { contextFor } from "@/lib/worlds/registry";
 import { parseFrame, frameToArgs } from "@/lib/scene/frame";
-import { BOARD_MAX, TASTE_MAX_TURNS, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
+import { BOARD_MAX, CHOICE_MAX, TASTE_MAX_TURNS, TOPIC_MAX, type TasteErrorCode, type TasteResponse, type TasteStatus } from "../protocol";
+import { choicesOk, topicOk } from "../boardText";
 import { TASTE_LIMITS, TASTE_MODEL, type TasteEnv } from "./config";
-import { TASTE_SYSTEM, buildTasteUser } from "./prompt";
+import { TASTE_WORLD, buildTasteUser, tasteSystem } from "./prompt";
 import { parseTasteRequest } from "./request";
 import { cookieSecret, makeTasteCookie, readCookieHeader, verifyTasteCookie } from "./cookie";
 
@@ -84,7 +86,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   if (!parsed.ok) return fail(400, "bad_request");
   const r = parsed.req;
 
-  // The signed cookie is the per-person count: a refresh does not reset it. Forged or damaged = all used.
+  // The signed cookie is the per-person count: a refresh does not reset it. A forged, damaged or old-secret cookie is NOT "all used": it starts a fresh window (see below), which the per-address and site caps still bound.
   const secret = cookieSecret({ TASTE_COOKIE_SECRET: d.env.cookieSecret, ANTHROPIC_API_KEY: d.env.apiKey });
   if (!secret) return fail(503, "taste_unavailable");
   const ck = verifyTasteCookie(readCookieHeader(req.headers.get("cookie")), secret, now);
@@ -108,16 +110,20 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
   await d.usage.reserveGlobal(now, false);
   d.sessions.add(sessionKey, now);
 
+  // Which try this is (1-based), decided here from the server's own counts, never by the browser.
+  const turn = Math.min(TASTE_LIMITS.perSessionTurns, Math.max(done, usedBefore) + 1);
+  const last = turn >= TASTE_LIMITS.perSessionTurns;
+
   // One automatic retry if the model returned nothing usable (the visitor never sees a blank-answer error for that).
   let reply: string | null = null;
   let scene: Record<string, unknown> | undefined;
-  let acts: { gesture?: string; board?: string } = {};
+  let acts: TasteActs = {};
   for (let attempt = 0; attempt < 2 && !reply; attempt++) {
     let up;
     try {
       up = await callAnthropic({
         fetchImpl: d.fetchImpl, apiKey: d.env.apiKey, model: TASTE_MODEL,
-        system: TASTE_SYSTEM, user: buildTasteUser(r), maxTokens: TASTE_LIMITS.maxOutputTokens,
+        system: tasteSystem(r.teacher), user: buildTasteUser(r, turn), maxTokens: TASTE_LIMITS.maxOutputTokens,
         // no `tools`: the request carries none, so the model cannot call anything
       });
     } catch (e) {
@@ -131,6 +137,7 @@ export async function handleTaste(req: Request, d: TasteDeps): Promise<Response>
     const redirected = reply === TASTE_REDIRECT; // a moderated reply carries no picture, gesture or board
     scene = reply && !redirected ? extractScene(up.content) : undefined;
     acts = reply && !redirected ? extractActs(up.content, up.stopReason === "max_tokens") : {};
+    if (last) delete acts.choices; // the last try ends with a tease, not a question: enforced here, not only in the prompt
     if (!reply) {
       // Types and counts only, never the visitor's words or the model's.
       const types = Array.isArray(up.content) ? up.content.slice(0, 6).map((b) => String((b as { type?: unknown })?.type ?? "?").slice(0, 16)).join(",") : "none";
@@ -168,14 +175,31 @@ export const TASTE_REDIRECT = "Let's ask something else. If something is worryin
 const BENIGN = /\bnaked[- ]eyes?\b|\bgunpowder\b|\bsexual (?:reproduction|organs?)\b|\btiti monkeys?\b/gi;
 export const unsafeForLanding = (t: string) => unsafeOutput(t.replace(BENIGN, " "));
 
-const MARKER_STRIP = /\b(SCENE|GESTURE|BOARD)\s*[:\uFF1A][^\n\r]*/gi;
-const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/[\u200b-\u200f\u2060\ufeff]/g, "").replace(MARKER_STRIP, "") : t);
+const MARKER_STRIP = /\b(SCENE|GESTURE|BOARD|CHOICES|TOPIC)\s*[:\uFF1A][^\n\r]*/gi;
+/** ACT only at the start of a line ("let's act: ..." mid-sentence is speech, not a marker). */
+const ACT_STRIP = /(^|\n)[ \t]*ACT\s*[:\uFF1A][^\n\r]*/gi;
+const stripSceneLine = (t: unknown) => (typeof t === "string" ? t.replace(/[\u200b-\u200f\u2060\ufeff]/g, "").replace(MARKER_STRIP, "").replace(ACT_STRIP, "$1") : t);
 const GESTURE_RE = /^GESTURE:[ \t]*([a-z_]{1,16})[ \t]*$/m;
 const BOARD_RE = /BOARD:\s*([^\n]{1,120})$/m;
+const ACT_RE = /^ACT:[ \t]*([a-z_]{1,16})[ \t]*$/m;
+const CHOICES_RE = /^CHOICES:[ \t]*([^\n]{1,120})$/m;
+const TOPIC_RE = /^TOPIC:[ \t]*([^\n]{1,80})$/m;
 
-/** Optional gesture (our fixed list only) and chalkboard phrase (sanitised like the reply; changed or empty = none). */
-export function extractActs(blocks: unknown, truncated = false): { gesture?: string; board?: string } {
-  const out: { gesture?: string; board?: string } = {};
+export type TasteActs = { gesture?: string; act?: string; board?: string; choices?: string[]; topic?: string };
+
+/** A short model phrase passes only if the lesson sanitizer leaves it unchanged and it is not unsafe or a contact detail. */
+const shortOk = (m: string, max: number) => {
+  const c = sanitizeSay(m, max);
+  return !!c && c === m && Array.from(m).length <= max && !unsafeOutput(c) && !looksLikeNarration(c) && !/@|\d{5,}|\d[\d\s-]{6,}\d/.test(c);
+};
+
+/**
+ * Optional gesture (our fixed list only), whole-body action (the same validator as the lesson's `act` command, for
+ * the landing classroom world only: an action that world does not allow, e.g. swim, is dropped) and chalkboard
+ * phrase (sanitised like the reply; changed or empty = none).
+ */
+export function extractActs(blocks: unknown, truncated = false): TasteActs {
+  const out: TasteActs = {};
   if (!Array.isArray(blocks) || truncated) return out; // a cut-off last line is never shown
   for (const b of blocks.slice(0, 8)) {
     if (!b || typeof b !== "object" || (b as { type?: unknown }).type !== "text") continue;
@@ -183,11 +207,24 @@ export function extractActs(blocks: unknown, truncated = false): { gesture?: str
     if (typeof t !== "string" || t.length >= 2000) continue;
     const g = GESTURE_RE.exec(t)?.[1];
     if (g && !out.gesture && (GESTURES as readonly string[]).includes(g)) out.gesture = g;
+    const a = ACT_RE.exec(t)?.[1];
+    if (a && !out.act) {
+      const r = parseSceneCommand("act", { action: a }, contextFor(TASTE_WORLD));
+      if (r.ok && r.command.name === "act") out.act = r.command.action;
+    }
     const m = BOARD_RE.exec(t)?.[1]?.trim();
     if (m && !out.board) {
       const c = sanitizeSay(m, BOARD_MAX);
       if (c && c === m && Array.from(m).length <= BOARD_MAX && !unsafeOutput(c) && !looksLikeNarration(c) && !/@|\d{5,}|\d[\d\s-]{6,}\d/.test(c)) out.board = c;
     }
+    const ch = CHOICES_RE.exec(t)?.[1];
+    if (ch && !out.choices) {
+      const parts = ch.split("|").map((x) => x.trim());
+      // Too many, a blank, a duplicate, markup, a link or anything unsafe: no choices at all (never a partial set).
+      if (parts.length <= 2 && parts.every((x) => shortOk(x, CHOICE_MAX)) && choicesOk(parts)) out.choices = parts;
+    }
+    const tp = TOPIC_RE.exec(t)?.[1]?.trim();
+    if (tp && !out.topic && shortOk(tp, TOPIC_MAX) && topicOk(tp)) out.topic = tp;
   }
   return out;
 }

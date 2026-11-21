@@ -299,7 +299,7 @@ describe("taste: per-person cookie and scene", () => {
     const j = await json(r);
     expect(j.reply).toBe("Mars is red because of rusty dust.");
     expect((j.scene as { setting: string }).setting).toBe("desert");
-    expect(JSON.stringify(sent(f))).toContain("Your name is Mia");
+    expect(sent(f).system[0].text).toContain("You are Mia, a friendly cartoon tutor character");
   });
   it("returns a listed gesture and a short chalkboard phrase, and strips both lines from the reply", async () => {
     const f = model([{ type: "text", text: "Coconut trees are usually taller.\nGESTURE: think\nBOARD: Coconut taller" }]);

@@ -5,7 +5,8 @@
  * (stylised, ids start with tp_) added 21 Nov 2026. A scene uses one look only, so a scene takes ph_ props or tp_ props, never both.
  */
 export type AssetSource = "polyhaven-cc0" | "quaternius-qal" | "own" | "tripo-generated";
-export type Look = "realistic" | "stylized";
+/** "any": drawn in code from plain shapes, so it sits with either look (procedural props). */
+export type Look = "realistic" | "stylized" | "any";
 
 export interface Asset {
   id: string;
@@ -13,7 +14,7 @@ export interface Asset {
   source: AssetSource;
   sourceUrl: string;
   look: Look;
-  file: string; // path under public/assets/, a .glb
+  file: string; // path under public/assets/, a .glb ("" for a procedural prop: nothing is downloaded)
   kb: number; // size after Blender shrink; target under 1000
   tags: string[];
 }
@@ -58,7 +59,19 @@ export const ASSETS: readonly Asset[] = [
   { id: "tp_planets", name: "Sun and planets", source: "tripo-generated", sourceUrl: "https://www.tripo3d.ai/", look: "stylized", file: "tripo/planets.glb", kb: 971, tags: ["space", "solar system", "astronomy", "planets"] },
 ];
 
-const byId = new Map(ASSETS.map((a) => [a.id, a]));
+/**
+ * Props drawn in code from three.js primitives (src/components/StoryPanel.tsx, ProceduralProp). No file, nothing to
+ * download (kb 0), owned by us (ASSET_LICENSES.md). Look "any": they go with ph_ or tp_ props. Ids start with pr_.
+ */
+export const PROCEDURAL_PROPS: readonly Asset[] = [
+  { id: "pr_pyramids", name: "Three pyramids (simple shapes, not to scale)", source: "own", sourceUrl: "", look: "any", file: "", kb: 0, tags: ["egypt", "pyramids", "ancient", "history", "desert", "giza"] },
+  { id: "pr_palms", name: "Palm trees (simple shapes)", source: "own", sourceUrl: "", look: "any", file: "", kb: 0, tags: ["desert", "oasis", "tropics", "beach", "nature", "egypt"] },
+];
+export const isProcedural = (a: Asset | undefined): boolean => !!a && a.source === "own" && a.file === "" && a.id.startsWith("pr_");
+
+/** Every prop id the brain may use: file props and procedural props. */
+export const ALL_PROPS: readonly Asset[] = [...ASSETS, ...PROCEDURAL_PROPS];
+const byId = new Map(ALL_PROPS.map((a) => [a.id, a]));
 export const assetById = (id: string): Asset | undefined => byId.get(id);
 
 export const MAX_ASSET_KB = 1500;
@@ -70,7 +83,7 @@ export function checkAssets(ids: readonly string[]): string | null {
   if (list.some((a) => !a)) return "unknown asset id";
   const found = list as Asset[];
   if (found.some((a) => a.kb > MAX_ASSET_KB)) return "asset too large";
-  if (new Set(found.map((a) => a.look)).size > 1) return "mixed looks";
+  if (new Set(found.filter((a) => a.look !== "any").map((a) => a.look)).size > 1) return "mixed looks";
   if (found.reduce((n, a) => n + a.kb, 0) > MAX_SCENE_KB) return "scene too large";
   return null;
 }

@@ -5,18 +5,19 @@
  * built-in browser voice. Browser only.
  */
 import { getTesterCode } from "@/lib/brain/tester";
-import { ELEVEN_ENDPOINT, ELEVEN_MAX_CHARS, PUBLIC_VOICE, type ElevenTeacher } from "@/lib/tts/elevenVoices";
+import { ELEVEN_ENDPOINT, ELEVEN_MAX_CHARS, LANDING_VOICE, PUBLIC_VOICE, type ElevenTeacher } from "@/lib/tts/elevenVoices";
 import { speakEleven, type ElevenPlayback } from "./elevenPlayer";
 
 let off = false;
 let publicVoice = false;
+let landingVoice = false;
 let probed = false;
 /** Asks the server once whether the public taste is switched on. Until it answers, the browser voice is used. */
 export function probeVoice(f: typeof fetch = (...a) => fetch(...a)): Promise<void> {
   if (probed) return Promise.resolve();
   probed = true;
   return f(ELEVEN_ENDPOINT, { method: "GET", cache: "no-store", credentials: "same-origin" })
-    .then(async (r) => { if (r.ok) { const j = (await r.json()) as { configured?: unknown; public?: unknown }; publicVoice = j.configured === true && j.public === true; } })
+    .then(async (r) => { if (r.ok) { const j = (await r.json()) as { configured?: unknown; public?: unknown; landing?: unknown }; publicVoice = j.configured === true && j.public === true; landingVoice = j.configured === true && j.landing === true; } })
     .catch(() => { /* cannot tell: browser voice */ });
 }
 /** True when this visit may use ElevenLabs for the lesson voice: a passcode, or the public taste when the server offers it. */
@@ -27,9 +28,20 @@ export function elevenAvailable(): string | null {
   if (!probed) void probeVoice();
   return publicVoice ? PUBLIC_VOICE : null;
 }
+/**
+ * The landing taste: a passcode first, else the landing's own capped pool when the server offers it. Until the probe
+ * answers, or after any refusal or error (the pool is used up, no key, upstream down), null: the browser voice speaks.
+ */
+export function elevenLandingAvailable(): string | null {
+  if (off) return null;
+  const code = getTesterCode();
+  if (code) return code;
+  if (!probed) void probeVoice();
+  return landingVoice ? LANDING_VOICE : null;
+}
 export function disableEleven() { off = true; }
 /** For tests. */
-export function resetEleven() { off = false; publicVoice = false; probed = false; }
+export function resetEleven() { off = false; publicVoice = false; landingVoice = false; probed = false; }
 
 /** Split at sentence ends into pieces of at most `max` characters; a single over-long sentence is split at spaces. */
 export function chunkText(text: string, max = ELEVEN_MAX_CHARS): string[] {
@@ -88,7 +100,7 @@ export function speakElevenLine(
       if (res === "late") { pb.stop(); disableEleven(); if (spoke) cb.onEnd(); else cb.onFail(false, chunks.join(" ")); return; }
       if (res.result === "stopped") return;
       if (res.result !== "ended") {
-        if (!(res.result === "refused" && res.status === 429 && code !== PUBLIC_VOICE)) disableEleven(); // a public taste that ran out stays off for this visit, so later lines do not wait on a refusal
+        if (!(res.result === "refused" && res.status === 429 && code !== PUBLIC_VOICE && code !== LANDING_VOICE)) disableEleven(); // a public taste that ran out stays off for this visit, so later lines do not wait on a refusal
         cb.onFail(spoke, chunks.slice(i).join(" "));
         return;
       }

@@ -14,3 +14,5 @@ export const ELEVEN_RATE_HEADER = "x-sample-rate";
 
 /** Stand-in for a passcode when the visit uses the public taste (no passcode). Never a real code: real ones are 16+ characters. */
 export const PUBLIC_VOICE = "public";
+/** Stand-in code for the landing taste's own capped pool (header x-gleeful-voice: landing). Never a real code. */
+export const LANDING_VOICE = "landing";

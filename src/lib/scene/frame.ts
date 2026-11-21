@@ -3,7 +3,7 @@
  * ids and short text only; every id must exist in our own manifests, and no coordinates, code, markup or URLs are
  * accepted. Layout is decided here, by code. Pure data, safe on client and server.
  */
-import { ASSETS, assetById, checkAssets, MAX_SCENE_KB } from "@/lib/assets/manifest";
+import { ALL_PROPS, assetById, checkAssets, MAX_SCENE_KB } from "@/lib/assets/manifest";
 import { figureById, FIGURES } from "@/lib/assets/figures";
 
 export const SETTINGS = {
@@ -91,7 +91,7 @@ export const frameToArgs = (f: StoryFrame): Record<string, unknown> => ({
 });
 
 /** For the tool schema and the prompt: the ids the model may use. */
-export const propIds = () => ASSETS.map((a) => a.id);
+export const propIds = () => ALL_PROPS.map((a) => a.id);
 export const figureIds = () => FIGURES.map((f) => f.id);
 
 /** Fixed slots in front of the camera, nearest the middle first. Code decides placement, never the model. */

@@ -9,6 +9,11 @@ export const TASTE_MAX_TURNS = 3;
 export const TASTE_MAX_INPUT = 140;
 /** Longest chalkboard phrase the landing tutor may write. */
 export const BOARD_MAX = 40;
+/** The tutor's 2 tap answers: at most this many, each at most CHOICE_MAX characters. */
+export const CHOICES_MAX = 2;
+export const CHOICE_MAX = 32;
+/** A few words naming what the visitor explored (used by the paywall). */
+export const TOPIC_MAX = 32;
 export const TASTE_COOKIE = "gl_taste";
 export const TASTE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
@@ -31,7 +36,13 @@ export interface TasteResponse {
   scene?: Record<string, unknown>;
   /** Optional body language and chalkboard text. Validated on the server and again in the browser. */
   gesture?: string;
+  /** Optional whole-body action (jump, clap, sit...) allowed in the landing classroom. Validated on both sides. */
+  act?: string;
   board?: string;
+  /** Exactly 2 short answers the visitor can tap as the next question (validated on both sides). */
+  choices?: string[];
+  /** A few words naming the subject, for the paywall ("you just explored ..."). */
+  topic?: string;
 }
 
 export interface TasteStatus {

@@ -25,6 +25,8 @@ export const ELEVEN_LIMITS = {
   maxTesters: 2_000,
   /** Distinct anonymous addresses kept per day (separate table). */
   maxAnon: 3_000,
+  /** Landing taste: all anonymous landing visitors together, per day, per warm server instance (a brake, not a ceiling). Founder's cap (21 Nov); env can lower it, never raise it. */
+  landingDailyCharsMax: 5_000,
   /** Time to get the response headers from ElevenLabs. */
   headerTimeoutMs: 10_000,
   /** Whole call, including the streamed audio. */
@@ -50,6 +52,13 @@ export interface ElevenEnv {
   key: string | undefined; disabled: boolean; dailyChars: number; testerDailyChars: number; model: string; voices: Record<ElevenTeacher, string>;
   /** ELEVEN_PUBLIC=on: visitors without a passcode get a small taste (per address), and consenting signed-in parents a larger one. Off by default. */
   publicOn: boolean; anonIpDailyChars: number; parentDailyChars: number; anonPoolDailyChars: number;
+  /**
+   * Landing taste voice (founder decision 21 Nov): ON whenever a key is set, unless ELEVEN_LANDING=off. Anonymous
+   * landing visitors share ONE daily pool (ELEVEN_LANDING_DAILY_CHARS, default and hard cap 5,000; counted per warm
+   * server instance, so a brake and not a ceiling: the credit cap on the ElevenLabs key is the ceiling), separate from the
+   * ELEVEN_PUBLIC pool, plus the per-address daily bucket and the per-minute rate limit. Inside the site ceiling.
+   */
+  landingOn: boolean; landingDailyChars: number;
 }
 const capped = (raw: string | undefined, def: number, max: number) => { const n = Number.parseInt(raw ?? "", 10); return Number.isFinite(n) && n > 0 ? Math.min(n, max) : def; };
 export function readElevenEnv(env: Record<string, string | undefined> = process.env): ElevenEnv {
@@ -72,6 +81,8 @@ export function readElevenEnv(env: Record<string, string | undefined> = process.
     anonIpDailyChars: capped(env.ELEVEN_ANON_IP_CHARS, 700, 2_000),
     parentDailyChars: capped(env.ELEVEN_PARENT_CHARS, 3_000, 10_000),
     anonPoolDailyChars: capped(env.ELEVEN_ANON_POOL_CHARS, 6_000, 20_000),
+    landingOn: (env.ELEVEN_LANDING ?? "").trim().toLowerCase() !== "off",
+    landingDailyChars: capped(env.ELEVEN_LANDING_DAILY_CHARS, ELEVEN_LIMITS.landingDailyCharsMax, ELEVEN_LIMITS.landingDailyCharsMax),
   };
 }
 
@@ -98,8 +109,10 @@ const fail = (status: number, code: string, headers: Record<string, string> = {}
   Response.json({ error: code }, { status, headers: { "cache-control": "no-store", ...headers } });
 
 /** Who is asking, and what is their daily character ceiling. */
-interface Who { principal: string; cap: number; pool?: boolean }
+interface Who { principal: string; cap: number; pool?: "anon-pool" | "landing-pool" }
 export const PUBLIC_HEADER = "x-gleeful-voice";
+/** Value of PUBLIC_HEADER sent by the landing taste. */
+export const LANDING_HEADER_VALUE = "landing";
 
 /** Shared gate: origin, kill switch, key, a way in set up, rate limit, then passcode tester, consenting parent, or (when public is on) a small anonymous taste. */
 async function gate(req: Request, d: ElevenDeps): Promise<Response | Who> {
@@ -107,19 +120,21 @@ async function gate(req: Request, d: ElevenDeps): Promise<Response | Who> {
   if (d.env.disabled || !d.env.key) return fail(503, "voice_unconfigured");
   const { testerCode, testerMisconfigured } = d.brainEnv;
   const testers = hasTesterAccess(d.brainEnv);
-  if ((!testers && !d.env.publicOn) || testerMisconfigured || (testerCode && testerCode.length < TESTER_CODE_MIN)) return fail(503, "voice_unconfigured"); // closed by default
+  if ((!testers && !d.env.publicOn && !d.env.landingOn) || testerMisconfigured || (testerCode && testerCode.length < TESTER_CODE_MIN)) return fail(503, "voice_unconfigured"); // closed by default
   const ip = clientIp(req);
   const wait = d.ipLimiter.take(ip, d.now());
   if (wait > 0) return fail(429, "rate_limited", { "retry-after": String(wait) });
   const principal = testerPrincipal(d.brainEnv, req.headers.get(TESTER_HEADER));
   if (principal) return { principal, cap: d.env.testerDailyChars };
+  // The landing taste: its own shared pool, plus the same per-address bucket as any anonymous visitor.
+  if (d.env.landingOn && req.headers.get(PUBLIC_HEADER) === LANDING_HEADER_VALUE) return { principal: `anon:${ip}`, cap: d.env.anonIpDailyChars, pool: "landing-pool" };
   if (!d.env.publicOn) return fail(403, "tester_required");
   if (d.parent) {
     let p: ParentAccess | null = null;
     try { p = await d.parent(req); } catch { /* treated as not signed in */ }
     if (p?.consented) return { principal: `parent:${p.id}`, cap: d.env.parentDailyChars };
   }
-  if (req.headers.get(PUBLIC_HEADER) === "public") return { principal: `anon:${ip}`, cap: d.env.anonIpDailyChars, pool: true };
+  if (req.headers.get(PUBLIC_HEADER) === "public") return { principal: `anon:${ip}`, cap: d.env.anonIpDailyChars, pool: "anon-pool" };
   return fail(403, "tester_required");
 }
 
@@ -154,9 +169,10 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
   if (mine.chars + say.length > g.cap) return fail(429, "tester_daily_limit");
   if (g.pool) {
     // Anonymous tasters share one pool so a crowd of addresses cannot spend the whole site budget.
-    let pool = d.anon.get("anon-pool");
-    if (!pool || pool.day !== day) { pool = { day, chars: 0 }; d.anon.set("anon-pool", pool); }
-    if (pool.chars + say.length > d.env.anonPoolDailyChars) return fail(429, "daily_limit");
+    const poolCap = g.pool === "landing-pool" ? d.env.landingDailyChars : d.env.anonPoolDailyChars;
+    let pool = d.anon.get(g.pool);
+    if (!pool || pool.day !== day) { pool = { day, chars: 0 }; d.anon.set(g.pool, pool); }
+    if (pool.chars + say.length > poolCap) return fail(429, "daily_limit");
     poolBucket = pool;
   }
   if (d.spent.chars + say.length > d.env.dailyChars) return fail(429, "daily_limit");
@@ -210,8 +226,9 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
  */
 export async function voiceStatus(req: Request, d: ElevenDeps) {
   const { testerMisconfigured } = d.brainEnv;
-  const configured = Boolean(d.env.key) && !d.env.disabled && (hasTesterAccess(d.brainEnv) || d.env.publicOn) && !testerMisconfigured;
-  const base = { public: d.env.publicOn && configured, configured, teachers: [...ELEVEN_TEACHERS], model: d.env.model, standInVoices: ELEVEN_TEACHERS.every((t) => d.env.voices[t] === ELEVEN_DEFAULT_VOICES[t]) };
+  const ready = Boolean(d.env.key) && !d.env.disabled && !testerMisconfigured;
+  const configured = ready && (hasTesterAccess(d.brainEnv) || d.env.publicOn || d.env.landingOn);
+  const base = { public: d.env.publicOn && configured, landing: d.env.landingOn && configured, configured, teachers: [...ELEVEN_TEACHERS], model: d.env.model, standInVoices: ELEVEN_TEACHERS.every((t) => d.env.voices[t] === ELEVEN_DEFAULT_VOICES[t]) };
   if (!configured || new URL(req.url).searchParams.get("probe") !== "1") return { status: 200, body: base };
   const g = await gate(req, d);
   if (g instanceof Response) return { status: g.status, body: { configured } };

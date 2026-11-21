@@ -71,6 +71,8 @@ Rules for entries:
 - A disabled pill must still look like a pill: solid neutral fill, 2px edge, 5.6:1 text, no 3D shadow; never `opacity` on a pink button (reads as broken).
 - Bare `.lp :focus-visible { border-radius: 6px }` squares the focus ring of rounded cards: set the card radius on its own `:focus-visible`.
 - `kill` only the PID of your own port (find it by `/proc/<pid>/cwd` and cmdline); `pkill -f next` or a loop over every match can hit another agent's server.
+- A fixed-width centred card and a right-hand picture overlap on 1280px desktops (the card hid the first words of the 'pretend picture' label); and a long spoken reply grew the phone card until it covered the tutor's face. -> size side panels from the card edge (`50vw - 334px`), cap phone card padding/fine print, and screenshot the LONGEST reply in the speaking state on both viewports (`scripts/cap.mjs` pattern in a /tmp copy).
+- A changing label plus `aria-pressed` reads twice ("Voice off, pressed"): use one or the other. A pink focus ring on a cream card is 2.6:1: add the night ring.
 
 ## Ports
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/learn?test=1`, stop with `npm run stop`.

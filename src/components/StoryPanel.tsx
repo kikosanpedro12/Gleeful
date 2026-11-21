@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "@/lib/session/store";
 import { session } from "@/lib/session/controller";
-import { assetById } from "@/lib/assets/manifest";
+import { assetById, isProcedural } from "@/lib/assets/manifest";
 import { figureById, type Figure } from "@/lib/assets/figures";
 import { PRETEND_LABEL, PROP_SLOTS, SETTINGS, type Placement, type StoryFrame } from "@/lib/scene/frame";
 
@@ -53,6 +53,38 @@ function Prop({ id, pos }: { id: string; pos: [number, number] }) {
     return g;
   }, [gltf]);
   return <primitive object={obj} position={[pos[0], 0, pos[1]]} />;
+}
+
+/** Sandstone pyramid: a four-sided cone turned so a face points at the camera. Plain shapes, not to scale. */
+function Pyramid({ x, z, h }: { x: number; z: number; h: number }) {
+  return (
+    <mesh position={[x, h / 2, z]} rotation={[0, Math.PI / 4, 0]}>
+      <coneGeometry args={[h * 0.82, h, 4, 1]} />
+      <meshStandardMaterial color="#d8b26e" roughness={0.95} flatShading />
+    </mesh>
+  );
+}
+function Palm({ x, z, h, lean }: { x: number; z: number; h: number; lean: number }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, 0, lean]}>
+      <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[0.018, 0.028, h, 6]} /><meshStandardMaterial color="#8a6a43" roughness={1} /></mesh>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <mesh key={i} position={[Math.cos(i * 1.256) * 0.09, h, Math.sin(i * 1.256) * 0.09]} rotation={[Math.sin(i * 1.256) * 1.1, 0, -Math.cos(i * 1.256) * 1.1]}>
+          <coneGeometry args={[0.05, 0.22, 4]} />
+          <meshStandardMaterial color="#4f8a3a" roughness={0.9} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+/** Props drawn in code (PROCEDURAL_PROPS): nothing to download, so no Suspense, no loader, no file. */
+function ProceduralProp({ id, pos }: { id: string; pos: [number, number] }) {
+  return (
+    <group position={[pos[0], 0, pos[1]]} name={id}>
+      {id === "pr_pyramids" && (<><Pyramid x={0} z={-0.15} h={0.62} /><Pyramid x={-0.46} z={0.05} h={0.42} /><Pyramid x={0.4} z={0.12} h={0.3} /></>)}
+      {id === "pr_palms" && (<><Palm x={-0.12} z={0} h={0.5} lean={0.12} /><Palm x={0.12} z={0.08} h={0.38} lean={-0.18} /></>)}
+    </group>
+  );
 }
 
 /** A 3D character, about 1.1 m tall, standing on the ground facing the camera. Only files from figures.ts. */
@@ -111,7 +143,10 @@ function Diorama({ frame, fig, calm }: { frame: StoryFrame; fig?: Figure; calm: 
       {/* With a character the picture holds still (a person who spins is odd); without one it turns slowly. */}
       <Turn calm={calm || !!model}>
         <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[2.4, 48]} /><meshStandardMaterial color={s.ground} roughness={1} /></mesh>
-        <Suspense fallback={null}>{frame.props.map((id, i) => <Prop key={id} id={id} pos={(model ? beside[i] : undefined) ?? PROP_SLOTS[i] ?? [0, 0]} />)}</Suspense>
+        <Suspense fallback={null}>{frame.props.map((id, i) => {
+          const pos = (model ? beside[i] : undefined) ?? PROP_SLOTS[i] ?? [0, 0];
+          return isProcedural(assetById(id)) ? <ProceduralProp key={id} id={id} pos={pos} /> : <Prop key={id} id={id} pos={pos} />;
+        })}</Suspense>
       </Turn>
       {model && <Suspense fallback={null}><FigureModel fig={model} x={fx} /></Suspense>}
     </Canvas>

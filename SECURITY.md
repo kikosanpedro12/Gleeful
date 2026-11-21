@@ -90,6 +90,7 @@ Built and tested against a **mocked** API (tests/brainServer.test.ts, tests/clau
 - [ ] Verifiable parental consent flow and privacy notice (COPPA, GDPR-K, and the Philippine Data Privacy Act).
 - [ ] Data retention schedule and export.
 - [ ] Review of the speech recognition and voice vendor terms for child-directed use.
+- [ ] **Lawyer: the landing mic and a child's own voice.** The browser's speech service (Google, Microsoft or Apple) receives a child's voice when they tap the mic on the landing (no sign-in, no parental consent step). Confirm whether that needs parental consent (COPPA, GDPR-K, PH Data Privacy Act) or should be gated; the notice and `/privacy` must name it. The `/learn` mic has the same question.
 - [ ] Content safety test set (inappropriate requests, personal info, distress) passed by the brain.
 - [ ] Incident response contact and breach process.
 - [ ] Independent security review of the deployed app.
@@ -107,7 +108,7 @@ Private project. Report issues to the founder directly; do not open public issue
 
 ## Anonymous landing taste: `/api/taste` (13 Nov)
 - Separate from `/api/brain` on purpose; no shared budgets, no shared code path to the lesson. It accepts no tester code and reads only its own signed `gl_taste` cookie (HMAC-SHA256, httpOnly, Secure, Path=/api/taste, no personal data; holds only the tries used). Cookie secret: `TASTE_COOKIE_SECRET`, falling back to a key derived from the API key. It is a brake, not a limit: clearing cookies gives a new count; the per-address, global and Console spend caps bound cost. A passcode or session grants nothing here.
-- Cannot reach Sonnet or tools: the model is the constant `MODELS.default`; the upstream request carries no `tools`/`tool_choice`; `max_tokens` is 150. Request fields `model`, `tools`, `system`, `max_tokens` are ignored (tested).
+- Cannot reach Sonnet or tools: the model is the constant `MODELS.default`; the upstream request carries no `tools`/`tool_choice`; `max_tokens` is 600 (thinking plus the reply; the visible reply is still capped at 280 characters). Request fields `model`, `tools`, `system`, `max_tokens` are ignored (tested).
 - Input: same-origin browsers only, JSON only, 2 KB body, 3 s read timeout. The question is stripped of control characters and angle brackets (so it can never close a prompt tag), capped at 140 characters; history lines get the same treatment and are labelled as data.
 - Output: only `text` blocks are used (a `tool_use` block is ignored), links and markup are stripped by the lesson sanitizer, at most 2 parts and 280 characters. A reply with nothing usable is an error, never a made-up answer.
 - Caps (all fail closed, bounded tables, never evict live keys): 3 per page view, per-address daily (default 9), site-wide daily (default 600), 6 per minute per address. The page-view id is browser-chosen, so rotating it buys nothing; the per-address and site-wide caps bind. `GET` never writes a counter.
@@ -144,6 +145,12 @@ Private project. Report issues to the founder directly; do not open public issue
 - A master code shorter than 16 characters switches off the brain AND all invites (fail closed). Skipped invite entries log one warning with a count only. An invite equal to the master code is dropped. /api/tts (Deepgram, lab only) accepts only the master code.
 - Known: any code holder can rotate learner ids to fill the 5,000-key table on one instance (503 for everyone until the day rolls). Bounded and authenticated; unchanged in kind.
 - Tests: `tests/invites.test.ts`.
+
+## Landing taste: voice, mic, acting, guided arc (21 Nov 2026)
+- **ElevenLabs on the landing (founder decision 21 Nov).** Through `/api/voice` and all its guards (same-origin, 2 KB body, 300-char text, per-address 20/min, teacher allow-list, server-held voice ids and model, refund only on a clean upstream refusal, text never logged). Its own pool: `x-gleeful-voice: landing` → principal `anon:<ip>` (same per-address daily bucket as ELEVEN_PUBLIC, `ELEVEN_ANON_IP_CHARS`) plus ONE shared `landing-pool` of at most **5,000 characters a day** (`ELEVEN_LANDING_DAILY_CHARS` can lower it, never raise it), separate from the `anon-pool`, inside the site ceiling. On whenever a key is set; `ELEVEN_LANDING=off` closes it. Pool used up, no key, refusal or error → the browser voice speaks, silently, and ElevenLabs stays off for that visit. Per warm instance again: the key's credit cap is the real ceiling, and the account's training opt-out still applies (Kiko only). Tests: `tests/voiceLanding.test.ts`.
+- **Mic on the landing:** the same browser recogniser as the lesson (`listenOnce`); shown only where the browser has one; the card says the browser sends the voice to Google, Microsoft or Apple and we only get the text. A spoken question is the same request as a typed one (same caps, same try count); audio never reaches us.
+- **ACT / CHOICES / TOPIC lines** from the taste model: ACT must pass `parseSceneCommand("act")` for the classroom world (server and browser); CHOICES must be 1–2 plain phrases of ≤32 characters (all or nothing: too many, duplicates, links, markup, handles, numbers, unsafe words = none), dropped in code on the last try; TOPIC ≤32 plain characters. All pass the lesson sanitizer and moderation; a redirected reply carries none. Rendered as React text only. Tests: `tests/tasteArc.test.ts`.
+- **Prompt:** the tutor's name is in the system prompt (the name in the user turn made the model deny being "a real person named Leo"); AI disclosure only when asked; safety rules first; hooks are curiosity only (no pressure, urgency, streaks, or talk of paying). Not yet run against the real model.
 
 ## Vendor findings and story scenes (19 Nov 2026)
 - **Anthropic API (brain):** no training on customer content by default, retention under 30 days, must disclose it is an AI (the UI does), recommends age checks, moderation and COPPA care. Parent sign-in plus consent gates it; per-parent daily caps apply.

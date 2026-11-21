@@ -10,6 +10,7 @@
 | Mars facts + questions | src/lib/worlds/registry.ts | Paraphrased facts. Source: NASA Space Place https://spaceplace.nasa.gov/all-about-mars/en/ | Facts; NASA content generally public domain (verify page terms before reusing text or images) | Yes (facts) |
 | npm dependencies (next, react, three, @react-three/fiber, zustand) | package.json | npm | MIT | Yes |
 | Landing worlds: classroom, ocean, leaf cell, dinosaur valley, ancient city, fraction island, space | src/components/landing/worlds3d.ts | Generated in code for this project; stylised, not reconstructions of real places or animals | Owned | Yes |
+| Procedural story props: pyramid group, palm trees (ids pr_pyramids, pr_palms) | PROCEDURAL_PROPS in src/lib/assets/manifest.ts, drawn in src/components/StoryPanel.tsx | Generated in code (three.js primitives) for this project, 21 Nov 2026; simple shapes, not to scale, not a reconstruction | Owned | Yes |
 | Landing still illustrations (posters) | src/components/landing/Posters.tsx | Drawn in SVG for this project | Owned | Yes |
 | Unbounded (display typeface) | @fontsource-variable/unbounded 5.3.0 | Google Fonts via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |
 | Atkinson Hyperlegible (body typeface) | @fontsource/atkinson-hyperlegible 5.3.0 | Braille Institute via Fontsource, self-hosted | SIL Open Font License 1.1 | Yes |

@@ -77,6 +77,7 @@ describe("voice per-tester cap", () => {
   it("is closed with no master code and no invites; clamps the per-tester cap", async () => {
     const { d } = make();
     d.brainEnv = readEnv({});
+    d.env = { ...d.env, landingOn: false };
     expect((await handleVoice(post(A), d)).status).toBe(503);
     expect(readElevenEnv({ ELEVEN_TESTER_DAILY_CHARS: "999999" }).testerDailyChars).toBe(20_000);
     expect(readElevenEnv({}).testerDailyChars).toBe(6_000);

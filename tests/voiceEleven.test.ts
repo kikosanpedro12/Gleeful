@@ -34,7 +34,11 @@ describe("/api/voice", () => {
   it("is closed without a key, when disabled, or without a strong passcode", async () => {
     expect((await handleVoice(post(ok), deps({}, {}).d)).status).toBe(503);
     expect((await handleVoice(post(ok), deps({}, { ELEVENLABS_API_KEY: "k", TTS_DISABLED: "1" }).d)).status).toBe(503);
-    expect((await handleVoice(post(ok), deps({ brainEnv: readEnv({}) }).d)).status).toBe(503);
+    expect((await handleVoice(post(ok), deps({ brainEnv: readEnv({}) }, { ELEVENLABS_API_KEY: KEY, ELEVEN_LANDING: "off" }).d)).status).toBe(503);
+    // With the landing pool on (the default when a key is set), a request without a passcode or the landing header is refused, never spoken.
+    const open = deps({ brainEnv: readEnv({}) });
+    expect((await handleVoice(post(ok), open.d)).status).toBe(403);
+    expect(open.fetchImpl).not.toHaveBeenCalled();
     expect((await handleVoice(post(ok), deps({ brainEnv: readEnv({ BRAIN_TESTER_CODE: "short" }) }).d)).status).toBe(503);
   });
   it("refuses a missing or wrong passcode and never calls upstream", async () => {

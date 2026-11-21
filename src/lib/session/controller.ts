@@ -406,8 +406,33 @@ class SessionController {
   closeWidget() { this.set({ widget: null }); }
   closeScene() { this.set({ scene: null }); }
 
-  /** The landing tutor's optional gesture and chalkboard phrase. Same validator as any model command; bad input is ignored. */
-  tasteActs(a: { gesture?: unknown; board?: unknown }) {
+  // ------------------------------------------------- landing taste (no provider runs on the landing page)
+  /** A voice that is not a provider (the landing's browser voice or ElevenLabs line) drives the mouth. Loudness-like envelope, not lip sync. */
+  private tasteLevel: (() => number) | null = null;
+  setTasteLevel(fn: (() => number) | null) { this.tasteLevel = fn; }
+  /** The visitor picked a tutor: the classroom is "connected" so turns, the thinking nod and speaking work as in a lesson. */
+  tasteOpen(teacher: TeacherId) {
+    this.chooseTeacher(teacher);
+    this.set({ status: "connected", world: "classroom", boardText: "Ask me anything!" });
+    this.dispatch({ type: "CONNECTED" });
+  }
+  tasteClose() { this.tasteLevel = null; this.dispatch({ type: "DISCONNECTED" }); this.set({ status: "disconnected", teacher: null, directives: [] }); }
+  /** The mic is open (true) or closed without a question (false). The tutor stops acting and attends. */
+  tasteListening(on: boolean) { this.dispatch({ type: on ? "USER_SPEECH_START" : "LISTEN_CANCELLED" }); }
+  /** A question (typed or spoken) went to the server: a new turn, so anything from the last answer is dropped. */
+  tasteAsked() { this.dispatch({ type: "USER_TEXT" }); }
+  /** The answer's voice started (true) or ended (false). Without a voice, call with false: back to idle. */
+  tasteSpeaking(on: boolean) {
+    const turnId = this.s.conv.turnId;
+    if (on) this.dispatch({ type: "RESPONSE_AUDIO_START", turnId });
+    else if (this.s.conv.state === "thinking") this.dispatch({ type: "RESPONSE_FAILED", turnId });
+    else this.dispatch({ type: "RESPONSE_AUDIO_STOP", turnId });
+  }
+  /** Stop pressed: a new turn, so queued gestures and actions are dropped too. */
+  tasteStop() { this.dispatch({ type: "INTERRUPT" }); }
+
+  /** The landing tutor's optional gesture, action and chalkboard phrase. Same validator as any model command; bad input is ignored. */
+  tasteActs(a: { gesture?: unknown; act?: unknown; board?: unknown }) {
     const turnId = this.s.conv.turnId;
     const ctx = contextFor(this.currentWorld());
     let board = "Ask me anything!"; // no valid new phrase = back to the default, so an old answer never lingers
@@ -419,6 +444,11 @@ class SessionController {
     if (typeof a.gesture === "string") {
       const r = parseSceneCommand("gesture", { gesture: a.gesture }, ctx);
       if (r.ok) this.set({ directives: [...this.s.directives, { id: ++this.seq, turnId, command: r.command }] });
+    }
+    if (typeof a.act === "string") {
+      const r = parseSceneCommand("act", { action: a.act }, ctx); // only actions this world allows (no swim in the classroom)
+      if (r.ok) this.set({ directives: [...this.s.directives, { id: ++this.seq, turnId, command: r.command }] });
+      else this.set({ rejectedCommands: this.s.rejectedCommands + 1 });
     }
   }
 
@@ -497,7 +527,7 @@ class SessionController {
     }, 1200);
   }
 
-  outputLevel() { return this.provider?.getOutputLevel() ?? 0; }
+  outputLevel() { return this.provider ? this.provider.getOutputLevel() : (this.tasteLevel?.() ?? 0); }
   inputLevel() { return this.provider?.getInputLevel() ?? 0; }
 
   storedResults(): (TurnResult & { at: string })[] {

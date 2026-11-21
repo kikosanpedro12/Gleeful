@@ -13,7 +13,8 @@ const PUB = { "x-gleeful-voice": "public" };
 
 describe("public voice taste", () => {
   it("is closed unless ELEVEN_PUBLIC=on (no passcode, no public)", async () => {
-    expect((await handleVoice(post(PUB), make())).status).toBe(503);
+    expect((await handleVoice(post(PUB), make({ ELEVEN_LANDING: "off" }))).status).toBe(503);
+    expect((await handleVoice(post(PUB), make())).status).toBe(403); // landing pool on: the public header alone still gets nothing
     expect((await handleVoice(post(PUB), make({}, undefined, { TESTER_INVITES: "a:aaaaaaaaaaaaaaaaaaaa" }))).status).toBe(403);
   });
   it("lets an anonymous visitor a small per-address taste, then 429", async () => {
@@ -46,7 +47,8 @@ describe("public voice taste", () => {
   });
   it("status says public only when on and configured", async () => {
     expect((await voiceStatus(new Request("http://localhost/api/voice"), make({ ELEVEN_PUBLIC: "on" }))).body).toMatchObject({ configured: true, public: true });
-    expect((await voiceStatus(new Request("http://localhost/api/voice"), make())).body).toMatchObject({ configured: false, public: false });
+    expect((await voiceStatus(new Request("http://localhost/api/voice"), make({ ELEVEN_LANDING: "off" }))).body).toMatchObject({ configured: false, public: false, landing: false });
+    expect((await voiceStatus(new Request("http://localhost/api/voice"), make())).body).toMatchObject({ configured: true, public: false, landing: true });
   });
 });
 
