@@ -7,7 +7,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ORIGIN = process.env.ORIGIN || "http://localhost:3111";
-/** Extra query string for every page, e.g. QS=rig=glb to run the whole suite with the GLB teachers (test build only). */
+/** Extra query string for every page, e.g. QS=rig=glb to run the whole suite with the GLB teachers (add QS=rig=procedural for the escape hatch; the default is the GLB teachers). */
 const QS = process.env.QS || "";
 const OUT = fileURLToPath(new URL("./out/", import.meta.url));
 fs.mkdirSync(OUT, { recursive: true });

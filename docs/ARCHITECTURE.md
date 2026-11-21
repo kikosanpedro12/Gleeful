@@ -95,14 +95,16 @@ One policy file, `src/lib/seo/site.ts` (tested in `tests/seo.test.ts`):
 - `ScriptedProvider` drops a reply that arrives more than 5 s late (`onReplyDropped`); `Prewarm` (Stage.tsx) compiles hidden worlds' shaders and uploads their textures at frame ~20. Effect on blank frames is **unmeasured on a phone**.
 - Single header badge (`Hud.tsx`) replaces the two chips; it follows the last brain kind.
 
-## GLB characters: Leo and Mia as rigged models (phase A, 21 Nov 2026, behind a flag)
-The founder says Leo and Mia are the brand, so they get proper models. Today's look is still the procedural rig (`rig.ts`); the GLB path is built, tested and OFF until the founder approves it.
+## GLB characters: Leo and Mia as rigged models (21 Nov 2026, ON by default)
+
+**Default and switches.** GLB is ON by default. `glbEnabled()` order: `?rig=` (exact `glb` or `procedural`, else ignored) > sessionStorage `gleeful.rig` (only the word `procedural`) > `NEXT_PUBLIC_CHAR_GLB=0` kill switch > ON. `?rig=procedural` is remembered for the session (landing -> /learn); `?rig=glb` forgets it. It only picks a look; it exposes no test hook (`window.__teachers`, `__ctl` need a test build and `?test=1`). `?perf=1` (with the GLB rig only) mounts `PerfOverlay`: own rAF loop, rolling 2 s average, `renderer.info` triangles and calls, GLB load ms; absent otherwise. Pages stay noindex.
+The founder says Leo and Mia are the brand, so they get proper models. The GLB path is the live look (founder decision, 21 Nov 2026); the procedural rig (`rig.ts`) is the fallback and the `?rig=procedural` escape hatch.
 ```
 raw Tripo exports (leo.glb, mia.glb, leo_anim.glb)          scripts/build-characters.mjs  (gltf-transform + sharp; needs them installed like shrink-glb.mjs)
   -> public/assets/characters/leo.glb, mia.glb   mesh + skin + one 1024px JPEG, quantized. ~890 KB each (cap 900). All triangles kept (18.6k / 17.7k), 53 joints, weights exact.
   -> public/assets/characters/clips.glb          skeleton + 17 clips, hips translation + int16 rotations only. ~770 KB (cap 1.2 MB).
 runtime
-  glbFlag.ts     NEXT_PUBLIC_CHAR_GLB=1, or ?rig=glb in a test build with ?test=1 (?rig=procedural forces it off). A deployment build never reads the URL.
+  glbFlag.ts     default ON; `?rig=procedural` (session-sticky) or NEXT_PUBLIC_CHAR_GLB=0 turns it off; `?rig=glb` turns it back on.
   glbRig.ts      load (shared SafeGLTFLoader, src/lib/three/safeGltfLoader.ts), clone, retarget, scale to height, stand on the floor, helmet on the head bone, pretend stool
   glbClips.ts    clip vocabulary, retargeting by bone name, the pure "what plays when" tables (tested in node)
   glbAnimator.ts GlbTeacherAnimator: same inputs and public surface as TeacherAnimator (actor.ts is the shared interface)

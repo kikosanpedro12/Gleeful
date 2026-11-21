@@ -4,7 +4,7 @@ import { useGlbLoading } from "@/lib/teacher/glbStatus";
 import { useEffect, useState } from "react";
 
 /**
- * "Getting your teacher ready": shown only while the GLB teachers load (flag on). The live region is always present
+ * "Getting your teacher ready": shown only while the GLB teachers load (GLB on, the default). The live region is always present
  * so a screen reader hears the text when it appears; there is no animation, so reduced motion needs nothing special.
  * It is gone as soon as the teachers (or the procedural fallback after a failure or 8 s) are on screen.
  */

@@ -59,7 +59,7 @@ Historical people are shown as a **3D character** in the era scene (not only a p
 - One action per reply (cleaner enforces). Reduced motion: half the length, small motion. A new turn or the child speaking stops it.
 
 ## GLB teachers (phase A, 21 Nov 2026)
-Leo and Mia exist as rigged Tripo models with 17 baked clips (public/assets/characters), loaded behind `NEXT_PUBLIC_CHAR_GLB` (default off; the procedural rig is the live look and the fallback). Full design in docs/ARCHITECTURE.md "GLB characters".
+Leo and Mia exist as rigged Tripo models with 17 baked clips (public/assets/characters), ON by default since 21 Nov 2026 (kill switch `NEXT_PUBLIC_CHAR_GLB=0`, escape hatch `?rig=procedural`; the procedural rig is the fallback). Full design in docs/ARCHITECTURE.md "GLB characters".
 - The scene kit is unchanged: `act`, `gesture`, `pointAt`, `moveTeacherTo`, `inviteTap` and `writeOnBoard` are the same validated commands; only the body that draws them differs. Ids are still looked up in fixed tables (`actPlan`, `gesturePlan`, `isClipId`); a hostile id is never a clip.
 - `swim` and `climb` now have real clips (swim lies face-down at hip height and needs water scenery; climb is in place). They are still not allowed by any world; phase 2 adds the water and the climbable.
 - `eat` is a hand-to-mouth overlay with no prop; a real eating clip and a small food prop are TODO.

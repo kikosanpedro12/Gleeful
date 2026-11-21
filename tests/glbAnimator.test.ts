@@ -292,18 +292,18 @@ describe("GLB animator: speaking has body language but no mouth", () => {
 });
 
 describe("flag and fallback", () => {
-  it("is off by default; a build flag turns it on", () => {
-    expect(glbEnabled({})).toBe(false);
-    expect(glbEnabled({ build: "" })).toBe(false);
-    expect(glbEnabled({ build: "0" })).toBe(false);
+  it("is ON by default; only the build kill switch '0' turns the default off", () => {
+    expect(glbEnabled({})).toBe(true);
+    expect(glbEnabled({ build: "" })).toBe(true);
     expect(glbEnabled({ build: "1" })).toBe(true);
+    expect(glbEnabled({ build: "0" })).toBe(false);
   });
-  it("the URL switch works only in a test build with ?test=1", () => {
-    expect(glbEnabled({ testHooks: true, search: "?test=1&rig=glb" })).toBe(true);
-    expect(glbEnabled({ testHooks: true, search: "?rig=glb" })).toBe(false); // no ?test=1
-    expect(glbEnabled({ testHooks: false, search: "?test=1&rig=glb" })).toBe(false); // a deployment build ignores the URL
-    expect(glbEnabled({ testHooks: true, search: "?test=1&rig=procedural", build: "1" })).toBe(false);
-    expect(glbEnabled({ testHooks: false, search: "?test=1&rig=procedural", build: "1" })).toBe(true);
+  it("?rig=procedural is the escape hatch in any build; ?rig=glb beats the kill switch", () => {
+    expect(glbEnabled({ search: "?rig=procedural" })).toBe(false);
+    expect(glbEnabled({ search: "?test=1&rig=procedural" })).toBe(false);
+    expect(glbEnabled({ search: "?rig=glb", build: "0" })).toBe(true);
+    expect(glbEnabled({ search: "?rig=bogus" })).toBe(true); // junk is ignored, the default stands
+    expect(glbEnabled({ search: "?rig=bogus", build: "0" })).toBe(false);
   });
   it("a load that cannot fetch rejects (so the stage keeps the procedural teacher) instead of throwing", async () => {
     clearGlbCache();

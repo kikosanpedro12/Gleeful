@@ -255,3 +255,12 @@ describe("controller: the taste's ACT goes through the world's validator", () =>
     expect(session.outputLevel()).toBe(0);
   });
 });
+
+describe("paywallCopy grammar", () => {
+  it("never puts a capitalised 'Your tutor' in the middle of a sentence", () => {
+    const c = paywallCopy(null, null);
+    expect(c.body).toMatch(/^In a full lesson, your tutor keeps going/);
+    expect(c.heading).toBe("Your tutor has so much more to show your child.");
+    expect(paywallCopy("Mia", null).body).toMatch(/^In a full lesson, Mia keeps going/);
+  });
+});

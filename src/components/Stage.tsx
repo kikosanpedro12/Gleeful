@@ -7,6 +7,7 @@ import { WORLD_SCENES } from "./scene/worlds";
 import { WORLD_IDS, WORLDS } from "@/lib/worlds/registry";
 import TeacherActor from "./scene/TeacherActor";
 import TeacherLoadingNote from "./scene/TeacherLoadingNote";
+import PerfOverlay, { PerfProbe, perfWanted } from "./scene/PerfOverlay";
 import CameraRig from "./scene/CameraRig";
 import Director from "./scene/Director";
 import { fx, resolveTarget, teacherPosRef, TEST_HOOKS } from "./scene/shared";
@@ -142,10 +143,12 @@ function TestHooks() {
 
 export default function Stage({ onQuality, flash }: { onQuality?: (q: "high" | "low") => void; flash: React.RefObject<HTMLDivElement | null> }) {
   const [low, setLow] = useState(false);
+  const perf = useMemo(() => perfWanted(), []);
   const reduced = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
   return (
     <>
     <TeacherLoadingNote />
+    {perf && <PerfOverlay />}
     <Canvas
       shadows={!low}
       dpr={low ? 1 : [1, 1.75]}
@@ -162,6 +165,7 @@ export default function Stage({ onQuality, flash }: { onQuality?: (q: "high" | "
       <CameraRig reducedMotion={reduced} />
       <ScreenTag />
       <Prewarm />
+      {perf && <PerfProbe />}
       {TEST_HOOKS && <TestHooks />}
       <QualityGuard onLow={() => { setLow(true); onQuality?.("low"); }} />
     </Canvas>

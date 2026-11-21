@@ -1,4 +1,4 @@
-// Tester checks for round 2: facing after pointAt, no .glb with flag off, loading line while GLBs are delayed, floor.
+// Tester checks for round 2: facing after pointAt, no .glb with the rig off, loading line while GLBs are delayed, floor.
 // SMOKE_BASE=http://localhost:3222 [W= H=] node scripts/verify-round2.mjs
 import puppeteer from "puppeteer-core";
 const BASE = process.env.SMOKE_BASE || "http://localhost:3222";
@@ -16,12 +16,12 @@ async function open(qs, delayMs = 0) {
   return { page, glbReqs };
 }
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-// 1. flag OFF: default (no rig param) and rig=procedural request no .glb
-for (const qs of ["", "&rig=procedural"]) {
+// 1. rig OFF (rig=procedural, also sticky on the next page): no .glb; the default (no param) now loads GLB
+for (const qs of ["&rig=procedural"]) {
   const { page, glbReqs } = await open(qs);
   await page.waitForFunction(() => !!window.__teachers?.leo, { timeout: 40000 });
   await sleep(2500);
-  check(`flag off (${qs || "default"}): no .glb requested, procedural rig`, glbReqs.length === 0 && !(await page.evaluate(() => window.__teachers.leo.rig.glb)), JSON.stringify(glbReqs));
+  check(`rig off (${qs}): no .glb requested, procedural rig`, glbReqs.length === 0 && !(await page.evaluate(() => window.__teachers.leo.rig.glb)), JSON.stringify(glbReqs));
   await page.close();
 }
 // 2. loading line while GLBs delayed

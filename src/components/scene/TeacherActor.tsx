@@ -7,6 +7,7 @@ import { GlbTeacherAnimator } from "@/lib/teacher/glbAnimator";
 import { glbEnabled } from "@/lib/teacher/glbFlag";
 import { loadGlbRig, type GlbRig } from "@/lib/teacher/glbRig";
 import { glbLoading } from "@/lib/teacher/glbStatus";
+import { perfEnabled, recordGlbLoad } from "@/lib/telemetry/perfOverlay";
 import type { ActorAnimator, ActorRig } from "@/lib/teacher/actor";
 import { useSession } from "@/lib/session/store";
 import { session } from "@/lib/session/controller";
@@ -28,7 +29,7 @@ const GLB_WAIT_MS = 8000;
  * and only react to the voice preview; in a lesson only the chosen one is shown
  * and is driven by the conversation.
  *
- * Which body: the procedural rig (default). With the GLB flag on (src/lib/teacher/glbFlag.ts) the rigged character is
+ * Which body: the rigged GLB character by default (src/lib/teacher/glbFlag.ts: ?rig=procedural or NEXT_PUBLIC_CHAR_GLB=0 switch it off); the procedural rig is the fallback. For the GLB path the rigged character is
  * loaded first; nothing is drawn for that teacher until it is ready or has failed (no flash of the old look), and any
  * failure (network, bad file, missing bone) or a wait over GLB_WAIT_MS silently keeps the procedural rig.
  */
@@ -45,9 +46,11 @@ export default function TeacherActor({ id, reducedMotion }: { id: TeacherId; red
     const settle = (v: GlbRig | "failed") => { if (state.current === null) { state.current = v; setGlb(v); } else if (v !== "failed") v.dispose(); glbLoading(id, false); };
     let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => { if (alive) settle("failed"); }, GLB_WAIT_MS);
     // loadAsync cannot be aborted. That is fine: the file is cached and shared, and every result is stale-guarded (alive / state) before use.
+    const t0 = performance.now();
+    const perf = perfEnabled(window.location.search); // ?perf=1 only: record the load time for the overlay
     loadGlbRig(id).then(
-      (r) => { if (!alive) { r.dispose(); return; } settle(r); },
-      () => { if (alive) settle("failed"); },
+      (r) => { if (perf) recordGlbLoad(id, performance.now() - t0); if (!alive) { r.dispose(); return; } settle(r); },
+      () => { if (perf) recordGlbLoad(id, "failed"); if (alive) settle("failed"); },
     );
     return () => { alive = false; glbLoading(id, false); if (timer) clearTimeout(timer); timer = null; };
   }, [wantGlb, id]);

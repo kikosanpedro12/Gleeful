@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * Which GLB teachers are still loading (flag on only). The stage shows one honest "Getting your teacher ready" line
+ * Which GLB teachers are still loading (GLB on only). The stage shows one honest "Getting your teacher ready" line
  * while any is pending, and nothing once the teachers (or the fallback) are on screen.
  */
 const pending = new Set<string>();

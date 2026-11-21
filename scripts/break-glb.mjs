@@ -1,6 +1,6 @@
 // Break run for the GLB teachers: slow, corrupt, truncated, wrong and failing character files; WebGL context loss;
 // act/gesture spam; interruption mid-clip; unmount during load; no unhandled rejections or CSP violations.
-// Needs a TEST build (NEXT_PUBLIC_TEST_HOOKS=1). Flag on via ?rig=glb (or a build with NEXT_PUBLIC_CHAR_GLB=1).
+// Needs a TEST build (NEXT_PUBLIC_TEST_HOOKS=1). GLB is the default; ?rig=glb makes it explicit.
 //   SMOKE_URL="http://localhost:3222/learn?test=1&rig=glb" node scripts/break-glb.mjs
 // Software rendering: behaviour only, never fps.
 import puppeteer from "puppeteer-core";
@@ -176,8 +176,8 @@ for (const [name, route] of Object.entries(cases)) {
   await o.page.evaluate(() => window.next.router.push("/learn?test=1&rig=glb")); await sleep(6000);
   await faultFree("unmount then return", o); await o.ctx.close();
 }
-// 6. Flag OFF must not download any character file (only meaningful on a build/URL with the flag off).
-if (process.env.EXPECT_OFF) {
+// 6. Rig off (?rig=procedural or a build with NEXT_PUBLIC_CHAR_GLB=0) must not download any character file (only meaningful on a build/URL with the flag off).
+if (process.env.EXPECT_OFF) { // open with SMOKE_URL=...&rig=procedural
   const o = await open(null); await sleep(6000);
   check("flag off: no character files requested", o.reqs.length === 0, o.reqs.join(","));
   await o.ctx.close();

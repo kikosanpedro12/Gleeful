@@ -123,3 +123,4 @@ Rules for entries:
 - Pinned copies for testing (`/tmp/...`) need `cp -al` for node_modules: Turbopack rejects a symlinked node_modules. A static-file header set in next.config only shows in a production build (not `next dev`).
 - "Height" reported by a rig must mean what the test means: a run clip's flight phase is not a jump. Only jump, climb and swim count as air (glbAnimator).
 - Two cards stacked at the bottom of a hero cover the tutor's face: after changing what stays on screen, look at the 1280x800 and 390x844 screenshots, not only the checks.
+- Debug overlays (?perf=1): z-index above the cards, max width so it stays clear of a centred card (card left edge 341px at 1280), aria-hidden, pointer-events none. Phone: it covers the "For parents" link while on (debug only).

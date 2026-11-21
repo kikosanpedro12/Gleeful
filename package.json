@@ -20,6 +20,7 @@
     "smoke:act": "node scripts/act-smoke.mjs",
     "smoke:widgets": "node scripts/widgets-smoke.mjs",
     "smoke:glb": "node scripts/glb-smoke.mjs",
+    "smoke:preview": "node scripts/preview-smoke.mjs",
     "build:characters": "node scripts/build-characters.mjs"
   },
   "dependencies": {

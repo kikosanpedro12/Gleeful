@@ -17,10 +17,11 @@ export function tapChips(a: { used: number; asked: number; choices: unknown; ide
 
 export function paywallCopy(name: string | null, topic: unknown): { heading: string; body: string } {
   const who = name ?? "Your tutor";
+  const whoMid = name ?? "your tutor"; // mid-sentence: no stray capital
   const t = topicOk(topic) ? topic : null;
   return {
     heading: t ? `That was ${t}, with ${who}.` : `${who} has so much more to show your child.`,
-    body: `In a full lesson ${who} keeps going from here${t ? ` with ${t}` : ""}: pictures on the board, a question back at every step, and a parent view of what stuck.`,
+    body: `In a full lesson, ${whoMid} keeps going from here${t ? ` with ${t}` : ""}: pictures on the board, a question back at every step, and a parent view of what stuck.`,
   };
 }
 

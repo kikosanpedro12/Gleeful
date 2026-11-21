@@ -6,7 +6,7 @@ import { bone, CLIP_IDS, HIPS, measureStride, REQUIRED_BONES, retargetClips, typ
 
 /**
  * Leo and Mia as rigged GLB characters (public/assets/characters, built by scripts/build-characters.mjs), behind a
- * flag (src/lib/teacher/glbFlag.ts). The procedural rig (rig.ts) stays the default and the fallback.
+ * switch (src/lib/teacher/glbFlag.ts, on by default). The procedural rig (rig.ts) is the fallback.
  *
  * Honest limits: the models have NO face blendshapes (no mouth, no blink, no eyes that move). Speech shows as body
  * and head emphasis only; it is not lip sync.
