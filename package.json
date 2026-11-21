@@ -18,7 +18,9 @@
     "stop": "node scripts/stop-server.mjs",
     "evals": "node scripts/evals.mjs",
     "smoke:act": "node scripts/act-smoke.mjs",
-    "smoke:widgets": "node scripts/widgets-smoke.mjs"
+    "smoke:widgets": "node scripts/widgets-smoke.mjs",
+    "smoke:glb": "node scripts/glb-smoke.mjs",
+    "build:characters": "node scripts/build-characters.mjs"
   },
   "dependencies": {
     "@fontsource-variable/unbounded": "5.3.0",

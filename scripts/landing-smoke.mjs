@@ -7,6 +7,8 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ORIGIN = process.env.ORIGIN || "http://localhost:3111";
+/** Extra query string for every page, e.g. QS=rig=glb to run the whole suite with the GLB teachers (test build only). */
+const QS = process.env.QS || "";
 const OUT = fileURLToPath(new URL("./out/", import.meta.url));
 fs.mkdirSync(OUT, { recursive: true });
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 800), TAG = process.env.TAG || "lp-d";
@@ -53,7 +55,7 @@ async function open(path, { stub = "live", rm = false, post = null, voice = "off
     return json(200, { reply: `Here is answer ${n}.`, turnsLeft: 3 - n, topic: "red Mars dust", scene: { setting: "desert", era: "Mars, today", props: ["pr_pyramids"] },
       ...(n < 3 ? { choices: n === 1 ? ["Rust", "Paint"] : ["Iron", "Gold"] } : {}) });
   });
-  const res = await page.goto(ORIGIN + path, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const res = await page.goto(ORIGIN + path + (QS ? (path.includes("?") ? "&" : "?") + QS : ""), { waitUntil: "domcontentloaded", timeout: 60000 });
   await sleep(1500);
   return { page, errors, res, posts };
 }
@@ -99,6 +101,12 @@ const real = (errs) => errs.filter((e) => !/Failed to load resource/.test(e));
   check("hard paywall after the 3rd try, honest about money", /7-day free trial/.test(wall) && /Nothing is charged today/.test(wall) && /not switched on/.test(wall));
   check("paywall talks to the grown-up and names what was explored", /For grown-ups/.test(wall) && /red Mars dust/.test(wall), wall.slice(0, 120));
   check("no ElevenLabs call when the server offers none", posts.voice === 0);
+  // WCAG 2.2.1: the card is ADDED below the last answer; nothing the visitor was reading is removed or taken over by a timer.
+  check("the last answer stays on screen under the paywall (not swapped out)", /answer 3/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")));
+  check("question box and chips are gone after the last try (Stop / Mute voice show only while sound plays)", !(await page.$("#class-q")) && !(await page.$('[data-testid="taste-chips"], [data-testid="taste-choices"]')));
+  check("the paywall does not steal keyboard focus after a live answer", await page.evaluate(() => !document.activeElement?.closest?.('[data-testid="paywall"]')));
+  await sleep(8000);
+  check("8 s later everything is still there (no auto-dismiss)", !!(await page.$('[data-testid="paywall"]')) && /answer 3/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")));
   check("paywall CTA goes to sign-in", (await page.$eval('[data-testid="start-trial"]', (e) => e.getAttribute("href")).catch(() => "")) === "/sign-in");
   await page.screenshot({ path: `${OUT}${TAG}-paywall.png` });
   check("no console or CSP errors on the full journey", real(errors).length === 0, real(errors).slice(0, 3).join(" | "));
@@ -173,7 +181,10 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
   await sleep(300);
   check("Stop silences the voice and hides itself", !(await page.$('[data-testid="taste-stop"]')) && (await page.evaluate(() => window.__cancels)) > c0);
   await page.click('[data-testid="taste-mute"]');
-  check("voice toggle reads Voice off when pressed", (await page.$eval('[data-testid="taste-mute"]', (e) => e.getAttribute("aria-pressed") + e.textContent)) === "trueVoice off");
+  check("voice toggle: one constant name ('Mute voice'), aria-pressed=true once pressed (state is not in the label)", (await page.$eval('[data-testid="taste-mute"]', (e) => e.getAttribute("aria-pressed") + "|" + e.textContent.trim())) === "true|Mute voice");
+  await page.click('[data-testid="taste-mute"]');
+  check("pressing it again gives aria-pressed=false with the same name", (await page.$eval('[data-testid="taste-mute"]', (e) => e.getAttribute("aria-pressed") + "|" + e.textContent.trim())) === "false|Mute voice");
+  await page.click('[data-testid="taste-mute"]'); // muted again for the next check
   const n0 = (await page.evaluate(() => window.__spoken)).length;
   await page.click('[data-testid="taste-choices"] .lp-chip');
   await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 2"), { timeout: 10000 }).catch(() => {});

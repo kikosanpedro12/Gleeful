@@ -33,7 +33,7 @@ const st = () => page.evaluate(() => {
   return {
     state: el?.getAttribute("data-state"), world: el?.getAttribute("data-world"), transit: el?.getAttribute("data-transit") === "1",
     walking: t?.debug.walking, pointing: t?.debug.pointing, gesture: t?.debug.gesture, mouth: t?.debug.mouthOpen ?? 0,
-    helmet: window.__teacher?.rig?.helmet.visible, fx: window.__fx ? { ...window.__fx } : null,
+    glb: !!window.__teacher?.rig?.glb, helmet: window.__teacher?.rig?.helmet.visible, fx: window.__fx ? { ...window.__fx } : null,
     choices: [...document.querySelectorAll('[data-testid^="choice-"]')].map((b) => b.getAttribute("data-testid").slice(7)),
     question: !!document.querySelector('[data-testid="question"]'),
     inspect: !!document.querySelector('[data-testid="inspect"]'),
@@ -66,7 +66,10 @@ check("scripted greeting never calls the teacher an AI", !/\bAI\b/.test(greetCap
 // Honest labelling: the smoke server never has a model key, so whichever brain is built, the script answered and the badge must say so.
 const badge = await page.$eval('[data-testid="demo-badge"]', (e) => e.textContent || "");
 check("badge says scripted when the script answered (never claims AI)", /Scripted|not AI/i.test(badge), JSON.stringify(badge));
-await waitFor((d) => d.mouth > 0.2, 5000).then((d) => check("mouth moves while speaking", !!d));
+// Per rig: the procedural teacher has a mouth. The GLB models have NO face blendshapes (no mouth, no lip sync), so speech there is body and head
+// emphasis only and mouthOpen must stay 0 (anything else would be a claim we cannot back).
+if ((await st()).glb) check("GLB rig: no mouth (mouthOpen stays 0 while speaking; body emphasis only)", (await st()).mouth === 0);
+else await waitFor((d) => d.mouth > 0.2, 5000).then((d) => check("mouth moves while speaking", !!d));
 const c1 = await waitFor((d) => d.choices.includes("mars") && d.state === "idle", 20000);
 check("greeting offers a Mars choice", !!c1);
 await shot("03-classroom-choice");

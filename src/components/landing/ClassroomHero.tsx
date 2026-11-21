@@ -33,6 +33,10 @@ function hasWebgl() {
  * server offers it, a pretend picture on the chalkboard), then the paywall. Honesty: the page says when the live AI is
  * off; nothing is faked. The per-person count lives in a signed cookie on the server (a refresh does not reset it).
  */
+/** Moves focus to the grown-up card only when it is the whole page state (a returning visitor). After a live answer the
+ *  card is added below it and focus stays where the visitor is: a timer must not move focus (WCAG 3.2.1 / 2.2.1). */
+function focusOnce(el: HTMLElement | null) { if (el && !el.dataset.focused) { el.dataset.focused = "1"; el.focus({ preventScroll: true }); } }
+
 export default function ClassroomHero() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [teacher, setTeacher] = useState<Teacher | null>(null);
@@ -109,14 +113,13 @@ export default function ClassroomHero() {
     say(openerLine(t === "mia" ? "Mia" : "Leo"), t, true);
   }
 
-  /** Swap to the grown-up card. Audio is silenced first, so Stop / Voice never disappear while sound still plays. */
+  /** Add the grown-up card BELOW the tutor's last answer. Nothing is removed or silenced by a timer (WCAG 2.2.1): the answer stays
+   *  readable, and Stop / Mute stay while any sound still plays. */
   function showPaywall() {
     if (!alive.current) return;
     if (timer.current) clearTimeout(timer.current);
     if (maxTimer.current) clearTimeout(maxTimer.current);
     timer.current = maxTimer.current = null;
-    if (voice.current) { voice.current.stop(); voice.current = null; session.tasteSpeaking(false); }
-    setSpeaking(false);
     setOver(true);
   }
   /** After the last answer: a short beat once the tutor has finished (or been stopped), so the tease is heard first. */
@@ -209,7 +212,7 @@ export default function ClassroomHero() {
         lastTurn.current = left <= 0;
         say(reply, teacher);
         if (left <= 0) {
-          maxTimer.current = setTimeout(showPaywall, 25_000); // at most this long, however slow the voice
+          maxTimer.current = setTimeout(showPaywall, 25_000); // the card is added at most this late, however slow the voice (the voice itself is never cut)
           if (!voice.current) paywallSoon(5000); // voice off: time to read the tease
         }
       } else {
@@ -259,7 +262,7 @@ export default function ClassroomHero() {
           </div>
         )}
 
-        {phase === "live" && !over && teacher && (
+        {phase === "live" && teacher && (!over || lines.length > 0) && (
           <div className="lp-card" data-testid="taste-live" ref={cardRef}>
             <div className="lp-say" aria-live="polite" aria-atomic="true">
               {busy ? <p data-testid="taste-thinking" className="lp-wait">{name} is thinking…</p>
@@ -269,12 +272,17 @@ export default function ClassroomHero() {
             {/* One wrapping row: voice controls, then starter ideas (before the first question only) or the tutor's own 2 answers. Keeps the card short on phones. */}
             {(() => {
               const c = tapChips({ used, asked: lines.length, choices, ideas: IDEAS, last: used >= TASTE_MAX_TURNS });
-              const voiceRow = speaking || lines.length > 0;
+              const voiceRow = speaking || (lines.length > 0 && !over); // once the tries are done, Stop / Mute are there only while sound plays
               if (!c.items.length && !voiceRow) return null;
               return (
                 <div className="lp-taste-actions">
                   {speaking && <button type="button" className="lp-btn lp-btn-soft" onClick={() => hush(true)} data-testid="taste-stop">Stop talking</button>}
-                  {voiceRow && <button type="button" className="lp-btn lp-btn-soft" aria-pressed={muted} onClick={toggleMute} data-testid="taste-mute">{muted ? "Voice off" : "Voice on"}</button>}
+                  {voiceRow && (
+                    <button type="button" className="lp-btn lp-btn-soft lp-mute" aria-pressed={muted} onClick={toggleMute} data-testid="taste-mute">
+                      <svg viewBox="0 0 24 24" aria-hidden width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />{muted ? <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /> : <path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}</svg>
+                      Mute voice
+                    </button>
+                  )}
                   {c.items.length > 0 && (
                     <div className="lp-chips" role="group" aria-label={c.kind === "ideas" ? "Question ideas" : `Answer ${name}`} data-testid={c.kind === "ideas" ? "taste-chips" : "taste-choices"}>
                       {c.items.map((i) => <button key={i} type="button" className="lp-chip" disabled={busy || listening} onClick={() => void send(i)}>{i}</button>)}
@@ -283,37 +291,42 @@ export default function ClassroomHero() {
                 </div>
               );
             })()}
-            <form className="lp-taste-row" aria-busy={busy} onSubmit={(e) => { e.preventDefault(); void send(text); }}>
-              <label className="lp-sr" htmlFor="class-q">Your question</label>
-              <input id="class-q" className="lp-taste-input" type="text" autoComplete="off" enterKeyHint="send" maxLength={TASTE_MAX_INPUT}
-                value={text} onChange={(e) => setText(e.target.value)} placeholder={listening ? "Listening…" : `Ask ${name}…`} disabled={busy || listening} />
-              {mic === "ok" && (
-                <button type="button" className={listening ? "lp-btn lp-btn-main lp-mic lp-mic-on" : "lp-btn lp-btn-main lp-mic"} onClick={talk} disabled={busy}
-                  aria-label={listening ? "Stop listening and send" : `Talk to ${name}`} data-testid="taste-mic">
-                  <svg viewBox="0 0 24 24" aria-hidden width="22" height="22"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="currentColor" /><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-                </button>
-              )}
-              <button className="lp-btn lp-btn-main" type="submit" disabled={busy || listening || !text.trim()}>Ask</button>
-            </form>
-            <p className="lp-sr" role="status">{listening ? `Listening. Say your question, then tap the mic again.` : ""}</p>
-            {micNote && <p className="lp-taste-err" role="status" data-testid="taste-mic-note">{micNote}</p>}
+            {used < TASTE_MAX_TURNS && (
+              <>
+              <form className="lp-taste-row" aria-busy={busy} onSubmit={(e) => { e.preventDefault(); void send(text); }}>
+                <label className="lp-sr" htmlFor="class-q">Your question</label>
+                <input id="class-q" className="lp-taste-input" type="text" autoComplete="off" enterKeyHint="send" maxLength={TASTE_MAX_INPUT}
+                  value={text} onChange={(e) => setText(e.target.value)} placeholder={listening ? "Listening…" : `Ask ${name}…`} disabled={busy || listening} />
+                {mic === "ok" && (
+                  <button type="button" className={listening ? "lp-btn lp-btn-main lp-mic lp-mic-on" : "lp-btn lp-btn-main lp-mic"} onClick={talk} disabled={busy}
+                    aria-label={listening ? "Stop listening and send" : `Talk to ${name}`} data-testid="taste-mic">
+                    <svg viewBox="0 0 24 24" aria-hidden width="22" height="22"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="currentColor" /><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                <button className="lp-btn lp-btn-main" type="submit" disabled={busy || listening || !text.trim()}>Ask</button>
+              </form>
+              <p className="lp-sr" role="status">{listening ? `Listening. Say your question, then tap the mic again.` : ""}</p>
+              {micNote && <p className="lp-taste-err" role="status" data-testid="taste-mic-note">{micNote}</p>}
+              </>
+            )}
             <div className="lp-taste-meta">
               <p className="lp-count" data-testid="taste-count">
                 <span className="lp-pips" aria-hidden>{Array.from({ length: TASTE_MAX_TURNS }, (_, i) => <span key={i} className={i < used ? "lp-pip lp-pip-on" : "lp-pip"} />)}</span>
                 <span>{used === 0 ? `${TASTE_MAX_TURNS} free tries` : `${used} of ${TASTE_MAX_TURNS} used`}</span>
               </p>
               <p className="lp-fine-print">It&apos;s an AI and can be wrong. Please don&apos;t type or say private details.</p>
-              {mic === "ok" && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker (Google, Microsoft or Apple) to turn it into text. We only get the text.</p>}
+              {mic === "ok" && used < TASTE_MAX_TURNS && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker (Google, Microsoft or Apple) to turn it into text. We only get the text.</p>}
             </div>
             {busyNote && <p className="lp-taste-err" role="status">The tutor is busy right now. Please try again a little later.</p>}
             {trouble && <p className="lp-taste-err" role="status">{name} didn&apos;t hear that. Wait a moment and try again.</p>}
           </div>
         )}
 
+        <p className="lp-sr" role="status">{over && lines.length > 0 ? "Your free tries are used. A note for grown-ups follows." : ""}</p>
         {over && (() => {
           const p = paywallCopy(name, topic);
           return (
-            <div className="lp-card lp-paywall" data-testid="paywall" role="region" aria-label="For grown-ups: keep learning" tabIndex={-1} ref={(el) => { el?.focus({ preventScroll: true }); }}>
+            <div className="lp-card lp-paywall" data-testid="paywall" role="region" aria-label="For grown-ups: keep learning" tabIndex={-1} ref={lines.length === 0 ? focusOnce : undefined}>
               <p className="lp-tag">For grown-ups</p>
               <h2 className="lp-paywall-h" data-testid="paywall-h">{p.heading}</h2>
               <p>{p.body}</p>

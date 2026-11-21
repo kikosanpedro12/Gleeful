@@ -6,6 +6,7 @@ import Space from "./scene/Space";
 import { WORLD_SCENES } from "./scene/worlds";
 import { WORLD_IDS, WORLDS } from "@/lib/worlds/registry";
 import TeacherActor from "./scene/TeacherActor";
+import TeacherLoadingNote from "./scene/TeacherLoadingNote";
 import CameraRig from "./scene/CameraRig";
 import Director from "./scene/Director";
 import { fx, resolveTarget, teacherPosRef, TEST_HOOKS } from "./scene/shared";
@@ -126,7 +127,9 @@ function Prewarm() {
 }
 
 function TestHooks() {
-  const { camera, size } = useThree();
+  const { camera, size, gl } = useThree();
+  // Draw calls and triangles of the last frame (info.autoReset clears them each frame, so read right after a render).
+  (window as any).__renderInfo = () => ({ calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures });
   (window as any).__project = (name: string) => {
     const p = resolveTarget(name);
     if (!p) return null;
@@ -141,6 +144,8 @@ export default function Stage({ onQuality, flash }: { onQuality?: (q: "high" | "
   const [low, setLow] = useState(false);
   const reduced = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
   return (
+    <>
+    <TeacherLoadingNote />
     <Canvas
       shadows={!low}
       dpr={low ? 1 : [1, 1.75]}
@@ -160,5 +165,6 @@ export default function Stage({ onQuality, flash }: { onQuality?: (q: "high" | "
       {TEST_HOOKS && <TestHooks />}
       <QualityGuard onLow={() => { setLow(true); onQuality?.("low"); }} />
     </Canvas>
+    </>
   );
 }

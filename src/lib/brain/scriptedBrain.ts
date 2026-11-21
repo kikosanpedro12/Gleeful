@@ -181,13 +181,13 @@ export class ScriptedBrain implements Brain {
         if (ctx.world === "market") { this.pending = null; return this.inviteCrate(); }
         if (!onMars)
           return { segments: [
-            S("Great question. The answer is hiding in the rocks.", A("pointAt", { target: "mars_globe" })),
+            S("Great question. See this globe? That is our Earth. The answer is hiding in the rocks on Mars.", A("pointAt", { target: "mars_globe" })),
             S("Want to fly there and find out?", choices(["mars", "Yes, let's go!"])),
           ] };
         return this.inviteRock();
       case "rock":
         if (ctx.world === "market") { this.pending = null; return this.inviteCrate(); }
-        return onMars ? this.inviteRock() : { segments: [S("The rocks we want are on Mars.", A("pointAt", { target: "mars_globe" })), S("Want to go?", choices(["mars", "Let's go!"]))] };
+        return onMars ? this.inviteRock() : { segments: [S("This globe is our Earth. The rocks we want are on Mars, far from here.", A("pointAt", { target: "mars_globe" })), S("Want to go?", choices(["mars", "Let's go!"]))] };
       case "air":
         return { segments: [
           S("No people live on Mars. Only robots called rovers have been there.", A("gesture", { gesture: "open_hands" })),

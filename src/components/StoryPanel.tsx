@@ -2,7 +2,7 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { SafeGLTFLoader } from "@/lib/three/safeGltfLoader";
 import { useSession } from "@/lib/session/store";
 import { session } from "@/lib/session/controller";
 import { assetById, isProcedural } from "@/lib/assets/manifest";
@@ -14,20 +14,6 @@ import { PRETEND_LABEL, PROP_SLOTS, SETTINGS, type Placement, type StoryFrame } 
  * Only ids from our own manifests are drawn, from files we ship; placement is fixed here. Real people appear only as
  * a credited public-domain picture. Always labelled as pretend. Reduced motion: no turning.
  */
-/**
- * three's GLTFLoader reads embedded textures through a blob: URL fetch, which our CSP (connect-src 'self') rightly
- * refuses. Without createImageBitmap it falls back to an <img> (img-src allows blob:), so hide it during parse only.
- * The check happens synchronously when the parser is built, so the restore below is safe.
- */
-class SafeGLTFLoader extends GLTFLoader {
-  override parse(data: ArrayBuffer | string, path: string, onLoad: Parameters<GLTFLoader["parse"]>[2], onError?: Parameters<GLTFLoader["parse"]>[3]) {
-    const g = globalThis as { createImageBitmap?: unknown };
-    const saved = g.createImageBitmap;
-    g.createImageBitmap = undefined;
-    try { super.parse(data, path, onLoad, onError); } finally { g.createImageBitmap = saved; }
-  }
-}
-
 /** Where a figure stands (code decides, the model only picks left, center or right). */
 const FIGURE_X: Record<Placement, number> = { left: -0.8, center: 0, right: 0.8 };
 /** With a figure, props go to the other side so nothing walks through the person. */

@@ -201,7 +201,7 @@ describe("mic in the taste", () => {
     const src = fs.readFileSync("src/components/landing/ClassroomHero.tsx", "utf8");
     expect(src).toMatch(/setMic\(recognitionAvailable\(\) \? "ok" : "none"\)/);
     expect(src).toMatch(/\{mic === "ok" && \(\s*<button[^>]*lp-mic/);
-    expect(src).toMatch(/mic === "ok" && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker \(Google, Microsoft or Apple\)/);
+    expect(src).toMatch(/mic === "ok" && used < TASTE_MAX_TURNS && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker \(Google, Microsoft or Apple\)/);
     // reuses the lesson's recogniser, does not build its own
     expect(src).toMatch(/import \{ listenOnce, recognitionAvailable, type Listening \} from "@\/lib\/voice\/speech"/);
     expect(src).not.toMatch(/new \(?window\.(webkit)?SpeechRecognition/);

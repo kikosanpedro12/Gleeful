@@ -94,3 +94,26 @@ One policy file, `src/lib/seo/site.ts` (tested in `tests/seo.test.ts`):
 - `/voice-lab`: blind A/B page of Kokoro-82M samples (`public/voice-lab/*.mp3`, `src/lib/voicelab/lines.ts`). Samples only, not the live voice.
 - `ScriptedProvider` drops a reply that arrives more than 5 s late (`onReplyDropped`); `Prewarm` (Stage.tsx) compiles hidden worlds' shaders and uploads their textures at frame ~20. Effect on blank frames is **unmeasured on a phone**.
 - Single header badge (`Hud.tsx`) replaces the two chips; it follows the last brain kind.
+
+## GLB characters: Leo and Mia as rigged models (phase A, 21 Nov 2026, behind a flag)
+The founder says Leo and Mia are the brand, so they get proper models. Today's look is still the procedural rig (`rig.ts`); the GLB path is built, tested and OFF until the founder approves it.
+```
+raw Tripo exports (leo.glb, mia.glb, leo_anim.glb)          scripts/build-characters.mjs  (gltf-transform + sharp; needs them installed like shrink-glb.mjs)
+  -> public/assets/characters/leo.glb, mia.glb   mesh + skin + one 1024px JPEG, quantized. ~890 KB each (cap 900). All triangles kept (18.6k / 17.7k), 53 joints, weights exact.
+  -> public/assets/characters/clips.glb          skeleton + 17 clips, hips translation + int16 rotations only. ~770 KB (cap 1.2 MB).
+runtime
+  glbFlag.ts     NEXT_PUBLIC_CHAR_GLB=1, or ?rig=glb in a test build with ?test=1 (?rig=procedural forces it off). A deployment build never reads the URL.
+  glbRig.ts      load (shared SafeGLTFLoader, src/lib/three/safeGltfLoader.ts), clone, retarget, scale to height, stand on the floor, helmet on the head bone, pretend stool
+  glbClips.ts    clip vocabulary, retargeting by bone name, the pure "what plays when" tables (tested in node)
+  glbAnimator.ts GlbTeacherAnimator: same inputs and public surface as TeacherAnimator (actor.ts is the shared interface)
+  TeacherActor   picks the body; nothing is drawn for that teacher until the GLB is ready or has failed; any failure, or 8 s, keeps the procedural rig for the session
+```
+- **No mesh compression.** meshopt and Draco decoders are WebAssembly; the CSP has no `'wasm-unsafe-eval'` and must not get one. Quantization only (tests/characters.test.ts fails if a file uses either extension).
+- **Retargeting.** Bone names match across the clips file and both characters (three turns `mixamorig:Hips` into `mixamorigHips`; everything uses that form). Rotations are applied as a delta from the clip skeleton's rest pose onto the character's own rest pose (Mia's spine and fingers rest differently); the character files carry a 90 degree wrapper node the clips file lacks, so the hips get a frame fix; the hips' travel is scaled by hip height (Mia's legs are longer). Horizontal drift is removed at build time (the run clip sat 0.43 m ahead of the origin) and the climb is made in place.
+- **Two clip layers** on one AnimationMixer: hips + legs, and spine up. Each crossfades on its own, so a gesture or a talking beat can play over standing or walking.
+- **Mapping.** idle: `idle`. walk: `walk` (run for a long, fast walk; speed follows the clip's measured stride so the feet do not skate). Acts: run, jump, clap, sit, climb, swim play their clips (a pretend stool appears under `sit`); `eat` has no clip yet (idle body, right hand to the mouth by IK, TODO real clip + snack prop). Gestures: wave, think, shrug, open hands are arm IK (the only wave clip, `wave_goodbye_01`, is a SEATED wave; `greet_01` is a salute); nod is a head nod; `thumbs_up` plays the thumbs-up part of `agree`. Speaking = idle + arm beats by IK + head and spine emphasis from the voice level. pointAt = two-bone IK on the arm nearest the target. Look-at = neck and head toward the camera or target, clamped. `cheer`, `bow`, `laugh_01`, `greet_01`, `look_around`, `jump_down`, `run_upstairs`, `wave_goodbye_01` ship but nothing plays them yet.
+- **Reduced motion:** acts last half as long, run becomes walk, jump and climb keep a tenth of their hip travel, gestures are smaller.
+- **No mouth.** The models have no face blendshapes: no mouth shapes, no blinking, no eye movement. Speech shows as body and head emphasis only. It is NOT lip sync and nothing may say it is. `debug.mouthOpen` is always 0 on this rig.
+- **Grounding.** The lowest foot joint decides the floor: `root.position.y` is the jump height (the body below it is moved down by the same amount), so camera, tests and `teacherPosRef` read the same value as with the procedural rig.
+- **Cost (software render, one teacher in a lesson):** about 21.8k triangles and 77 draw calls in total for the whole scene with the GLB teacher, 42.7k / 88 calls while both teachers stand on the start screen. fps is NOT measured (no GPU here); it must be tried on the Honor X9b before the flag goes on.
+- **Gotchas that cost time:** never call `skeleton.pose()` on these skins (quantization changed the inverse bind matrices; it rebuilds a rig 2x too tall); build the character with the hips' scale untouched; the old landing hero scene (`HeroScene.tsx`, scroll flight) is not mounted by `Landing.tsx` and still uses only the procedural rig.

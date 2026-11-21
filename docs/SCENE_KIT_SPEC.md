@@ -57,3 +57,10 @@ Historical people are shown as a **3D character** in the era scene (not only a p
 - A world lists the ones it allows in `actions` (data, `src/lib/worlds/registry.ts`). Default safe set: run, jump, eat, sit, clap. Add `swim` only to a world with water and `climb` only where something is climbable; no world has either yet. Mars omits `eat` (helmet).
 - The animator (`src/lib/teacher/animator.ts`) plays each as a pose overlay that returns to idle. All motion is in place and pretend; no props yet. Labelled simulated: the prompt tells the brain not to claim it is really swimming, climbing or eating, and to say the key facts in words.
 - One action per reply (cleaner enforces). Reduced motion: half the length, small motion. A new turn or the child speaking stops it.
+
+## GLB teachers (phase A, 21 Nov 2026)
+Leo and Mia exist as rigged Tripo models with 17 baked clips (public/assets/characters), loaded behind `NEXT_PUBLIC_CHAR_GLB` (default off; the procedural rig is the live look and the fallback). Full design in docs/ARCHITECTURE.md "GLB characters".
+- The scene kit is unchanged: `act`, `gesture`, `pointAt`, `moveTeacherTo`, `inviteTap` and `writeOnBoard` are the same validated commands; only the body that draws them differs. Ids are still looked up in fixed tables (`actPlan`, `gesturePlan`, `isClipId`); a hostile id is never a clip.
+- `swim` and `climb` now have real clips (swim lies face-down at hip height and needs water scenery; climb is in place). They are still not allowed by any world; phase 2 adds the water and the climbable.
+- `eat` is a hand-to-mouth overlay with no prop; a real eating clip and a small food prop are TODO.
+- Clips that ship but are not mapped yet and could be used by later commands: `cheer`, `bow`, `laugh_01`, `greet_01`, `look_around`, `jump_down`, `run_upstairs`. Adding one is a data change in `src/lib/teacher/glbClips.ts` plus a test.

@@ -35,7 +35,7 @@ const BEATS: Pose[] = [
   {},
 ];
 
-const GESTURE_SEC: Record<Gesture, number> = { wave: 1.9, nod: 1.2, thumbs_up: 1.6, shrug: 1.5, think: 1.8, open_hands: 1.7 };
+export const GESTURE_SEC: Record<Gesture, number> = { wave: 1.9, nod: 1.2, thumbs_up: 1.6, shrug: 1.5, think: 1.8, open_hands: 1.7 };
 
 /** Nominal seconds per action (halved with reduced motion). Pretend acting: nothing here moves the teacher across the floor. */
 export const ACTION_SEC: Record<Action, number> = { run: 2.6, jump: 1.3, eat: 3.4, sit: 3.4, clap: 2.2, swim: 3.6, climb: 3.6 };

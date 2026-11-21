@@ -3,7 +3,7 @@ import { ScriptedBrain } from "@/lib/brain/scriptedBrain";
 import type { BrainContext, BrainReply } from "@/lib/brain/types";
 import { emptyProfile, skillStatus, type LearnerProfile } from "@/lib/learner/profile";
 import { parseSceneCommand } from "@/lib/scene/commands";
-import { contextFor, type WorldId } from "@/lib/worlds/registry";
+import { contextFor, WORLDS, type WorldId } from "@/lib/worlds/registry";
 
 function ctx(world: WorldId | "transit", profile: LearnerProfile = emptyProfile()): BrainContext & { profile: LearnerProfile } {
   return {
@@ -47,6 +47,22 @@ describe("scripted brain (not AI): the Mars field trip", () => {
     const r = new ScriptedBrain().respond({ kind: "text", text: "why is it red?" }, ctx("mars"));
     expect(names(r)).toEqual(expect.arrayContaining(["moveTeacherTo", "pointAt", "inviteTap"]));
     allValid(r, "mars");
+  });
+  it("in the classroom the teacher points at the globe on the desk, which is Earth: the words say so and still name Mars as the destination", () => {
+    for (const q of ["show me a rock", "why is Mars red?"]) {
+      const r = new ScriptedBrain().respond({ kind: "text", text: q }, ctx("classroom"));
+      const point = r.segments.find((s) => (s.actions ?? []).some((a) => a.name === "pointAt" && a.args.target === "mars_globe"));
+      expect(point, q).toBeTruthy();
+      expect(point!.say).toMatch(/globe/i);
+      expect(point!.say).toMatch(/\bEarth\b/);
+      expect(point!.say).toMatch(/\bMars\b/);
+      expect(point!.say).not.toMatch(/(rocks|answer).{0,30}(are|is) (on|at) (this|the) globe/i);
+      allValid(r, "classroom");
+    }
+  });
+  it("the globe target is described as Earth to every brain, not as Mars", () => {
+    const d = WORLDS.classroom.targets.mars_globe;
+    expect(d).toMatch(/Earth/);
   });
   it("tapping the rock changes the lesson: explains, then asks a checkable question", () => {
     const b = new ScriptedBrain();

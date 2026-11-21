@@ -237,7 +237,8 @@ const ctl = (page, expr) => page.evaluate(`(() => { const c = window.__ctl; retu
   await page.screenshot({ path: `${OUT}${TAG}-paywall-while-speaking.png` });
   await page.waitForSelector('[data-testid="paywall"]', { timeout: 20000 }).catch(() => {});
   const wall = !!(await page.$('[data-testid="paywall"]'));
-  check("the paywall arrives (the voice ends or the 25 s maximum), and no audio is left playing under it", wall && (await ctl(page, "c.s.conv.state")) !== "speaking", `paywall=${wall} state=${await ctl(page, "c.s.conv.state")}`);
+  const stillTalking = (await ctl(page, "c.s.conv.state")) === "speaking"; // WCAG 2.2.1: the 25 s maximum adds the card, it never cuts the voice
+  check("the paywall arrives (the voice ends or the 25 s maximum); if sound still plays, Stop and Mute voice are still there", wall && (!stillTalking || (!!(await page.$('[data-testid="taste-stop"]')) && !!(await page.$('[data-testid="taste-mute"]')))), `paywall=${wall} talking=${stillTalking}`);
   check("no console errors", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
   await page.close();
 }

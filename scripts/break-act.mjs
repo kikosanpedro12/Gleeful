@@ -12,12 +12,15 @@ const page = await browser.newPage(); const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error" || /Refused|Content Security/i.test(m.text())) errors.push(m.text()); });
 await page.setViewport({ width: 1280, height: 720 });
-await page.goto(TARGET, { waitUntil: "domcontentloaded" });
-await page.waitForSelector("canvas", { timeout: 30000 }); await sleep(2000);
-await page.click('[data-testid="pick-leo"]'); await sleep(300);
-await page.click('[data-testid="start"]');
-await page.waitForSelector('[data-testid="demo-badge"]', { timeout: 20000 });
-await page.waitForFunction(() => document.querySelector('[data-testid="state"]')?.getAttribute("data-state") === "idle", { timeout: 30000 });
+async function startLesson() {
+  await page.goto(TARGET, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("canvas", { timeout: 30000 }); await sleep(2000);
+  await page.click('[data-testid="pick-leo"]'); await sleep(300);
+  await page.click('[data-testid="start"]');
+  await page.waitForSelector('[data-testid="demo-badge"]', { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector('[data-testid="state"]')?.getAttribute("data-state") === "idle", { timeout: 30000 });
+}
+await startLesson();
 const call = (name, args, raw) => page.evaluate((name, args, raw) => {
   const c = window.__ctl; const id = "r" + Math.random(); c.responseTurn.set(id, c.s.conv.turnId);
   const b = c.s.rejectedCommands; c.events.onToolCall(id, "c" + Math.random(), name, raw ? args : JSON.stringify(args));
@@ -38,7 +41,8 @@ await page.evaluate(() => window.__ctl.stop()); const t0 = Date.now(); let idle 
 while (Date.now() - t0 < 60000) { if ((await act()) === null && (await page.evaluate(() => window.__ctl.s.conv.turnId, 0)) !== undefined) { await sleep(400); if ((await act()) === null) { idle = true; break; } } await sleep(300); }
 check("spam: settles to idle", idle, "after " + (Date.now() - t0) + "ms");
 await sleep(800); const d2 = await dbg(); check("spam: on floor", Math.abs(d2.y) < 0.06, JSON.stringify(d2));
-// act then stop
+// act then stop. The spam section above ended the lesson with __ctl.stop(), so start a fresh one first (otherwise the act is dropped and this tests nothing).
+await startLesson();
 await call("act", { action: "run" }); await sleep(500);
 const before = await act();
 await page.evaluate(() => { const c = window.__ctl; (c.stop || c.interrupt || c.bargeIn)?.call(c); });

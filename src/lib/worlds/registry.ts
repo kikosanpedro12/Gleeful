@@ -73,7 +73,7 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     arrivalSpot: "center",
     actions: ["run", "jump", "eat", "sit", "clap"],
     spots: { center: [-0.15, -0.7], board_side: [-1.35, -1.75], desk_side: [0.95, -0.9] },
-    targets: { board: "the classroom board", mars_globe: "a small globe on the desk", bookshelf: "the bookshelf", window: "the window" },
+    targets: { board: "the classroom board", mars_globe: "a small globe of planet Earth on the desk (our home planet, not Mars)", bookshelf: "the bookshelf", window: "the window" },
     interactive: {},
     questions: {
       q_red_recall: {

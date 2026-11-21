@@ -24,6 +24,14 @@ const securityHeaders = [
 export const PRIVATE_ROUTE_SOURCES = ["/api/:path*", "/auth/:path*", "/faq/:path*", "/learn/:path*", "/parent/:path*", "/pricing/:path*", "/sign-in/:path*", "/tester/:path*", "/voice-lab/:path*"];
 const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
 
+/**
+ * The teacher models (public/assets/characters) are ~2.5 MB and not content-hashed: cache an hour, no stale-while-revalidate.
+ * A stale-while-revalidate window would let a returning visitor mix an old character file with a new clips.glb for days after
+ * `npm run build:characters`. Replacing a model in place reaches returning visitors within an hour (or rename the file / bump the URL
+ * in glbRig.ts to ship it at once). Nothing else is cached here, and the CSP (src/proxy.ts) is untouched.
+ */
+export const CHARACTER_CACHE = { key: "Cache-Control", value: "public, max-age=3600" };
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -31,6 +39,7 @@ const nextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/assets/characters/:path*", headers: [CHARACTER_CACHE] },
       ...PRIVATE_ROUTE_SOURCES.map((source) => ({ source, headers: noindex })),
       ...(process.env.SITE_INDEXING === "on" ? [] : [{ source: "/:path*", headers: noindex }]),
     ];

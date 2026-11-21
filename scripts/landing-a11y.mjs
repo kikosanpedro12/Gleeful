@@ -40,11 +40,12 @@ const active = (page) => page.evaluate(() => { const e = document.activeElement;
   console.log("   focus after pick:", await active(page));
   await page.focus("#class-q"); await page.keyboard.type("why is mars red"); await page.keyboard.press("Enter");
   await page.waitForSelector('[data-testid="taste-reply"]', { timeout: 8000 });
-  await sleep(300);
+  await page.waitForFunction(() => document.activeElement?.id === "class-q", { timeout: 6000 }).catch(() => {}); // slow software rendering: wait, do not sleep
   check("focus returns to the question box after a reply", /class-q/.test(await active(page)), await active(page));
   for (let k = 2; k <= 3; k++) {
+    await page.waitForFunction(() => document.activeElement?.id === "class-q" && !document.activeElement.disabled, { timeout: 8000 }).catch(() => {});
     await page.keyboard.type("q" + k); await page.keyboard.press("Enter");
-    await sleep(800);
+    await page.waitForFunction((n) => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer " + n), { timeout: 8000 }, k).catch(() => {});
   }
   await page.waitForSelector('[data-testid="paywall"]', { timeout: 16000 }).catch(() => {});
   const pw = await page.$('[data-testid="paywall"]');

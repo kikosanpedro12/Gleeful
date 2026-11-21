@@ -110,3 +110,16 @@ Rules for entries:
 - Spoken number answers: "=" exact words; "~" homophones (for/to/ate) only in replies of up to 3 words.
 - Closing an inspect card re-arms the strand guard (`tests/marketStrand.test.ts`). Numeric answers: a full working sentence uses the part after the last "is/equals/=" ("12 divided by 3 is 4" → 4); "four or six" still asks again.
 - Tester sweeps: `tests/marketBreak.test.ts` (every probe × every world), `scripts/break-market.mjs` (browser break run, ~12 min per viewport).
+
+## From the GLB teacher build (21 Nov 2026)
+- Never call `skeleton.pose()` on a quantized skin: it rebuilds the rest pose from changed inverse bind matrices (hips scale 2x). Restore a pose with `mixer.uncacheRoot`.
+- No meshopt or Draco: both need WebAssembly and the CSP has no `'wasm-unsafe-eval'`. Quantization only; a test checks the extensions.
+- three's GLTFLoader turns `mixamorig:Hips` into `mixamorigHips`; look bones up by the sanitised name.
+- Lookups by model/user-supplied ids go through a Map (or `Object.hasOwn`), never a plain object: `"__proto__"` and `"constructor"` are hostile ids. Guard numeric inputs (`Number.isFinite`).
+- Rotations around the same axis commute, so a retarget-frame test that uses only such clips cannot catch a wrong frame. Use clips that rotate about different axes, and mutate-check new tests.
+- Floor checks after one-shot acts must poll, not sleep a fixed time (software rendering is slow).
+- Chrome smokes on this 2-core box: run them ONE AT A TIME. Parallel runs fail on timing, not on bugs. A failing check is re-run once before it is called a failure; a check that passes alone and fails in parallel is a timing note, not a bug.
+- A smoke that asserts rig-specific behaviour (mouth, jump height, pose) must read the rig kind (`window.__teachers.<id>.rig.glb`) and carry per-rig expectations. The GLB teachers have no mouth: `mouthOpen` is 0 and speech is body emphasis, never lip sync.
+- Pinned copies for testing (`/tmp/...`) need `cp -al` for node_modules: Turbopack rejects a symlinked node_modules. A static-file header set in next.config only shows in a production build (not `next dev`).
+- "Height" reported by a rig must mean what the test means: a run clip's flight phase is not a jump. Only jump, climb and swim count as air (glbAnimator).
+- Two cards stacked at the bottom of a hero cover the tutor's face: after changing what stays on screen, look at the 1280x800 and 390x844 screenshots, not only the checks.

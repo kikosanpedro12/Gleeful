@@ -70,6 +70,51 @@ export interface TeacherRig {
   dispose(): void;
 }
 
+/**
+ * The space-helmet bubble (field trips). Shared by the procedural teachers and the GLB teachers (src/lib/teacher/glbRig.ts).
+ * Origin at the centre of the bubble, radius about 0.27: the caller positions and scales it on the head. Hidden by default.
+ */
+export function buildHelmet(): { group: THREE.Group; dispose(): void } {
+  const disposables: { dispose(): void }[] = [];
+  const mat = (color: string, roughness = 0.82, extra: THREE.MeshStandardMaterialParameters = {}) => {
+    const m = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, ...extra });
+    disposables.push(m);
+    return m;
+  };
+  const mesh = (geo: THREE.BufferGeometry, m: THREE.Material) => {
+    disposables.push(geo);
+    const o = new THREE.Mesh(geo, m);
+    o.castShadow = false;
+    return o;
+  };
+  const at = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D, x: number, y: number, z: number) => {
+    o.position.set(x, y, z);
+    parent.add(o);
+    return o;
+  };
+  const helmet = new THREE.Group();
+  const glass = mat("#eef8ff", 0.05, { transparent: true, opacity: 0.14, depthWrite: false, metalness: 0.05, emissive: "#9fc6e6", emissiveIntensity: 0.25 });
+  at(mesh(new THREE.SphereGeometry(0.265, 32, 24), glass), helmet, 0, 0, 0);
+  // Fresnel rim: the bubble's edge glows, so the helmet reads clearly at phone size
+  // (clear in the middle so the face stays visible). A fixed shader, no runtime code.
+  const rim = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { tint: { value: new THREE.Color("#dff1ff") } },
+    vertexShader: "varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
+    fragmentShader: "uniform vec3 tint; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2); gl_FragColor = vec4(tint, clamp(f * 0.95, 0.0, 0.85)); }",
+  });
+  disposables.push(rim);
+  at(mesh(new THREE.SphereGeometry(0.268, 32, 24), rim), helmet, 0, 0, 0);
+  const ringM = mat("#e9edf2", 0.4, { metalness: 0.3 });
+  const ring = at(mesh(new THREE.TorusGeometry(0.18, 0.034, 12, 32), ringM), helmet, 0, -0.2, 0);
+  ring.rotation.x = Math.PI / 2;
+  const shine = mat("#ffffff", 0.1, { transparent: true, opacity: 0.6, depthWrite: false, emissive: "#ffffff", emissiveIntensity: 0.6 });
+  const s = at(mesh(new THREE.SphereGeometry(0.04, 10, 8), shine), helmet, -0.12, 0.13, 0.19);
+  s.scale.set(1, 1.8, 0.3);
+  helmet.visible = false;
+  return { group: helmet, dispose: () => disposables.forEach((d) => d.dispose()) };
+}
+
 export function buildTeacher(look: TeacherLook = LOOKS.leo): TeacherRig {
   const disposables: { dispose(): void }[] = [];
   const mat = (color: string, roughness = 0.82, extra: THREE.MeshStandardMaterialParameters = {}) => {
@@ -306,26 +351,11 @@ export function buildTeacher(look: TeacherLook = LOOKS.leo): TeacherRig {
   }
 
   // ---------------------------------------------------------------- helmet (field trips)
-  const helmet = group(head, 0, 0.14, 0.005);
-  const glass = mat("#eef8ff", 0.05, { transparent: true, opacity: 0.14, depthWrite: false, metalness: 0.05, emissive: "#9fc6e6", emissiveIntensity: 0.25 });
-  at(mesh(new THREE.SphereGeometry(0.265, 32, 24), glass, false), helmet, 0, 0, 0);
-  // Fresnel rim: the bubble's edge glows, so the helmet reads clearly at phone size
-  // (clear in the middle so the face stays visible). A fixed shader, no runtime code.
-  const rim = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false,
-    uniforms: { tint: { value: new THREE.Color("#dff1ff") } },
-    vertexShader: "varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
-    fragmentShader: "uniform vec3 tint; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2); gl_FragColor = vec4(tint, clamp(f * 0.95, 0.0, 0.85)); }",
-  });
-  disposables.push(rim);
-  at(mesh(new THREE.SphereGeometry(0.268, 32, 24), rim, false), helmet, 0, 0, 0);
-  const ringM = mat("#e9edf2", 0.4, { metalness: 0.3 });
-  const ring = at(mesh(new THREE.TorusGeometry(0.18, 0.034, 12, 32), ringM, false), helmet, 0, -0.2, 0);
-  ring.rotation.x = Math.PI / 2;
-  const shine = mat("#ffffff", 0.1, { transparent: true, opacity: 0.6, depthWrite: false, emissive: "#ffffff", emissiveIntensity: 0.6 });
-  const s = at(mesh(new THREE.SphereGeometry(0.04, 10, 8), shine, false), helmet, -0.12, 0.13, 0.19);
-  s.scale.set(1, 1.8, 0.3);
-  helmet.visible = false;
+  const helmetKit = buildHelmet();
+  const helmet = helmetKit.group;
+  helmet.position.set(0, 0.14, 0.005);
+  head.add(helmet);
+  disposables.push(helmetKit);
 
   return {
     look,

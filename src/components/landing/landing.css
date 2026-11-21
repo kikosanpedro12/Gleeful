@@ -251,6 +251,7 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-class .lp-btn-soft:hover { background: var(--tint); }
 .lp-class .lp-btn-soft:focus-visible { outline: 3px solid var(--night); outline-offset: 3px; }
 .lp-class .lp-btn-soft[aria-pressed="true"] { background: var(--off-bg); color: var(--night); }
+.lp-class .lp-mute { display: inline-flex; align-items: center; gap: 8px; }
 .lp-taste-row[aria-busy="true"] [type="submit"]::after { content: ""; width: 14px; height: 14px; margin-left: 10px; border-radius: 50%; border: 3px solid var(--off-edge); border-top-color: var(--night); animation: lp-spin .8s linear infinite; }
 @keyframes lp-spin { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .lp-taste-row[aria-busy="true"] [type="submit"]::after { animation: none; border-top-color: var(--off-edge); } }
@@ -298,6 +299,25 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
   .lp-class:has(.story) .lp-class-head { visibility: hidden; }
   .lp-class-head { padding: 6px 16px 8px; }
   .lp-class-sub { display: none; }
+}
+/* After the last try there are TWO cards (the tutor's last answer, kept on screen, and the grown-up card). They must not stack up over the tutor's face:
+ * desktop puts them side by side along the bottom (each capped in height, scrolling inside if long); phones keep them short and the headline pill is visually hidden (the h1 stays for screen readers). */
+@media (min-width: 900px) {
+  .lp-class-ui:has(.lp-paywall) { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: flex-end; align-items: flex-end; gap: 16px; }
+  .lp-class-ui:has(.lp-paywall) > .lp-card { margin-top: 0; width: min(480px, calc(50% - 8px)); max-height: min(400px, 52svh); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 899px) {
+  .lp-class:has(.lp-paywall) .lp-class-head { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; box-shadow: none; white-space: nowrap; }
+  .lp-class-ui:has(.lp-paywall) { gap: 6px; padding-bottom: 14px; }
+  .lp-class-ui:has(.lp-paywall) > .lp-card { overflow-y: auto; overscroll-behavior: contain; padding: 10px 14px; gap: 6px; }
+  /* The tutor's last answer stays (just the words, one or two lines); the picture card goes while the grown-up card is up, because on a phone both would cover the face. */
+  .lp-class-ui:has(.lp-paywall) > [data-testid="taste-live"] { max-height: 14svh; }
+  .lp-class-ui:has(.lp-paywall) > [data-testid="taste-live"] .lp-say { min-height: 0; font-size: .95rem; }
+  .lp-class-ui:has(.lp-paywall) > [data-testid="taste-live"] .lp-taste-meta { display: none; }
+  .lp-class:has(.lp-paywall) .lp-board { display: none; }
+  .lp-class-ui:has(.lp-paywall) > .lp-paywall { max-height: 40svh; margin-top: 0; }
+  .lp-class-ui:has(.lp-paywall) > .lp-paywall .lp-paywall-h { font-size: 1.35rem; }
+  .lp-class-ui:has(.lp-paywall) > .lp-paywall p:not(.lp-tag):not(.lp-fine-print) { font-size: .9rem; line-height: 1.35; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-class .lp-chip, .lp-class .lp-btn { transition: none; } }
 /* Phones: keep the card short so the teacher's face stays visible above it (a long spoken reply used to cover it). */
