@@ -11,6 +11,7 @@ import { listenOnce, recognitionAvailable, type Listening } from "@/lib/voice/sp
 import { speakTaste, tasteLevel, type TasteVoice } from "@/lib/voice/tasteSpeak";
 import { TASTE_ENDPOINT, TASTE_MAX_INPUT, TASTE_MAX_TURNS, type TasteRequest } from "@/lib/taste/protocol";
 import { choicesOk, topicOk } from "@/lib/taste/boardText";
+import { decide, readGate, voiceAllowed, writeGate, type Gate } from "@/lib/taste/grownUp";
 import { askTaste } from "@/lib/taste/client";
 import { openerLine, paywallCopy, STARTERS, tapChips } from "./tasteCopy";
 
@@ -56,6 +57,12 @@ export default function ClassroomHero() {
   const [speaking, setSpeaking] = useState(false);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
+  /** The grown-up step: voice (mic, spoken replies, /api/voice) is off until a grown-up taps Yes. Typing never waits for it. */
+  const [gate, setGate] = useState<Gate>("closed");
+  const gateRef = useRef<Gate>("closed");
+  const [asking, setAsking] = useState(false);
+  const gateYes = useRef<HTMLButtonElement>(null);
+  const micBtn = useRef<HTMLButtonElement>(null);
   /** The tutor's 2 tap answers from the last reply (validated again here), and what the visitor explored. */
   const [choices, setChoices] = useState<string[]>([]);
   const [topic, setTopic] = useState<string | null>(null);
@@ -76,7 +83,9 @@ export default function ClassroomHero() {
     alive.current = true;
     setWebgl(hasWebgl());
     setMic(recognitionAvailable() ? "ok" : "none");
-    void probeVoice();
+    const earlier = readGate(); // this browser session only; a hostile or missing value is "closed"
+    gateRef.current = earlier; setGate(earlier);
+    if (voiceAllowed(earlier)) void probeVoice(); // no /api/voice request of any kind before a grown-up said yes
     const ctl = new AbortController();
     (async () => {
       try {
@@ -141,7 +150,7 @@ export default function ClassroomHero() {
 
   function say(reply: string, t: Teacher, browserOnly = false) {
     if (!alive.current) return;
-    if (mutedRef.current) { session.tasteSpeaking(false); return; }
+    if (!voiceAllowed(gateRef.current) || mutedRef.current) { session.tasteSpeaking(false); return; } // silent until a grown-up says yes
     const v: TasteVoice = speakTaste(reply, t, {
       onStart: () => { if (voice.current !== v) return; setSpeaking(true); session.tasteSpeaking(true); },
       onEnd: () => {
@@ -160,9 +169,25 @@ export default function ClassroomHero() {
     if (m && voice.current) hush(true);
   }
 
+  /** A grown-up's answer to the card. Yes switches voice on (today's behaviour); no keeps everything silent for the session. */
+  function answerGate(accepted: boolean) {
+    const g = decide(accepted);
+    gateRef.current = g; setGate(g); setAsking(false);
+    writeGate(g);
+    if (accepted) { void probeVoice(); setMicNote(mic === "ok" ? "Voice is on. Tap the mic to talk, or keep typing." : "Voice is on. Replies will be spoken."); }
+    else { hush(false); setMicNote("Voice stays off. You can type, or tap the mic if a grown-up wants to switch it on."); }
+    setTimeout(() => { if (alive.current) (micBtn.current ?? document.getElementById("class-q"))?.focus({ preventScroll: true }); }, 30);
+  }
+  /** Opens the card (from the mic button or the voice button). Focus goes to the card because the visitor just asked for it. */
+  function askGate() {
+    setAsking(true); setMicNote(null);
+    setTimeout(() => { if (alive.current) gateYes.current?.focus({ preventScroll: true }); }, 30);
+  }
+
   /** Tap to talk: the browser's own speech-to-text (the same one the lesson uses). Tap again to finish. */
   function talk() {
     if (busyRef.current || busy || !teacher || used >= TASTE_MAX_TURNS || mic !== "ok") return;
+    if (!voiceAllowed(gateRef.current)) { askGate(); return; } // no mic call before a grown-up says yes
     if (listening) { listen.current?.stop(); return; }
     if (voice.current) hush(true);
     setMicNote(null); setTrouble(false);
@@ -192,7 +217,7 @@ export default function ClassroomHero() {
     busyRef.current = true;
     setBusy(true); setTrouble(false); setBusyNote(false); setMicNote(null); hush(false);
     if (listen.current) { listen.current(); listen.current = null; setListening(false); session.tasteListening(false); }
-    if (elevenLandingAvailable()) primeAudio();
+    if (voiceAllowed(gateRef.current) && elevenLandingAvailable()) primeAudio();
     session.tasteAsked(); // a new turn: the tutor nods and thinks; anything left from the last answer is dropped
     const body: TasteRequest = { v: 1, tasteId: id.current, text: q, teacher, history: lines.slice(-4) };
     const ctl = (postCtl.current = new AbortController());
@@ -272,11 +297,14 @@ export default function ClassroomHero() {
             {/* One wrapping row: voice controls, then starter ideas (before the first question only) or the tutor's own 2 answers. Keeps the card short on phones. */}
             {(() => {
               const c = tapChips({ used, asked: lines.length, choices, ideas: IDEAS, last: used >= TASTE_MAX_TURNS });
-              const voiceRow = speaking || (lines.length > 0 && !over); // once the tries are done, Stop / Mute are there only while sound plays
-              if (!c.items.length && !voiceRow) return null;
+              const on = voiceAllowed(gate);
+              const voiceRow = on && (speaking || (lines.length > 0 && !over)); // once the tries are done, Stop / Mute are there only while sound plays
+              const gateBtn = !on && used < TASTE_MAX_TURNS && !asking; // Mute voice exists only once voice is on; until then this button explains and asks
+              if (!c.items.length && !voiceRow && !gateBtn) return null;
               return (
                 <div className="lp-taste-actions">
                   {speaking && <button type="button" className="lp-btn lp-btn-soft" onClick={() => hush(true)} data-testid="taste-stop">Stop talking</button>}
+                  {gateBtn && <button type="button" className="lp-btn lp-btn-soft" onClick={askGate} data-testid="taste-voice-ask">Voice: for grown-ups</button>}
                   {voiceRow && (
                     <button type="button" className="lp-btn lp-btn-soft lp-mute" aria-pressed={muted} onClick={toggleMute} data-testid="taste-mute">
                       <svg viewBox="0 0 24 24" aria-hidden width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />{muted ? <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /> : <path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}</svg>
@@ -298,15 +326,26 @@ export default function ClassroomHero() {
                 <input id="class-q" className="lp-taste-input" type="text" autoComplete="off" enterKeyHint="send" maxLength={TASTE_MAX_INPUT}
                   value={text} onChange={(e) => setText(e.target.value)} placeholder={listening ? "Listening…" : `Ask ${name}…`} disabled={busy || listening} />
                 {mic === "ok" && (
-                  <button type="button" className={listening ? "lp-btn lp-btn-main lp-mic lp-mic-on" : "lp-btn lp-btn-main lp-mic"} onClick={talk} disabled={busy}
+                  <button type="button" ref={micBtn} className={listening ? "lp-btn lp-btn-main lp-mic lp-mic-on" : "lp-btn lp-btn-main lp-mic"} onClick={talk} disabled={busy}
                     aria-label={listening ? "Stop listening and send" : `Talk to ${name}`} data-testid="taste-mic">
                     <svg viewBox="0 0 24 24" aria-hidden width="22" height="22"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="currentColor" /><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                   </button>
                 )}
                 <button className="lp-btn lp-btn-main" type="submit" disabled={busy || listening || !text.trim()}>Ask</button>
               </form>
+              {asking && !voiceAllowed(gate) && (
+                <div className="lp-gate" role="group" aria-labelledby="gate-h" data-testid="grownup-gate" onKeyDown={(e) => { if (e.key === "Escape") answerGate(false); }}>
+                  <p id="gate-h" className="lp-gate-h">Voice is for grown-ups to switch on.</p>
+                  <p>Is a grown-up with you? This is a light check, not age verification. Typing works without it.</p>
+                  <p className="lp-fine-print">{mic === "ok" ? "If you switch voice on, your browser sends your voice to its own speech service (Google, Microsoft or Apple) to turn it into text. " : ""}Spoken replies use our voice partner. {mic === "ok" ? "We never receive or keep a recording of your voice." : ""}</p>
+                  <div className="lp-gate-btns">
+                    <button type="button" ref={gateYes} className="lp-btn lp-btn-main" onClick={() => answerGate(true)} data-testid="gate-yes">Yes, a grown-up is here</button>
+                    <button type="button" className="lp-btn lp-btn-main" onClick={() => answerGate(false)} data-testid="gate-no">Keep it silent</button>
+                  </div>
+                </div>
+              )}
               <p className="lp-sr" role="status">{listening ? `Listening. Say your question, then tap the mic again.` : ""}</p>
-              {micNote && <p className="lp-taste-err" role="status" data-testid="taste-mic-note">{micNote}</p>}
+              {micNote && <p className={/^Voice (is on|stays off)/.test(micNote) ? "lp-taste-err lp-note-calm" : "lp-taste-err"} role="status" data-testid="taste-mic-note">{micNote}</p>}
               </>
             )}
             <div className="lp-taste-meta">
@@ -315,7 +354,7 @@ export default function ClassroomHero() {
                 <span>{used === 0 ? `${TASTE_MAX_TURNS} free tries` : `${used} of ${TASTE_MAX_TURNS} used`}</span>
               </p>
               <p className="lp-fine-print">It&apos;s an AI and can be wrong. Please don&apos;t type or say private details.</p>
-              {mic === "ok" && used < TASTE_MAX_TURNS && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker (Google, Microsoft or Apple) to turn it into text. We only get the text.</p>}
+              {mic === "ok" && used < TASTE_MAX_TURNS && voiceAllowed(gate) && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker (Google, Microsoft or Apple) to turn it into text. We only get the text.</p>}
             </div>
             {busyNote && <p className="lp-taste-err" role="status">The tutor is busy right now. Please try again a little later.</p>}
             {trouble && <p className="lp-taste-err" role="status">{name} didn&apos;t hear that. Wait a moment and try again.</p>}

@@ -43,6 +43,8 @@ Ranking is my judgement (likelihood times severity for a solo-founder launch), n
 
 ---
 
+**Implemented 22 Nov: grown-up gate (risks 1 and 4, landing taste only).** On the public landing the microphone and every spoken reply (ElevenLabs through `/api/voice`, and the browser voice) are OFF until a grown-up taps "Yes, a grown-up is here" on a short card; "Keep it silent" is the same size and weight. Typing is unchanged and needs no gate. Before Yes: no `getUserMedia`/`SpeechRecognition` call, no `/api/voice` request (not even the availability probe), and the opener is not spoken. The card says it is a light check, not age verification, and names the browser's speech service (Google, Microsoft or Apple) and our voice partner. The choice lives in memory and `sessionStorage` for the browser session only (never localStorage, a cookie, or a server); a declined visitor stays silent and the mic button re-opens the card. **This does NOT make the voice path COPPA-compliant:** a child can tap Yes, so it is not verifiable parental consent (risk 2) and does not settle the vendor terms (risk 3) or the lawyer questions below. It lowers accidental voice use by a child; the research above still stands. Code: `src/lib/taste/grownUp.ts`, `src/components/landing/ClassroomHero.tsx`; tests: `tests/grownUpGate.test.ts` plus the landing smokes. The `/learn` mic and lesson voice are not gated by this.
+
 ## 3. Law by law
 
 ### 3.1 US federal: COPPA (16 CFR Part 312)

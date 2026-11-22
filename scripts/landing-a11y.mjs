@@ -12,9 +12,13 @@ async function open(w, h, dsf = 1, used = 0) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: dsf });
   let posts = used;
+  const voiceHits = { n: 0 };
+  page.__voiceHits = voiceHits;
+  await page.evaluateOnNewDocument(() => { window.__sr = 0; for (const k of ["SpeechRecognition", "webkitSpeechRecognition"]) { const C = window[k]; if (C?.prototype?.start && !C.prototype.__spy) { const st = C.prototype.start; C.prototype.start = function (...a) { window.__sr++; return st.apply(this, a); }; C.prototype.__spy = 1; } } });
   await page.setRequestInterception(true);
   page.on("request", (r) => {
     const u = new URL(r.url());
+    if (u.pathname === "/api/voice") { voiceHits.n++; return r.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ configured: false, public: false, landing: false }) }); }
     if (u.pathname !== "/api/taste") return r.continue();
     if (r.method() === "GET") return r.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ available: true, maxTurns: 3, used: posts }) });
     posts++;
@@ -56,6 +60,26 @@ const active = (page) => page.evaluate(() => { const e = document.activeElement;
   check("Tab from paywall reaches the trial link", /start-trial/.test(a));
   check("trial link focus ring visible", !/none|0px/.test(a.split("|").slice(1).join("|")), a);
   await page.keyboard.press("Tab"); console.log("   next tab:", await active(page));
+  await browser.close();
+}
+// 1b. keyboard only: the grown-up step (mic opens the card, focus goes in, Escape = keep it silent, focus comes back; nothing voice-related before Yes)
+for (const [w, h, tag] of [[1280, 800, "d"], [390, 844, "p"]]) {
+  const { browser, page } = await open(w, h);
+  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q"); await sleep(1000);
+  const hasMic = !!(await page.$('[data-testid="taste-mic"]'));
+  check(`${tag}: before the grown-up step, no /api/voice request and no mic start`, page.__voiceHits.n === 0 && (await page.evaluate(() => window.__sr)) === 0);
+  if (hasMic) {
+    await page.focus("#class-q"); await page.keyboard.press("Tab");
+    check(`${tag}: Tab from the question box reaches the mic button, named 'Talk to Leo', with its name unchanged`, /taste-mic/.test(await active(page)) && (await page.$eval('[data-testid="taste-mic"]', (e) => e.getAttribute("aria-label"))) === "Talk to Leo");
+    await page.keyboard.press("Enter"); await page.waitForSelector('[data-testid="grownup-gate"]', { timeout: 4000 }).catch(() => {});
+    check(`${tag}: Enter on the mic opens the card and focus goes to 'Yes, a grown-up is here'`, /gate-yes/.test(await active(page)) && !!(await page.$('[data-testid="grownup-gate"]')));
+    await page.keyboard.press("Tab"); check(`${tag}: Tab reaches 'Keep it silent' next, with a visible focus ring`, /gate-no/.test(await active(page)) && !/none|0px/.test((await active(page)).split("|").slice(1).join("|")), await active(page));
+    check(`${tag}: still no mic start and no /api/voice while the card is open`, page.__voiceHits.n === 0 && (await page.evaluate(() => window.__sr)) === 0);
+    await page.screenshot({ path: OUT + `a11y-${tag}-gate.png` });
+    await page.keyboard.press("Escape"); await sleep(400);
+    check(`${tag}: Escape closes the card as 'keep it silent' and focus returns to the mic button`, !(await page.$('[data-testid="grownup-gate"]')) && /taste-mic/.test(await active(page)), await active(page));
+    check(`${tag}: no sideways scroll with the card open`, (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+  }
   await browser.close();
 }
 // 2. 200% zoom (css px viewport 640x400 @dsf2 approximates 1280x800 at 200%)

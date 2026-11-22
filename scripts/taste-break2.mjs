@@ -18,11 +18,15 @@ const real = (e) => e.filter((x) => !/Failed to load resource/.test(x));
 /** o.taste(n, body) -> {status, body}; o.voice: "off" | "landing"; o.voicePost(n) -> {status, pcm?}; o.sr: "denied"|"nospeech"|"text:<q>"|"none"|"hang"; o.speech: "fake" */
 async function open(o = {}) {
   const page = await browser.newPage();
-  const errors = [], st = { taste: 0, voice: 0, tasteBodies: [] };
+  const errors = [], st = { taste: 0, voice: 0, voiceGet: 0, tasteBodies: [] };
   page.on("pageerror", (e) => errors.push("pageerror " + e));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.evaluateOnNewDocument((o) => {
     document.addEventListener("securitypolicyviolation", (e) => console.error(`CSP: ${e.violatedDirective} ${e.blockedURI}`));
+    // The grown-up step: every run except o.grown === false starts as if a grown-up already said yes this session (voice tests below test voice).
+    if (o.grown !== false) { try { sessionStorage.setItem("gleeful.grownup.v1", "yes"); } catch {} }
+    window.__media = 0;
+    try { const m = navigator.mediaDevices; if (m?.getUserMedia) { const g = m.getUserMedia.bind(m); m.getUserMedia = (...a) => { window.__media++; return g(...a); }; } } catch {}
     if (o.speech === "fake") {
       window.__spoken = []; window.__cancels = 0; let cur = null, t = null;
       Object.defineProperty(window, "speechSynthesis", { configurable: true, value: { getVoices: () => [], addEventListener() {}, removeEventListener() {}, speaking: false,
@@ -48,6 +52,7 @@ async function open(o = {}) {
     const u = new URL(r.url());
     const json = (s, b) => r.respond({ status: s, contentType: "application/json", body: typeof b === "string" ? b : JSON.stringify(b) });
     if (u.pathname === "/api/voice") {
+      if (r.method() === "GET") st.voiceGet++;
       if (r.method() === "GET") return json(200, o.voice === "landing" ? { configured: true, public: false, landing: true } : { configured: false, public: false, landing: false });
       st.voice++;
       const v = o.voicePost ? o.voicePost(st.voice) : { status: 429 };
@@ -406,6 +411,37 @@ const leaveVia = async (page) => { await page.evaluate(() => { window.__marker =
   const stillAlive = await page.evaluate(() => window.__marker === 1);
   check("pick then leave immediately: at most the opener started and it is cancelled; nothing speaks afterwards", stillAlive && (spoken === 0 || cancels >= 1), `spoken=${spoken} cancels=${cancels}`);
   check("pick then leave immediately: no console errors", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
+  await page.close();
+}
+
+// ---- M. Grown-up step: nothing voice-related before accept (no mic start, no getUserMedia, no /api/voice, no speech), typing works, then accept turns it on.
+{
+  const { page, errors, st } = await open({ grown: false, voice: "landing", speech: "fake", sr: "text:Why is the sky blue?", voicePost: () => ({ status: 429 }) });
+  await pick(page, "leo", true); await sleep(1500);
+  const quiet = async () => st.voice === 0 && st.voiceGet === 0 && (await page.evaluate(() => window.__sr + window.__media + window.__spoken.length)) === 0;
+  check("grown-up step: opener silent, no /api/voice (not even the GET probe), no mic", await quiet(), `voice=${st.voice} get=${st.voiceGet}`);
+  await ask(page, "typed first"); await page.waitForSelector('[data-testid="taste-reply"]', { timeout: 8000 }).catch(() => {}); await sleep(1500);
+  check("grown-up step: a typed question gets a text answer, still silent, no voice request", st.taste === 1 && (await quiet()));
+  await page.click('[data-testid="taste-mic"]'); await sleep(600);
+  check("grown-up step: tapping the mic opens the card instead of listening (SpeechRecognition never started, no question sent)", !!(await page.$('[data-testid="grownup-gate"]')) && (await quiet()) && st.taste === 1);
+  const r = await page.evaluate(() => { const c = document.querySelector('[data-testid="grownup-gate"]').getBoundingClientRect(); return { right: c.right, bottom: c.bottom, sx: document.documentElement.scrollWidth - innerWidth, vw: innerWidth, vh: innerHeight }; });
+  check("grown-up step: the card fits the viewport (no sideways scroll)", r.right <= r.vw + 1 && r.sx <= 1, JSON.stringify(r));
+  await page.screenshot({ path: `${OUT}${TAG}-gate.png` });
+  await page.click('[data-testid="gate-yes"]'); await sleep(500);
+  check("grown-up step: Yes alone starts nothing (no listening yet), the probe now runs", (await page.evaluate(() => window.__sr + window.__media)) === 0 && st.voiceGet >= 1);
+  await page.click('[data-testid="taste-mic"]');
+  await page.waitForFunction(() => window.__sr >= 1, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("Answer 2"), { timeout: 8000 }).catch(() => {});
+  check("after Yes the mic works as before: one tap, one spoken question sent as one try", (await page.evaluate(() => window.__sr)) === 1 && st.taste === 2 && st.tasteBodies[1]?.text === "Why is the sky blue?");
+  check("grown-up step: no console errors", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
+  await page.close();
+}
+{ // declined and then a reload in the same tab session: still declined (sessionStorage), still silent
+  const { page } = await open({ grown: false, speech: "fake", sr: "text:hi" });
+  await pick(page, "mia", true); await page.click('[data-testid="taste-mic"]'); await page.waitForSelector('[data-testid="gate-no"]'); await page.click('[data-testid="gate-no"]'); await sleep(300);
+  await page.reload({ waitUntil: "domcontentloaded" }); await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 }); await sleep(800);
+  await pick(page, "mia", true); await sleep(1200);
+  check("declined, then reload: still silent, still no mic start; the mic button still opens the card", (await page.evaluate(() => window.__sr + window.__spoken.length)) === 0 && (await page.click('[data-testid="taste-mic"]').then(() => true)) && !!(await page.waitForSelector('[data-testid="grownup-gate"]', { timeout: 4000 }).catch(() => null)));
   await page.close();
 }
 

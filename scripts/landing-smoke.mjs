@@ -23,9 +23,16 @@ const browser = await puppeteer.launch({
 /** stub: "live" answers with a scene; "off" = taste unavailable; "used" = already 3 used (cookie says so). */
 /** voice: "off" = server offers no ElevenLabs; "landing" = offers the landing pool but every POST is refused (429), so the browser voice must take over.
  *  speech: "fake" = a stand-in speechSynthesis that "speaks" for 20 s (headless Chrome has no reliable voice). noMic: remove SpeechRecognition. */
-async function open(path, { stub = "live", rm = false, post = null, voice = "off", speech = null, noMic = false } = {}) {
+async function open(path, { stub = "live", rm = false, post = null, voice = "off", speech = null, noMic = false, grown = false } = {}) {
   const page = await browser.newPage();
-  const errors = [], posts = { count: 0, last: null, all: [], voice: 0 };
+  const errors = [], posts = { count: 0, last: null, all: [], voice: 0, voiceGet: 0 };
+  // Spies: nothing may reach the microphone or call the speech services before a grown-up says yes. `grown` = already said yes this session.
+  await page.evaluateOnNewDocument((grown) => {
+    window.__media = 0; window.__srStart = 0;
+    try { const m = navigator.mediaDevices; if (m?.getUserMedia) { const g = m.getUserMedia.bind(m); m.getUserMedia = (...a) => { window.__media++; return g(...a); }; } } catch {}
+    for (const k of ["SpeechRecognition", "webkitSpeechRecognition"]) { const C = window[k]; if (C?.prototype?.start && !C.prototype.__spy) { const st = C.prototype.start; C.prototype.start = function (...a) { window.__srStart++; return st.apply(this, a); }; C.prototype.__spy = 1; } }
+    if (grown) { try { sessionStorage.setItem("gleeful.grownup.v1", "yes"); } catch {} }
+  }, grown);
   if (noMic) await page.evaluateOnNewDocument(() => { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; });
   if (speech === "fake") await page.evaluateOnNewDocument(() => {
     window.__spoken = []; window.__cancels = 0; let cur = null, t = null;
@@ -44,7 +51,7 @@ async function open(path, { stub = "live", rm = false, post = null, voice = "off
     const u = new URL(r.url());
     const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (u.pathname === "/api/voice") {
-      if (r.method() === "GET") return json(200, voice === "landing" ? { configured: true, public: false, landing: true } : { configured: false, public: false, landing: false });
+      if (r.method() === "GET") { posts.voiceGet++; return json(200, voice === "landing" ? { configured: true, public: false, landing: true } : { configured: false, public: false, landing: false }); }
       posts.voice++; return json(429, { error: "daily_limit" });
     }
     if (u.pathname !== "/api/taste") return r.continue();
@@ -76,7 +83,8 @@ const real = (errs) => errs.filter((e) => !/Failed to load resource/.test(e));
   check("the tutor opens with a line that offers the two starter questions, no try used", /Want to find out why Mars is red, or how old the pyramids are\?/.test(await page.$eval('[data-testid="taste-opener"]', (e) => e.textContent).catch(() => "")) && posts.count === 0 && (await page.$$('[data-testid="taste-chips"] .lp-chip')).length === 2);
   check("the opener is not a try: counter still says 3 free tries", /3 free tries/.test(await page.$eval('[data-testid="taste-count"]', (e) => e.textContent)));
   const hasSR = await page.evaluate(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition));
-  check("mic button and its disclosure show when the browser has speech recognition", !hasSR || (!!(await page.$('[data-testid="taste-mic"]')) && /sends your voice/.test(await page.$eval('[data-testid="taste-mic-disclosure"]', (e) => e.textContent).catch(() => ""))), `SR=${hasSR}`);
+  check("the mic button is there (discoverable) but the voice toggle, the mic disclosure and the gate card are not, until a grown-up asks", !hasSR || (!!(await page.$('[data-testid="taste-mic"]')) && !(await page.$('[data-testid="taste-mute"]')) && !(await page.$('[data-testid="taste-mic-disclosure"]')) && !(await page.$('[data-testid="grownup-gate"]'))), `SR=${hasSR}`);
+  check("before the grown-up step: no /api/voice request of any kind, no getUserMedia, no SpeechRecognition.start", posts.voice === 0 && posts.voiceGet === 0 && (await page.evaluate(() => window.__media + window.__srStart)) === 0, `voice=${posts.voice} get=${posts.voiceGet}`);
   await page.click('[data-testid="taste-chips"] .lp-chip');
   await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 10000 }).catch(() => {});
   check("a try sends the chosen teacher and shows the reply", posts.count === 1 && posts.last?.teacher === "mia" && /answer 1/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")));
@@ -161,7 +169,7 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
 
 // 5c. Spoken reply: ElevenLabs offered but refused (pool used up) -> the browser voice speaks; Stop silences it; Voice off keeps it quiet.
 {
-  const { page, errors, posts } = await open("/", { voice: "landing", speech: "fake" });
+  const { page, errors, posts } = await open("/", { voice: "landing", speech: "fake", grown: true });
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
   await page.click('[data-testid="pick-leo"]');
   await page.waitForSelector("#class-q");
@@ -191,6 +199,61 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
   await sleep(800);
   check("with Voice off the next reply is not spoken", (await page.evaluate(() => window.__spoken)).length === n0);
   check("no console errors on the voice path", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
+  await page.close();
+}
+
+// 5d. The grown-up step, end to end by tap: silent and request-free until Yes; Keep it silent stays silent and the mic re-opens the card; Yes turns voice on.
+{
+  const { page, errors, posts } = await open("/", { voice: "landing", speech: "fake" });
+  const spoken = () => page.evaluate(() => window.__spoken.length);
+  const quiet = async () => posts.voice === 0 && posts.voiceGet === 0 && (await page.evaluate(() => window.__media + window.__srStart)) === 0 && (await spoken()) === 0;
+  await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
+  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q"); await sleep(1500);
+  check("gate: the opener is NOT spoken and nothing voice-related is requested before accept", await quiet(), `spoken=${await spoken()} voice=${posts.voice} get=${posts.voiceGet}`);
+  await page.click('[data-testid="taste-chips"] .lp-chip');
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 15000 }).catch(() => {});
+  await sleep(1200);
+  check("gate: typing/tapping works with no gate; the reply shows as text and stays silent (no Stop, no Mute voice, no voice request)", /answer 1/.test(await page.$eval('[data-testid="taste-reply"]', (e) => e.textContent).catch(() => "")) && !(await page.$('[data-testid="taste-stop"]')) && !(await page.$('[data-testid="taste-mute"]')) && (await quiet()));
+  const sr = await page.$('[data-testid="taste-mic"]');
+  if (!sr) { check("gate: (no mic in this browser: voice button path only)", true); }
+  await page.click('[data-testid="taste-mic"]');
+  await page.waitForSelector('[data-testid="grownup-gate"]', { timeout: 5000 }).catch(() => {});
+  const g = await page.evaluate(() => { const c = document.querySelector('[data-testid="grownup-gate"]'); const y = document.querySelector('[data-testid="gate-yes"]'), n = document.querySelector('[data-testid="gate-no"]'); return c && { txt: c.textContent, y: y.getBoundingClientRect().toJSON(), n: n.getBoundingClientRect().toJSON(), yc: y.className + getComputedStyle(y).fontSize, nc: n.className + getComputedStyle(n).fontSize, role: c.getAttribute("role"), lab: c.getAttribute("aria-labelledby") }; });
+  check("gate card: plain copy (light check, not age verification; Google/Microsoft/Apple; voice partner; typing works)", !!g && /grown-up/.test(g.txt) && /not age verification/.test(g.txt) && /Google, Microsoft or Apple/.test(g.txt) && /voice partner/.test(g.txt) && /Typing works/.test(g.txt));
+  check("gate card: 'Keep it silent' is as prominent as 'Yes' (same style, size within 2px); group is labelled; both >= 44px tall", !!g && g.yc === g.nc && Math.abs(g.y.height - g.n.height) <= 2 && g.y.height >= 44 && g.n.height >= 44 && g.role === "group" && g.lab === "gate-h");
+  check("gate: opening it moved focus to the card's first button (the visitor asked for it) and still no mic call", (await page.evaluate(() => document.activeElement?.getAttribute("data-testid"))) === "gate-yes" && (await quiet()));
+  await page.screenshot({ path: `${OUT}${TAG}-gate.png` });
+  await page.click('[data-testid="gate-no"]'); await sleep(400);
+  check("keep it silent: card closes, status says voice stays off, focus returns to the mic, still silent and no mic call", !(await page.$('[data-testid="grownup-gate"]')) && /Voice stays off/.test(await page.$eval('[data-testid="taste-mic-note"]', (e) => e.textContent).catch(() => "")) && (await page.evaluate(() => document.activeElement?.getAttribute("data-testid"))) === "taste-mic" && (await quiet()));
+  await page.click('[data-testid="taste-choices"] .lp-chip');
+  await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 2"), { timeout: 15000 }).catch(() => {});
+  await sleep(1200);
+  check("declined: the next reply is text only, nothing spoken, no voice request", await quiet());
+  await page.click('[data-testid="taste-mic"]');
+  await page.waitForSelector('[data-testid="grownup-gate"]', { timeout: 5000 }).catch(() => {});
+  check("declined: the mic button is still there and re-opens the card (and still no mic call)", !!(await page.$('[data-testid="grownup-gate"]')) && (await quiet()));
+  await page.keyboard.press("Escape"); await sleep(300);
+  check("Escape closes the card as 'keep it silent'", !(await page.$('[data-testid="grownup-gate"]')) && (await quiet()));
+  await page.click('[data-testid="taste-mic"]'); await page.waitForSelector('[data-testid="gate-yes"]'); await page.click('[data-testid="gate-yes"]'); await sleep(800);
+  check("yes: card closes, status says voice is on, the mic disclosure and Mute voice appear, the mic is NOT started by the tap", !(await page.$('[data-testid="grownup-gate"]')) && /Voice is on/.test(await page.$eval('[data-testid="taste-mic-note"]', (e) => e.textContent).catch(() => "")) && !!(await page.$('[data-testid="taste-mute"]')) && (await page.evaluate(() => window.__media + window.__srStart)) === 0, `get=${posts.voiceGet}`);
+  check("yes: the voice probe (GET /api/voice) happens only now", posts.voiceGet >= 1);
+  check("yes: the choice is kept in sessionStorage only (not localStorage, not a cookie)", (await page.evaluate(() => sessionStorage.getItem("gleeful.grownup.v1") === "yes" && !localStorage.getItem("gleeful.grownup.v1") && !document.cookie.includes("grownup"))));
+  await page.evaluate(() => { window.__spoken.length = 0; });
+  const lastTurnBtn = await page.$('[data-testid="taste-choices"] .lp-chip');
+  if (lastTurnBtn) { await lastTurnBtn.click(); await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 3"), { timeout: 15000 }).catch(() => {}); await sleep(1500); }
+  await page.waitForFunction(() => (window.__spoken || []).length >= 1, { timeout: 8000 }).catch(() => {}); // speech can start late under load
+  check("yes: the next reply is spoken (ElevenLabs tried once, then the browser voice, as before)", posts.voice >= 1 && (await spoken()) >= 1, `voice=${posts.voice} spoken=${await spoken()}`);
+  check("no console errors through the grown-up step", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
+  await page.close();
+}
+// 5e. A hostile stored value is ignored: voice stays off.
+{
+  const { page } = await open("/", { speech: "fake" });
+  await page.evaluate(() => sessionStorage.setItem("gleeful.grownup.v1", "YES"));
+  await page.reload({ waitUntil: "domcontentloaded" }); await sleep(1500);
+  await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
+  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q"); await sleep(1200);
+  check("a stored value other than exactly 'yes' is ignored: opener silent", (await page.evaluate(() => window.__spoken.length)) === 0);
   await page.close();
 }
 

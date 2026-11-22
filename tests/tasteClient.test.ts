@@ -61,7 +61,7 @@ describe("ClassroomHero wiring", () => {
     expect(src).toMatch(/postCtl\.current\?\.abort\(\)/);
     expect(src).toMatch(/addEventListener\("pagehide", leave\)/);
     expect(src).toMatch(/if \(!alive\.current \|\| r\.kind === "aborted"\) return;/);
-    expect(src).toMatch(/if \(!alive\.current\) return;\s*\n\s*if \(mutedRef\.current\)/); // say() never starts speech for a gone page
+    expect(src).toMatch(/if \(!alive\.current\) return;\s*\n\s*if \(!voiceAllowed\(gateRef\.current\) \|\| mutedRef\.current\)/); // say() never starts speech for a gone page
   });
   it("blocks a second send in the same tick (busyRef) and clears the busy note on success", () => {
     expect(src).toMatch(/busyRef\.current \|\| busy/);
