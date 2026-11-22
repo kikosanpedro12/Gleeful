@@ -58,7 +58,7 @@ export default function Privacy() {
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot-row">
           <p className="lp-mark lp-mark-foot">gleeful</p>
-          <nav aria-label="Footer"><a href="/">Home</a><a href="/learn">Scripted demo</a></nav>
+          <nav aria-label="Footer"><a href="/">Home</a><a href="/terms">Terms of use</a><a href="/refunds">Refund policy</a><a href="/learn">Scripted demo</a></nav>
           <p className="lp-fine">© 2026 Gleeful.</p>
         </div>
       </footer>

@@ -55,6 +55,8 @@ export default function Landing() {
             <a href="/pricing">Pricing</a>
             <a href="/faq">FAQ</a>
             <a href="/privacy">Privacy notice</a>
+            <a href="/terms">Terms</a>
+            <a href="/refunds">Refunds</a>
             <a href="/learn">Scripted demo</a>
             <a href="/parent">Parent view</a>
           </nav>

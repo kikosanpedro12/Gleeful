@@ -42,7 +42,7 @@ describe("private paths", () => {
   it.each(["/", "/parents-guide", "/apiary", "/testers", "/learners"])("%s is not private", (p) => expect(isPrivatePath(p)).toBe(false));
   it("the sitemap lists public pages only", () => {
     const urls = sitemapEntries(SITE).map((e) => e.url);
-    expect(urls).toEqual([SITE, `${SITE}/privacy`]);
+    expect(urls).toEqual([SITE, `${SITE}/privacy`, `${SITE}/terms`, `${SITE}/refunds`]);
     for (const p of PUBLIC_PATHS) expect(isPrivatePath(p)).toBe(false);
   });
   it("next.config sends X-Robots-Tag noindex on every private prefix", async () => {

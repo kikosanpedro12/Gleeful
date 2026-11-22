@@ -26,6 +26,8 @@
 ## Pages
 - [Home](/): what Gleeful is, how it works, what is true today, planned prices and FAQ.
 - [Privacy notice](/privacy): what is collected, parental consent, deletion.
+- [Terms of use](/terms): who can use Gleeful, subscriptions, limits.
+- [Refund policy](/refunds): free trial, cancelling and refunds.
 
 ## Not for crawlers
 - /learn (the lesson app), /parent, /pricing, /faq, /sign-in, /auth, /tester, /voice-lab and /api are private and must not be indexed or fetched.

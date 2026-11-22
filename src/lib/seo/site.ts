@@ -31,7 +31,7 @@ export function indexingEnabled(env: Record<string, string | undefined> = proces
 }
 
 /** Paths that may appear in the sitemap and be indexed (when indexing is on). */
-export const PUBLIC_PATHS: readonly string[] = ["/", "/privacy"];
+export const PUBLIC_PATHS: readonly string[] = ["/", "/privacy", "/terms", "/refunds"];
 
 /** Never indexed, always disallowed. Keep in sync with next.config.mjs (tested). */
 /** /learn is the lesson app itself (a child uses it); it is not a page for search engines. */
