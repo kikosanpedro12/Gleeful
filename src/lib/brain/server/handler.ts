@@ -1,3 +1,4 @@
+import { recordEvent } from "@/lib/admin/events";
 import "server-only";
 /**
  * POST /api/brain, as a pure function of (Request, deps) so tests can run it
@@ -51,7 +52,7 @@ export function makeDeps(partial: Pick<Deps, "env" | "usage"> & Partial<Deps>): 
     ipLimiter: new RateLimiter(LIMITS.perIpPerMinute, 60_000),
     sessionLimiter: new RateLimiter(LIMITS.perSessionPerMinute, 60_000),
     sessionTotals: new SessionCounter(),
-    log: (event, fields) => console.warn(`[brain] ${event}`, fields),
+    log: (event, fields) => { recordEvent("brain", event); console.warn(`[brain] ${event}`, fields); },
     ...partial,
   };
 }

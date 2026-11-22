@@ -91,7 +91,9 @@ describe("llms.txt", () => {
     expect(txt).toMatch(/7-day free trial/);
   });
   it("tells crawlers the private routes are off limits", () => {
-    for (const p of PRIVATE_PREFIXES) expect(txt).toContain(p);
+    // /admin is deliberately NOT named in the public llms.txt (no hint it exists); it is still in robots.txt and noindex.
+    for (const p of PRIVATE_PREFIXES.filter((x) => x !== "/admin")) expect(txt).toContain(p);
+    expect(txt).not.toContain("/admin");
   });
 });
 

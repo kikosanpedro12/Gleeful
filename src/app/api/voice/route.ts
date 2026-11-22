@@ -1,7 +1,7 @@
 import "server-only";
-import { handleVoice, makeElevenDeps, readElevenEnv, voiceStatus } from "@/lib/tts/elevenHandler";
+import { handleVoice, readElevenEnv, voiceStatus } from "@/lib/tts/elevenHandler";
 import { readEnv } from "@/lib/brain/server/config";
-import { resolveParentAccess } from "@/lib/auth/parent";
+import { getVoiceDeps } from "@/lib/tts/voiceDeps";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 25;
 
 // In-memory counters per WARM instance: a brake, not a ceiling. The ceiling is the credit cap on the ElevenLabs key.
-const base = makeElevenDeps({ env: readElevenEnv(), brainEnv: readEnv(), parent: () => resolveParentAccess() });
+const base = getVoiceDeps();
 
 export async function POST(req: Request) {
   // Re-read the environment per request so the kill switch, key and caps take effect without a code change.

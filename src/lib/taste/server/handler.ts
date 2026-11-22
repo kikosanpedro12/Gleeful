@@ -1,3 +1,4 @@
+import { recordEvent } from "@/lib/admin/events";
 import "server-only";
 /**
  * POST /api/taste and GET /api/taste: the anonymous "ask the teacher" box on the landing page.
@@ -47,7 +48,7 @@ export function makeTasteDeps(partial: Pick<TasteDeps, "env"> & Partial<TasteDep
     usage: new MemoryUsageStore(),
     ipLimiter: new RateLimiter(TASTE_LIMITS.perIpPerMinute, 60_000),
     sessions: new SessionCounter(),
-    log: (event, fields) => console.warn(`[taste] ${event}`, fields),
+    log: (event, fields) => { recordEvent("taste", event); console.warn(`[taste] ${event}`, fields); },
     ...partial,
   };
 }

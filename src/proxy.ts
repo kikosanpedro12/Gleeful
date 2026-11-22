@@ -43,7 +43,7 @@ export function buildCsp(nonce: string, opts: { dev: boolean; https: boolean }) 
 }
 
 /** Only these paths need a fresh session; every other page is public and skips the work. */
-const AUTH_PATHS = /^\/(parent|sign-in|auth|api\/brain)(\/|$)/;
+const AUTH_PATHS = /^\/(parent|sign-in|auth|admin|api\/brain)(\/|$)/;
 
 export async function proxy(request: NextRequest) {
   // Refresh first: it may update the request's cookies, and the headers below are copied from the request afterwards.

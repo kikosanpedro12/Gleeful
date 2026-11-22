@@ -28,3 +28,7 @@ Rule: pick the first unblocked item, build it with the agent workflow (tester + 
 
 ## Kiko only
 Console 50/80% alerts, ElevenLabs key spend cap + training opt-out, Honor X9b real-device test, SITE_INDEXING at launch, lawyer review, payments/Vercel Pro.
+
+## Admin page follow-ups (22 Nov)
+- [ ] /admin is built read-only (ADMIN_EMAILS). Set ADMIN_EMAILS in Vercel, sign in at /sign-in, open /admin. Google sign-in: founder is adding the Supabase Google provider.
+- [ ] Sign-up / trial / consent totals need a founder decision (secret key in one admin-only route, or a reviewed count view + RLS tests + mutant). Shared counters need the `brain_signals`-style table.
