@@ -36,9 +36,10 @@ export const allowlistSize = (a: AdminAllowlist) => a.emails.size + a.ids.size;
 export function isAdminClaims(claims: unknown, list: AdminAllowlist): boolean {
   if (allowlistSize(list) === 0) return false; // fail closed
   if (!claims || typeof claims !== "object") return false;
-  const c = claims as { sub?: unknown; email?: unknown; role?: unknown; is_anonymous?: unknown };
+  const c = claims as { sub?: unknown; email?: unknown; role?: unknown; is_anonymous?: unknown; email_verified?: unknown };
   if (c.role !== "authenticated" || c.is_anonymous === true) return false;
   if (typeof c.sub === "string" && list.ids.has(c.sub.trim().toLowerCase())) return true;
+  if (c.email_verified === false) return false; // an unverified email never matches (the id still can)
   if (typeof c.email === "string" && c.email.length <= MAX_ENTRY_LEN && list.emails.has(c.email.trim().toLowerCase())) return true;
   return false;
 }

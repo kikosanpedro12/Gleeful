@@ -1,5 +1,5 @@
-import { recordEvent } from "@/lib/admin/events";
 import "server-only";
+import { recordEvent } from "@/lib/admin/events";
 /**
  * POST /api/brain, as a pure function of (Request, deps) so tests can run it
  * with a mocked Anthropic. Order matters: everything that costs nothing runs

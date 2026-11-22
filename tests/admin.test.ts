@@ -32,6 +32,11 @@ describe("isAdminClaims (fails closed)", () => {
     expect(isAdminClaims(claims(), list)).toBe(true);
     expect(isAdminClaims(claims({ email: "  KIKO@example.COM " }), list)).toBe(true);
   });
+  it("an unverified email never matches, but the id still does", () => {
+    expect(isAdminClaims(claims({ email_verified: false }), list)).toBe(false);
+    expect(isAdminClaims(claims({ email_verified: false }), parseAllowlist(ID))).toBe(true);
+    expect(isAdminClaims(claims({ email_verified: true }), list)).toBe(true);
+  });
   it("matches by user id", () => expect(isAdminClaims(claims({ email: "x@y.com" }), parseAllowlist(ID))).toBe(true));
   it("an empty list admits nobody, even a perfect-looking user", () => {
     expect(isAdminClaims(claims(), parseAllowlist(""))).toBe(false);
@@ -125,5 +130,12 @@ describe("admin is private and server-only", () => {
     for (const f of ["src/lib/admin/guard.ts", "src/lib/admin/snapshot.ts"]) expect(readFileSync(f, "utf8")).toContain('import "server-only"');
     expect(readFileSync(".env.example", "utf8")).not.toMatch(/NEXT_PUBLIC_ADMIN/);
     expect(readFileSync("src/app/admin/page.tsx", "utf8")).toContain("requireAdmin()");
+  });
+});
+
+describe("shared voice counters", () => {
+  it("/api/voice and /admin get the same deps object", async () => {
+    const { getVoiceDeps } = await import("@/lib/tts/voiceDeps");
+    expect(getVoiceDeps()).toBe(getVoiceDeps());
   });
 });

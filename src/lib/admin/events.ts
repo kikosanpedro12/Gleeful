@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Content-free server event counters for the admin page. COUNTS ONLY: an event name (a fixed code such as
  * "upstream_error") and a number. Never a message, a question, a model reply, an address or an id.

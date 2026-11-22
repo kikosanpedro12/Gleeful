@@ -1,5 +1,5 @@
-import { recordEvent } from "@/lib/admin/events";
 import "server-only";
+import { recordEvent } from "@/lib/admin/events";
 /**
  * POST /api/taste and GET /api/taste: the anonymous "ask the teacher" box on the landing page.
  *
