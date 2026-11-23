@@ -24,20 +24,25 @@ export async function loadBillingStats(now: Date = new Date()): Promise<BillingS
   const sql = db();
   const cur = await sql<{ plan: string; status: string; n: number }[]>`select plan, status, count(*)::int as n from public.subscriptions group by plan, status order by plan, status`;
   const current = cur.filter((r) => r.plan === "solo" || r.plan === "family").map((r) => ({ plan: r.plan as PlanId, status: r.status, count: r.n }));
-  const windows = [];
-  for (const w of WINDOWS) {
-    const since = new Date(now.getTime() - w.days * 86_400_000).toISOString();
-    const r = (await sql<Record<string, number>[]>`
-      select
-        count(*) filter (where status = 'trialing' and prev_status is null)::int                                   as trials_started,
-        count(*) filter (where status = 'canceled' and prev_status = 'trialing')::int                              as cancelled_trials,
-        count(*) filter (where status = 'active'   and prev_status = 'trialing')::int                              as trial_to_paid,
-        count(*) filter (where status = 'active'   and prev_status is null)::int                                   as direct_paid,
-        count(*) filter (where status = 'canceled' and prev_status in ('active', 'past_due'))::int                 as paid_cancelled,
-        count(*) filter (where status = 'refunded')::int                                                           as refunds,
-        count(*) filter (where status = 'past_due')::int                                                           as failed_payments
-      from public.billing_events where applied and received_at >= ${since}`)[0];
-    windows.push({ label: w.label, trialsStarted: r.trials_started, cancelledTrials: r.cancelled_trials, trialToPaid: r.trial_to_paid, directPaid: r.direct_paid, paidCancelled: r.paid_cancelled, refunds: r.refunds, failedPayments: r.failed_payments });
-  }
+  // One round trip for all three windows (each trip to the database costs time on a serverless function).
+  const labels = WINDOWS.map((w) => w.label);
+  const sinces = WINDOWS.map((w) => new Date(now.getTime() - w.days * 86_400_000).toISOString());
+  const rows = await sql<Record<string, number | string>[]>`
+    select w.label,
+      count(e.event_id) filter (where e.status = 'trialing' and e.prev_status is null)::int                       as trials_started,
+      count(e.event_id) filter (where e.status = 'canceled' and e.prev_status = 'trialing')::int                  as cancelled_trials,
+      count(e.event_id) filter (where e.status = 'active'   and e.prev_status = 'trialing')::int                  as trial_to_paid,
+      count(e.event_id) filter (where e.status = 'active'   and e.prev_status is null)::int                       as direct_paid,
+      count(e.event_id) filter (where e.status = 'canceled' and e.prev_status in ('active', 'past_due'))::int     as paid_cancelled,
+      count(e.event_id) filter (where e.status = 'refunded')::int                                                 as refunds,
+      count(e.event_id) filter (where e.status = 'past_due')::int                                                 as failed_payments
+    from (values (${labels[0]}::text, ${sinces[0]}::timestamptz), (${labels[1]}::text, ${sinces[1]}::timestamptz), (${labels[2]}::text, ${sinces[2]}::timestamptz)) as w(label, since)
+    left join public.billing_events e on e.applied and e.received_at >= w.since
+    group by w.label`;
+  const windows = labels.map((label) => {
+    const r = rows.find((x) => x.label === label) ?? {};
+    const n = (k: string) => Number(r[k] ?? 0);
+    return { label, trialsStarted: n("trials_started"), cancelledTrials: n("cancelled_trials"), trialToPaid: n("trial_to_paid"), directPaid: n("direct_paid"), paidCancelled: n("paid_cancelled"), refunds: n("refunds"), failedPayments: n("failed_payments") };
+  });
   return { current, windows, estMonthlyUsd: estimateMonthlyUsd(current), generatedAt: now.toISOString() };
 }

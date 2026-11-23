@@ -6,6 +6,13 @@ import { billingConfigured } from "@/lib/billing/store";
 
 export const dynamic = "force-dynamic";
 
+function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("deadline")), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
 const wrap: React.CSSProperties = { maxWidth: 880, margin: "0 auto", padding: "20px 16px 48px", fontFamily: "system-ui, sans-serif", color: "#1d1d1f", lineHeight: 1.45 };
 const card: React.CSSProperties = { background: "#fff", border: "2px solid #d8d2c4", borderRadius: 12, padding: "14px 16px", margin: "14px 0", overflowX: "auto" };
 const h2: React.CSSProperties = { fontSize: 18, margin: "0 0 8px" };
@@ -18,7 +25,7 @@ export default async function AdminPage() {
   let feedback: FeedbackRow[] = [];
   let dbProblem = false;
   if (billingConfigured()) {
-    try { [stats, feedback] = await Promise.all([loadBillingStats(), recentFeedback(50)]); } catch { dbProblem = true; }
+    try { [stats, feedback] = await withDeadline(Promise.all([loadBillingStats(), recentFeedback(50)]), 5000); } catch { dbProblem = true; } // never let a slow database hang the whole page
   }
   const v = s.voiceLanding;
   const pct = v && v.cap > 0 ? Math.min(100, Math.round((v.used / v.cap) * 100)) : 0;
