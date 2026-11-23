@@ -197,3 +197,10 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Tests: 1263 passed; `scripts/scene-smoke.mjs` extended (figure, zoom, card, hostile ids), all pass with no CSP errors.
 - Exports gotcha: the Tripo export dialog sometimes needs a second click; exports are free, only Generate spends credits. Downloads land in `D:\Downloads`.
 - Open: Rizal, teacher reacts to the figure, brain_signals for coverage gaps (needs Kiko's OK on what it logs).
+
+## 23 Nov 2026 (afternoon, Manila)
+- Google sign-in live and tested; Google branding links saved (publish OAuth app to production before public launch, mid-week). Workspace Gmail live (support@/hello@/privacy@ aliases); DKIM still to do.
+- Terms, Refunds, Privacy live; footer links live. Refund: 7 days first payment. Trial 7 days (kept). Solo US$29 (10 h/mo), Family US$79 (40 h/mo). Top-up idea ($20 per 5 h) is backlog only; cap trial usage (~2 h) is a decision to confirm.
+- Parent area: interests (fixed list, max 5) + "how to say the name"; consent version 2026-11-23.v1 (existing parents re-agree). Migration applied to live Supabase (additive). The tutor does NOT use these yet (copy says so). Pushed as 0d49f1a.
+- Paddle: account created, verification submitted by Kiko 23 Nov; waiting for Paddle's email. No payments until approved; run a sandbox trial-to-charge test before live.
+- Still open: admin side unchecked; Workspace DKIM; Supabase custom auth domain (paid, Kiko's call); lawyer review; accountant; Vercel Pro before charging.
