@@ -139,3 +139,4 @@ Rules for entries:
 - **Adding a private route means three places** → `PRIVATE_PREFIXES` (site.ts), `PRIVATE_ROUTE_SOURCES` (next.config.mjs), `public/llms.txt`; tests/seo.test.ts catches a miss.
 - **Inline SVG avatars**: the global `.app svg path { fill:none }` overrides fill attributes, so use style fills. `.tag` is already a scene-label class; do not reuse it.
 - **Mutant patterns must be re-synced after any edit to the SQL they match** (a SKIP is a hole, not a pass).
+- **Admin charts/cards judged from code** → /admin has a dev-only fixture (SAMPLE data, not in src): `node scripts/admin-fixture.mjs` builds the real components and shoots 1280 and 390 (full + empty) into scripts/out/admin-*.png; read them → tests/adminDashboard.test.ts.
