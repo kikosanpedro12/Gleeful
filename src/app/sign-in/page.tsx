@@ -13,6 +13,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const next = safeNext(first(sp.next));
   const linkProblem = first(sp.error) === "link";
+  const googleProblem = first(sp.error) === "google";
 
   if (!accountsAvailable()) {
     return (
@@ -34,6 +35,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       <h1>Parent sign-in</h1>
       <p>Only parents have accounts. Children use Gleeful on a parent&apos;s signed-in device, and you choose what is stored about them.</p>
       {linkProblem && <p className="warn" role="alert">That sign-in link didn&apos;t work. It may have expired, been used already, or been opened in a different browser. Request a new one below.</p>}
+      {googleProblem && <p className="warn" role="alert">Google sign-in didn&apos;t work this time. Please try again, or use an email link instead.</p>}
+      <a className="primary" href={`/auth/google?next=${encodeURIComponent(next)}`} data-testid="auth-google">Continue with Google</a>
+      <p className="fine" aria-hidden="true">or</p>
       <SignInForm next={next} />
       <small className="fine">Early-access version. <a href="/privacy">Privacy notice</a>.</small>
     </main>

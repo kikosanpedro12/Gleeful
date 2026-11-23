@@ -168,3 +168,10 @@ Private project. Report issues to the founder directly; do not open public issue
 - No write actions, no forms. Shows booleans and fixed labels only: kill switch states, key set yes/no, landing voice pool used/cap, counts of fixed server event codes. Never a key value, a code, an id, an address or any child text (`tests/admin.test.ts`, `tests/adminPage.test.ts`).
 - No database change. Sign-ups, trials and per-family tables are NOT shown: they need the secret key or a reviewed count view, which the app does not have (listed on the page as "not tracked yet").
 - Counters (voice pool, event counts) are per warm server instance and per UTC day: a brake and a hint, not accounting.
+
+## Continue with Google: `/auth/google` (23 Nov 2026)
+- A plain link (navigation), not a form post: the CSP `form-action` list would block the hop on to accounts.google.com, and the CSP is not loosened. Supabase Auth runs OAuth with Google (PKCE) and returns to `/auth/callback`, the same code exchange the emailed link uses.
+- `redirectTo` is built from the configured site (`NEXT_PUBLIC_SITE_URL`), never from the request; `next` goes through `safeNext()`. Every failure redirects to `/sign-in?error=google` with one generic notice.
+- Client ID and secret live only in Supabase (Auth, Providers, Google). Nothing in this repo. Requested scopes are the basics: email and profile. Only parents sign in; children never have accounts.
+- Brake: 30 starts per 10 min per address, per warm instance (a brake, not a ceiling).
+- NOT yet verified (23 Nov): a real login round trip, in particular that the PKCE code-verifier cookie survives the redirect (the emailed-link route uses the same cookie pattern and works). Check with a real sign-in before calling it done.
