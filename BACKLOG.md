@@ -32,3 +32,9 @@ Console 50/80% alerts, ElevenLabs key spend cap + training opt-out, Honor X9b re
 ## Admin page follow-ups (22 Nov)
 - [ ] /admin is built read-only (ADMIN_EMAILS). Set ADMIN_EMAILS in Vercel, sign in at /sign-in, open /admin. Google sign-in: founder is adding the Supabase Google provider.
 - [ ] Sign-up / trial / consent totals need a founder decision (secret key in one admin-only route, or a reviewed count view + RLS tests + mutant). Shared counters need the `brain_signals`-style table.
+
+## Personal greeting and interests (idea, 23 Nov 2026)
+- Step 1: greet by the saved nickname ("Hi, Gaddi! I'm Leo, your AI tutor") and set question level from the saved grade. Read only from the server-side profile, never from child-typed text.
+- Step 2 (founder decision first): parent picks interests from a fixed list; Leo uses them in examples. Needs a consent-text and privacy-notice update and a re-confirm.
+- Step 3: short first-session intro chat that only fills the same fixed lists.
+- Also: optional "how to say it" field for the name (voice pronunciation). No "remembers you" claims until measured.

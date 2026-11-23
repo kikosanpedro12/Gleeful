@@ -225,6 +225,14 @@ html:has(.parent), body:has(.parent), html:has(.tester), body:has(.tester) { ove
 .auth p { margin:0; color:var(--ink-2); }
 .auth a { color:var(--board); font-weight:800; display:inline-flex; align-items:center; min-height:44px; }
 .auth a.primary { justify-content:center; color:#fff; }
+/* Google's light sign-in button: white fill, thin grey outline, the four-colour G, dark text (their branding rules). */
+.auth a.google-btn { justify-content:center; gap:10px; min-height:48px; padding:0 12px; background:#fff; color:#1f1f1f; border:1px solid #747775; border-radius:var(--pill); font-weight:500; font-size:14px; line-height:20px; text-decoration:none; font-family:Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+.auth a.google-btn:hover { background:#f6f8fa; }
+.auth a.google-btn:active { background:#eef1f4; }
+.auth a.google-btn:focus-visible { outline:3px solid var(--board); outline-offset:2px; }
+.auth .auth-or { display:flex; align-items:center; gap:12px; margin:6px 0 4px; max-width:none; color:var(--ink-2); font-size:var(--t-sm, 14px); }
+.auth .auth-or::before, .auth .auth-or::after { content:""; flex:1; height:1px; background:#cdbf9f; }
+.auth .google-btn:focus-visible, .auth a:focus-visible, .auth button:focus-visible, .auth input:focus-visible { outline:3px solid var(--board); outline-offset:2px; }
 .auth .warn { background:#fff3cd; border-radius:10px; padding:10px 12px; color:var(--ink); }
 .auth .ok { color:var(--board-deep); font-weight:800; }
 .auth-form { display:flex; flex-direction:column; gap:10px; }
