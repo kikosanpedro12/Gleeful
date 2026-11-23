@@ -14,7 +14,7 @@ The app is not allowed to hold Supabase's all-powerful `service_role` key. So th
 
 ## Steps to turn it on for TESTING (sandbox)
 1. Apply `supabase/migrations/20261123120000_billing.sql` to the live database (I can do this with the Supabase connector once you say go).
-2. Give `billing_writer` a login password (random, 32+ characters) and put the pooler connection string in Vercel as `BILLING_DATABASE_URL`.
+2. Give `billing_writer` a login password (random, 32+ characters) and put the pooler connection string in Vercel as `BILLING_DATABASE_URL`. Verified host (24 Nov): `aws-1-ap-southeast-1.pooler.supabase.com:6543`, user `billing_writer.ptuglrngmovoryqqmtsw`, database `postgres` (transaction pooler; the direct host is IPv6-only and does not work from Vercel).
 3. In Vercel set `FREEMIUS_SECRET_KEY` (Freemius product secret key), `FREEMIUS_CHECKOUT_URL_SOLO` / `_FAMILY` (the hosted checkout links for the two plans), optional `FREEMIUS_PORTAL_URL`, and `PAYMENTS_MODE=sandbox`. NOTE: sandbox mode on the live site also gates real parents (they need a trial to use the live teacher). Use a Vercel preview deployment for testing, or accept that.
 4. In Freemius, point the webhook at `https://getgleeful.com/api/freemius/webhook`.
 5. Do one sandbox purchase with a Freemius test card. Capture the real webhook body (Freemius dashboard → Webhooks → Events) so we can confirm the field names (`type`, `created`, `objects.user.email`, `objects.license.plan_name`, `expiration`).
