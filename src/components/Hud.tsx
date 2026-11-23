@@ -12,6 +12,30 @@ import WidgetPanel from "./WidgetPanel";
 import StoryPanel from "./StoryPanel";
 
 const TEACHERS: TeacherId[] = ["leo", "mia"];
+/** One-line personality for the picker. Flavour only: it makes no claim about what the teacher can do. */
+const TAGLINE: Record<TeacherId, string> = { leo: "Calm and curious. Loves a good question.", mia: "Bright and cheerful. Loves to explore." };
+
+/** A little drawn bust, built from the same colours as the 3D teacher (LOOKS). Decorative. */
+function Avatar({ id }: { id: TeacherId }) {
+  const l = LOOKS[id];
+  return (
+    <svg className="avatar" viewBox="0 0 100 100" aria-hidden focusable="false">
+      <path d="M12 100c2-22 18-31 38-31s36 9 38 31z" style={{ fill: l.top }} />
+      <path d="M40 69l10 14 10-14z" style={{ fill: l.shirt }} />
+      <rect x="43" y="56" width="14" height="16" rx="6" fill={l.skinShade} />
+      {l.hairStyle === "wavy_long" && <path d="M22 44c-2-24 12-34 28-34s30 10 28 34c-1 14 4 24 6 28-10 2-16-2-18-8H34c-2 6-8 10-18 8 2-4 7-14 6-28z" style={{ fill: l.hair }} />}
+      <ellipse cx="50" cy="44" rx="20" ry="23" fill={l.skin} />
+      {l.hairStyle !== "wavy_long" && <path d="M29 40c-3-18 9-28 21-28s24 10 21 28c-3-7-8-11-14-12-8 4-20 4-28 12z" style={{ fill: l.hair }} />}
+      {l.hairStyle !== "wavy_long" && <><circle cx="32" cy="22" r="7" fill={l.hair} /><circle cx="44" cy="15" r="8" fill={l.hair} /><circle cx="58" cy="15" r="8" fill={l.hair} /><circle cx="69" cy="23" r="7" fill={l.hair} /></>}
+      {l.hairStyle === "wavy_long" && <path d="M30 40c4-9 12-13 20-13s17 4 20 13c-6-4-12-6-20-6s-14 2-20 6z" style={{ fill: l.hair }} />}
+      <circle cx="42" cy="46" r="2.6" fill={l.iris} /><circle cx="58" cy="46" r="2.6" fill={l.iris} />
+      {l.glasses && <g fill="none" stroke="#1d2433" strokeWidth="2"><circle cx="42" cy="46" r="7" /><circle cx="58" cy="46" r="7" /><path d="M49 46h2" /></g>}
+      {l.beard && <path d="M31 50c0 16 8 22 19 22s19-6 19-22c-4 6-8 8-19 8s-15-2-19-8z" style={{ fill: l.hair }} opacity=".92" />}
+      <path d="M43 58q7 6 14 0" fill="none" stroke={l.beard ? "#f1e9d8" : "#8a3b2b"} strokeWidth="2.4" strokeLinecap="round" />
+      {l.earrings && <><circle cx="30" cy="54" r="2.4" fill="#ffb627" /><circle cx="70" cy="54" r="2.4" fill="#ffb627" /></>}
+    </svg>
+  );
+}
 
 /* Icons are inline SVG (not emoji) so they look the same on every phone. */
 const Icon = {
@@ -50,8 +74,9 @@ export function OnboardingView({ ai }: { ai: boolean }) {
       <div className="pick">
         {TEACHERS.map((id) => (
           <button key={id} className={`teacher-card ${id} ${teacher === id ? "on" : ""}`} data-testid={`pick-${id}`} onClick={() => pick(id)} aria-pressed={teacher === id}>
-            <span className="swatch" aria-hidden />
+            <span className="portrait" aria-hidden><Avatar id={id} /></span>
             <b>{LOOKS[id].name}</b>
+            <span className="blurb">{TAGLINE[id]}</span>
             <small>{previewing === id ? "Saying hi…" : teacher === id ? "Picked" : "Tap to hear"}</small>
           </button>
         ))}

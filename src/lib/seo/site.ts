@@ -35,7 +35,7 @@ export const PUBLIC_PATHS: readonly string[] = ["/", "/privacy", "/terms", "/ref
 
 /** Never indexed, always disallowed. Keep in sync with next.config.mjs (tested). */
 /** /learn is the lesson app itself (a child uses it); it is not a page for search engines. */
-export const PRIVATE_PREFIXES: readonly string[] = ["/admin", "/api", "/auth", "/faq", "/learn", "/parent", "/pricing", "/sign-in", "/tester", "/voice-lab"];
+export const PRIVATE_PREFIXES: readonly string[] = ["/admin", "/api", "/auth", "/faq", "/feedback", "/learn", "/parent", "/pricing", "/sign-in", "/tester", "/voice-lab"];
 
 export function isPrivatePath(pathname: string): boolean {
   const p = pathname.toLowerCase().replace(/\/+$/, "") || "/";

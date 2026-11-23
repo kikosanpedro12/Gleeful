@@ -130,3 +130,12 @@ Rules for entries:
 - **A webhook body cap checked after a full read is not a cap** → read as a stream with a deadline (`readBody`) → the route uses it.
 - **Checks that depend on `NEXT_PUBLIC_*` cannot be tested on a prebuilt server** → build with the env set, or mark the check unverified.
 - **A vendor's unpublished payload shape is a risk, not a fact** → label UNVERIFIED in code and docs, fail closed, capture a real event before live.
+
+## Admin numbers, feedback, picker (24 Nov 2026)
+- **Anonymous write endpoints need a database-side cap, not only a per-instance limiter** → `saveFeedback` refuses past 100 an hour / 5000 total (429) → tests/feedback.test.ts. Bots that fill the honeypot get a normal 200.
+- **A feature that stores personal data changes the privacy page, retention and deletion path in the same commit** → /privacy "Feedback" section, SECURITY.md names the manual delete.
+- **`FOR UPDATE` on a row that does not exist yet locks nothing** → `pg_advisory_xact_lock(hashtext(email))` at the top of the billing transaction.
+- **Counts the founder reads must say what they include** → admin revenue says it includes sandbox/test purchases and is an estimate.
+- **Adding a private route means three places** → `PRIVATE_PREFIXES` (site.ts), `PRIVATE_ROUTE_SOURCES` (next.config.mjs), `public/llms.txt`; tests/seo.test.ts catches a miss.
+- **Inline SVG avatars**: the global `.app svg path { fill:none }` overrides fill attributes, so use style fills. `.tag` is already a scene-label class; do not reuse it.
+- **Mutant patterns must be re-synced after any edit to the SQL they match** (a SKIP is a hole, not a pass).

@@ -216,3 +216,10 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Reviewer found out-of-order webhook, trial-overwrite, copy and voice-gate issues; fixed (ruleFor ordering rules, trial creates only, refunded terminal, voice 402).
 - NOT done: capture a real Freemius sandbox event to verify field names; apply migration; set env; sandbox test purchase (founder card); the live-honesty decision.
 - 23 Nov 2026 (late): billing migration APPLIED to the live database (tables empty, inert while PAYMENTS_MODE is off). `billing_writer` has a login password (kept out of the repo; founder pastes the pooler string into Vercel as BILLING_DATABASE_URL). Not verified: the connection from the app to the pooler (the shell here cannot reach it) and `select ... for update` as billing_writer on the live DB. Next: Freemius webhook URL + Vercel env + one sandbox purchase (see docs/BILLING_GO_LIVE.md).
+
+
+## 24 Nov 2026 (session update)
+- /admin now shows customer numbers (trials started, cancelled trials, trial to paid, direct paid, paid cancelled, refunds, failed payments; estimated monthly revenue, sandbox included) and a read-only feedback inbox (newest 50, mailto reply). Signups count and reviews are not available (no service key; no review source).
+- /feedback page + /api/feedback built (noindex, rate limited, DB-side caps). Privacy page has a Feedback section. Migration 20261123150000 applied live.
+- "Choose your teacher" screen redesigned (drawn portraits, taglines, clear selected state).
+- Still awaiting Kiko: Vercel env vars, Freemius sandbox set-up and a first real webhook body, Paddle reply, live-honesty decision, lawyer.

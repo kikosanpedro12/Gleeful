@@ -193,3 +193,10 @@ Private project. Report issues to the founder directly; do not open public issue
 - **Matching a buyer to an account:** by the e-mail Freemius sends vs the signed-in parent's VERIFIED e-mail claim. A buyer who pays with a different e-mail will not be matched (the parent screen tells them to use the same e-mail). Known limit.
 - **Checkout/portal links** come from server env (`FREEMIUS_CHECKOUT_URL_SOLO`, `_FAMILY`, `FREEMIUS_PORTAL_URL`) and are rendered only if they are https on a freemius.com host. Plain links: no new script or frame origin, so the CSP is unchanged.
 - **Known limits:** usage increments are not atomic with the check (a brake, not a ceiling); entitlement can lag a webhook by up to 30 s; out-of-order webhooks are applied in arrival order.
+
+### Feedback inbox and admin numbers (24 Nov 2026)
+- `billing_writer` now also inserts and reads `feedback` (no update, no delete). Same credential as billing, so that credential can read all feedback messages and e-mails.
+- Anonymous writes are capped in the database (100 an hour, 5000 total, 429 when refused), on top of the per-instance 5 per 10 minutes. The honeypot answers 200 and stores nothing. The feedback inserts share the single billing connection, so the caps also protect webhooks and entitlement lookups.
+- Deleting a feedback message on request is done by hand in the Supabase SQL Editor (`delete from public.feedback where id = ...`). The privacy page says so.
+- First events for one buyer are serialised with `pg_advisory_xact_lock` (FOR UPDATE on a missing row locks nothing), so the stats do not count one trial-to-paid as two things.
+- Admin revenue is an estimate and includes sandbox/test purchases.

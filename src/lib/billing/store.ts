@@ -29,7 +29,8 @@ export function periodEndFor(change: BillingChange, now: Date): string | null {
 }
 
 let client: ReturnType<typeof postgres> | null = null;
-function db() {
+/** The one server-only connection (narrow billing_writer role). Also used by the admin numbers and the feedback inbox. */
+export function db() {
   const url = process.env.BILLING_DATABASE_URL?.trim();
   if (!url) throw new Error("billing_unconfigured");
   // max 1: one connection per serverless instance. prepare:false: required by Supabase's transaction pooler.
@@ -80,11 +81,14 @@ export const pgStore: BillingStore = {
   async apply(change, now) {
     const sql = db();
     return sql.begin(async (tx) => {
-      const ins = await tx`insert into public.billing_events (event_id, type, email_norm) values (${change.eventId}, ${change.type}, ${change.email}) on conflict (event_id) do nothing returning event_id`;
-      if (ins.length === 0) return "duplicate" as const;
-      // Lock this buyer's row so two webhooks for one buyer are applied one after the other.
+      // Serialise this buyer (FOR UPDATE alone locks nothing when the row does not exist yet, e.g. two first events at once).
+      await tx`select pg_advisory_xact_lock(hashtext(${change.email}))`;
       const cur = (await tx<{ status: string; plan: string; period_end: Date | null; last_event_at: Date | null }[]>`select status, plan, period_end, last_event_at from public.subscriptions where email_norm = ${change.email} for update`)[0] ?? null;
-      const verdict = ruleFor(change, cur ? { status: cur.status as SubStatus, lastEventAt: cur.last_event_at } : null, now);
+      const prev = cur ? (cur.status as SubStatus) : null;
+      const verdict = ruleFor(change, cur ? { status: prev!, lastEventAt: cur.last_event_at } : null, now);
+      // The event row is both the idempotency key and the history /admin counts from (what happened, what it was before, did it change anything).
+      const ins = await tx`insert into public.billing_events (event_id, type, email_norm, status, prev_status, applied) values (${change.eventId}, ${change.type}, ${change.email}, ${change.status}, ${prev}, ${verdict !== "ignore"}) on conflict (event_id) do nothing returning event_id`;
+      if (ins.length === 0) return "duplicate" as const;
       if (verdict === "ignore") return "ignored" as const;
       const at = change.eventAt ?? now.toISOString();
       if (verdict === "stop") {

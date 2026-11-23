@@ -49,6 +49,9 @@ export default function Privacy() {
           <h2>Deleting your data</h2>
           <p>In the parent area a parent can edit a child, or delete a child, which deletes that child&apos;s lesson history. Deleting a whole parent account deletes everything under it, including the permission record. A button for deleting the account and for exporting data in one step is not built yet. Until it is, ask us at the contact below and we will do it. Lesson history kept only in a browser can be cleared from the parent area on that device.</p>
 
+          <h2>Feedback</h2>
+          <p>If you send feedback from the feedback page, we store your message, the e-mail address if you give one, and the page you sent it from. Only the Gleeful founder reads it. Please do not write a child&apos;s name or other personal details in it. To have a message deleted, write to the privacy contact below and say roughly when you sent it. We delete feedback we no longer need.</p>
+
           <h2>Payments</h2>
           <p>Payments are not switched on. When they are, card details will be handled by a payment provider, never stored by Gleeful.</p>
 

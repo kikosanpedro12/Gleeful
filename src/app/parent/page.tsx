@@ -63,6 +63,8 @@ export default async function ParentPage() {
 
       <BillingSection email={who.email} />
 
+      <p><a href="/feedback">Send us feedback</a></p>
+
       <LocalHistory standalone={false} />
     </main>
   );

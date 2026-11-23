@@ -13,6 +13,7 @@ const KINDERGARTEN = "20261113071456_learners_allow_kindergarten.sql";
 const CONSENT = "20261113083000_parental_consent.sql";
 const INTERESTS = "20261123064826_learner_interests_name_say.sql";
 const BILLING = "20261123120000_billing.sql";
+const BSTATS = "20261123150000_billing_stats_feedback.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -74,6 +75,15 @@ const MUTANTS = [
   ["billing: writer may delete usage", "grant select, insert on table public.billing_usage to billing_writer;", "grant select, insert, delete on table public.billing_usage to billing_writer;\ncreate policy \"oops\" on public.billing_usage for delete to billing_writer using (true);", null, BILLING],
   ["billing: writer bypasses RLS and sees everything", "create role billing_writer nologin noinherit nobypassrls;", "create role billing_writer nologin noinherit bypassrls superuser;", null, BILLING],
   ["billing: events RLS off", "alter table public.billing_events enable row level security;", "", null, BILLING],
+  // feedback + billing stats (20261123150000)
+  ["feedback: RLS off", "alter table public.feedback enable row level security;", "", null, BSTATS],
+  ["feedback: anon keeps default access", "revoke all on table public.feedback from public, anon, authenticated;", "revoke all on table public.feedback from public;", null, BSTATS],
+  ["feedback: parents may read everyone's messages", "revoke all on table public.feedback from public, anon, authenticated;", "revoke all on table public.feedback from public, anon;", null, BSTATS],
+  ["feedback: writer may edit and delete messages", "grant select, insert on table public.feedback to billing_writer;", "grant select, insert, update, delete on table public.feedback to billing_writer;\ncreate policy \"oops\" on public.feedback for all to billing_writer using (true) with check (true);", null, BSTATS],
+  ["feedback: unlimited message size", "check (length(btrim(message)) between 1 and 2000)", "check (true)", null, BSTATS],
+  ["feedback: any e-mail text", "contact_email text check (contact_email is null or (length(contact_email) between 3 and 254 and contact_email ~ '^[^@[:space:],;<>"]+@[^@[:space:],;<>"]+\\.[^@[:space:],;<>"]+$'))", "contact_email text", null, BSTATS],
+  ["feedback: any page text", "page          text check (page is null or page ~ '^/[a-z0-9/_-]{0,58}$')", "page          text", null, BSTATS],
+  ["billing events: any status", "add column status      text check (status is null or status in ('trialing', 'active', 'past_due', 'canceled', 'refunded')),", "add column status      text,", null, BSTATS],
   ["billing: any plan allowed", "check (plan in ('solo', 'family'))", "check (true)", null, BILLING],
   ["billing: any status allowed", "check (status in ('trialing', 'active', 'past_due', 'canceled', 'refunded'))", "check (true)", null, BILLING],
   ["billing: e-mail key not normalised", "check (email_norm = lower(email_norm) and length(email_norm) between 3 and 254 and email_norm ~ '^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$')", "check (true)", null, BILLING],

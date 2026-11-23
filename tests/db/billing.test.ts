@@ -35,7 +35,7 @@ beforeAll(async () => {
   await db.query(`insert into auth.users (id, email) values ($1, 'a@c.test')`, [A]);
 }, 60_000);
 
-const TABLES = ["subscriptions", "billing_events", "billing_usage"];
+const TABLES = ["subscriptions", "billing_events", "billing_usage", "feedback"];
 
 describe("billing: the browser roles get nothing", () => {
   for (const role of ["anon", "authenticated"] as const) {
@@ -50,7 +50,7 @@ describe("billing: the browser roles get nothing", () => {
   }
   it("RLS is on for every billing table", async () => {
     const r = await db.query<{ relname: string; relrowsecurity: boolean }>(`select relname, relrowsecurity from pg_class where relname = any($1::text[]) and relkind = 'r'`, [TABLES]);
-    expect(r.rows.length).toBe(3);
+    expect(r.rows.length).toBe(4);
     for (const row of r.rows) expect(row.relrowsecurity, row.relname).toBe(true);
   });
   it("no SECURITY DEFINER function exists in public", async () => {
@@ -102,5 +102,53 @@ describe("billing: bad data never lands", () => {
   });
   it("rejects an oversized event id", async () => {
     await refused(as("billing_writer", `insert into public.billing_events (event_id, type, email_norm) values ($1, 't', 'a@c.test')`, ["e".repeat(81)]), /check constraint/);
+  });
+});
+
+describe("billing events carry what /admin counts", () => {
+  const ev = (id: string, status: string | null, prev: string | null, applied = true) =>
+    as("billing_writer", `insert into public.billing_events (event_id, type, email_norm, status, prev_status, applied) values ($1, 't', 'fam@c.test', $2, $3, $4)`, [id, status, prev, applied]);
+  it("records status, previous status and whether it changed anything", async () => {
+    await ev("evt_s1", "trialing", null);
+    await ev("evt_s2", "canceled", "trialing", false);
+    const r = await as<{ status: string; prev_status: string | null; applied: boolean }>("billing_writer", `select status, prev_status, applied from public.billing_events where event_id = 'evt_s2'`);
+    expect(r[0]).toEqual({ status: "canceled", prev_status: "trialing", applied: false });
+  });
+  it("refuses a status we do not use", async () => {
+    await refused(ev("evt_s3", "lifetime", null), /check constraint/);
+    await refused(ev("evt_s4", "active", "vip"), /check constraint/);
+  });
+  it("the browser roles still cannot read them", async () => {
+    await refused(as("anon", `select status from public.billing_events`), /permission denied/);
+    await refused(as("authenticated", `select status from public.billing_events`), /permission denied/);
+  });
+});
+
+describe("feedback inbox", () => {
+  const add = (msg: string, email: string | null = null, page: string | null = null) =>
+    as("billing_writer", `insert into public.feedback (message, contact_email, page) values ($1, $2, $3)`, [msg, email, page]);
+  it("billing_writer adds and reads, never edits or deletes", async () => {
+    await add("The Mars lesson froze.", "mum@c.test", "/feedback");
+    expect((await as("billing_writer", `select * from public.feedback`)).length).toBeGreaterThanOrEqual(1);
+    await refused(as("billing_writer", `update public.feedback set message = 'x'`), /permission denied/);
+    await refused(as("billing_writer", `delete from public.feedback`), /permission denied/);
+  });
+  it("refuses an e-mail that a mail client would split into two recipients", async () => {
+    await refused(add("hi", "x,y@b.co"), /check constraint/);
+  });
+  it("nobody in the browser can read, write or delete anyone's message", async () => {
+    for (const role of ["anon", "authenticated"] as const) {
+      await refused(as(role, `select * from public.feedback`), /permission denied/);
+      await refused(as(role, `insert into public.feedback (message) values ('hi')`), /permission denied/);
+      await refused(as(role, `delete from public.feedback`), /permission denied/);
+    }
+  });
+  it("rejects empty, oversized, badly-formed e-mail and odd page values", async () => {
+    await refused(add("   "), /check constraint/);
+    await refused(add("x".repeat(2001)), /check constraint/);
+    await refused(add("hi", "not-an-email"), /check constraint/);
+    await refused(add("hi", null, "https://evil.example"), /check constraint/);
+    await refused(add("hi", null, "/UPPER"), /check constraint/);
+    await add("x".repeat(2000));
   });
 });
