@@ -23,9 +23,12 @@ export default async function AdminPage() {
   const s = buildSnapshot();
   let stats: BillingStats | null = null;
   let feedback: FeedbackRow[] = [];
-  let dbProblem = false;
+  let dbProblem: string | null = null;
   if (billingConfigured()) {
-    try { [stats, feedback] = await withDeadline(Promise.all([loadBillingStats(), recentFeedback(50)]), 5000); } catch { dbProblem = true; } // never let a slow database hang the whole page
+    const kind = (e: unknown) => (e instanceof Error && e.message === "deadline" ? "timed out" : typeof (e as { code?: unknown })?.code === "string" ? `error ${(e as { code: string }).code}` : "error");
+    // One at a time on the single connection, each with its own deadline, so a stuck one is named (no message text or values are shown).
+    try { stats = await withDeadline(loadBillingStats(), 4000); } catch (e) { dbProblem = `numbers ${kind(e)}`; }
+    try { feedback = await withDeadline(recentFeedback(50), 4000); } catch (e) { dbProblem = `${dbProblem ? dbProblem + "; " : ""}feedback ${kind(e)}`; } // never let a slow database hang the whole page
   }
   const v = s.voiceLanding;
   const pct = v && v.cap > 0 ? Math.min(100, Math.round((v.used / v.cap) * 100)) : 0;
@@ -40,7 +43,7 @@ export default async function AdminPage() {
         {!billingConfigured() ? (
           <p style={{ margin: 0 }}>Not connected: <code>BILLING_DATABASE_URL</code> is not set on this deployment.</p>
         ) : dbProblem || !stats ? (
-          <p style={{ margin: 0 }}>The database could not be read just now. Reload to try again.</p>
+          <p style={{ margin: 0 }}>The database could not be read just now{dbProblem ? ` (${dbProblem})` : ""}. Reload to try again.</p>
         ) : (<>
           <p style={small}>Counts from Freemius webhooks (sandbox events included while testing). Each event counts once. Buyers who pay with a different e-mail than their Gleeful account still count here.</p>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }} data-testid="stats-windows">
