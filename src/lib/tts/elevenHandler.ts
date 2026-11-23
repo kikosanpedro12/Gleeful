@@ -2,7 +2,7 @@ import "server-only";
 import { RateLimiter } from "@/lib/brain/server/limits";
 import { TESTER_CODE_MIN, type BrainEnv } from "@/lib/brain/server/config";
 import { TESTER_HEADER, testerPrincipal, hasTesterAccess, clientIp, readBody } from "@/lib/brain/server/handler";
-import type { ParentAccess } from "@/lib/auth/parent";
+import type { ParentAccess } from "@/lib/brain/server/handler";
 import { crossOrigin } from "@/lib/http/request";
 import { ELEVEN_MAX_CHARS, ELEVEN_RATE_HEADER, ELEVEN_SAMPLE_RATE, ELEVEN_TEACHERS, isElevenTeacher, type ElevenTeacher } from "./elevenVoices";
 
@@ -132,6 +132,7 @@ async function gate(req: Request, d: ElevenDeps): Promise<Response | Who> {
   if (d.parent) {
     let p: ParentAccess | null = null;
     try { p = await d.parent(req); } catch { /* treated as not signed in */ }
+    if (p?.consented && p.entitled === false) return fail(402, "subscription_required"); // signed in but no plan: not the anonymous pool either
     if (p?.consented) return { principal: `parent:${p.id}`, cap: d.env.parentDailyChars };
   }
   if (req.headers.get(PUBLIC_HEADER) === "public") return { principal: `anon:${ip}`, cap: d.env.anonIpDailyChars, pool: "anon-pool" };

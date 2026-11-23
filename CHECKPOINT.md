@@ -209,3 +209,9 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - New G mark + pink spark icon, wordmark SVGs in public/brand/, favicon unified to night/sun (src/app/icon.svg, apple-icon.png). Brand kit (tokens, voice, a11y) published as a claude.ai Design System artifact. Proposed `lagoon-ink` token (lagoon fails 4.5:1 for small text) not yet in landing.css. Logo not legally cleared.
 
 - Decision (Kiko, 23 Nov 2026): trial usage capped at 2 hours. Freemius product 46081 set up: Solo $29/mo, Family $79/mo, 7-day card-required trial, 7-day Flexible refund; Consumptive Usage Policy left off. No payment code until Freemius answers the 4 questions in writing. App must enforce hour caps itself.
+
+## 23 Nov 2026 (evening): billing built in TEST MODE
+- Google sign-in app published to production (project now has kiko@getgleeful.com as Owner).
+- Billing: `src/lib/billing/*`, `/api/freemius/webhook`, entitlement gate in `/api/brain` and `/api/voice`, usage counted per period, parent "Plan and time" section. `PAYMENTS_MODE` off by default; migration `20261123120000_billing.sql` committed, NOT applied live; narrow `billing_writer` role instead of service_role. How it works and the go-live list: `docs/BILLING_GO_LIVE.md`. Security notes: SECURITY.md "Billing".
+- Reviewer found out-of-order webhook, trial-overwrite, copy and voice-gate issues; fixed (ruleFor ordering rules, trial creates only, refunded terminal, voice 402).
+- NOT done: capture a real Freemius sandbox event to verify field names; apply migration; set env; sandbox test purchase (founder card); the live-honesty decision.

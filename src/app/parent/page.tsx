@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { accountsAvailable } from "@/lib/supabase/env";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { currentParentId } from "@/lib/auth/parent";
+import { currentParent } from "@/lib/auth/parent";
 import { loadParentData } from "@/lib/auth/parentData";
 import { MAX_LEARNERS_PER_PARENT } from "@/lib/auth/validate";
 import { gradeLabel } from "@/lib/learner/grades";
 import { interestLabel } from "@/lib/learner/interests";
 import LocalHistory from "./LocalHistory";
+import BillingSection from "./BillingSection";
 import { AddLearnerForm, ConsentForm, LearnerCard, WithdrawForm } from "./ParentForms";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,9 @@ export default async function ParentPage() {
   if (!accountsAvailable()) return <LocalHistory standalone />;
 
   const supabase = await createServerSupabase();
-  const parentId = supabase ? await currentParentId(supabase) : null;
-  if (!supabase || !parentId) redirect("/sign-in?next=/parent");
+  const who = supabase ? await currentParent(supabase) : null;
+  if (!supabase || !who) redirect("/sign-in?next=/parent");
+  const parentId = who.id;
 
   const data = await loadParentData(supabase, parentId);
   return (
@@ -58,6 +60,8 @@ export default async function ParentPage() {
           {data.learners.length < MAX_LEARNERS_PER_PARENT && <AddLearnerForm canAdd={data.consent !== null} />}
         </>
       )}
+
+      <BillingSection email={who.email} />
 
       <LocalHistory standalone={false} />
     </main>

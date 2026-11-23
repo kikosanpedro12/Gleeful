@@ -12,6 +12,7 @@ const INIT = "20261112051808_init_learning_schema.sql";
 const KINDERGARTEN = "20261113071456_learners_allow_kindergarten.sql";
 const CONSENT = "20261113083000_parental_consent.sql";
 const INTERESTS = "20261123064826_learner_interests_name_say.sql";
+const BILLING = "20261123120000_billing.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -60,6 +61,25 @@ const MUTANTS = [
   ["name_say: no length cap", "char_length(name_say) between 1 and 40", "char_length(name_say) >= 1", null, INTERESTS],
   ["new columns not updatable by the parent", "grant update (interests, name_say) on table public.learners to authenticated;", "", null, INTERESTS],
   ["update grant widened to every column (new migration)", "grant update (interests, name_say) on table public.learners to authenticated;", "grant update on table public.learners to authenticated;", null, INTERESTS],
+  // billing (20261123120000): every weakening must turn tests/db/billing.test.ts red.
+  ["billing: subscriptions RLS off", "alter table public.subscriptions  enable row level security;", "", null, BILLING],
+  ["billing: usage RLS off", "alter table public.billing_usage  enable row level security;", "", null, BILLING],
+  ["billing: anon keeps default access", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public, anon, authenticated;", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public;", null, BILLING],
+  ["billing: authenticated keeps default access", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public, anon, authenticated;", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public, anon;", null, BILLING],
+  ["billing: parents may read subscriptions", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public, anon, authenticated;", "revoke all on table public.subscriptions, public.billing_events, public.billing_usage from public, anon, authenticated;\ngrant select on public.subscriptions to authenticated;\ncreate policy \"oops\" on public.subscriptions for select to authenticated using (true);", null, BILLING],
+  ["billing: writer may re-key subscriptions", "grant update (plan, status, period_end, freemius_user_id, freemius_subscription_id, last_event_at, updated_at) on table public.subscriptions to billing_writer;", "grant update on table public.subscriptions to billing_writer;", null, BILLING],
+  ["billing: writer may delete subscriptions", "grant select, insert on table public.subscriptions to billing_writer;", "grant select, insert, delete on table public.subscriptions to billing_writer;\ncreate policy \"oops\" on public.subscriptions for delete to billing_writer using (true);", null, BILLING],
+  ["billing: writer may rewrite events", "grant select, insert on table public.billing_events to billing_writer;", "grant select, insert, update, delete on table public.billing_events to billing_writer;\ncreate policy \"oops\" on public.billing_events for all to billing_writer using (true) with check (true);", null, BILLING],
+  ["billing: writer may edit usage period", "grant update (turns) on table public.billing_usage to billing_writer;", "grant update on table public.billing_usage to billing_writer;", null, BILLING],
+  ["billing: writer may delete usage", "grant select, insert on table public.billing_usage to billing_writer;", "grant select, insert, delete on table public.billing_usage to billing_writer;\ncreate policy \"oops\" on public.billing_usage for delete to billing_writer using (true);", null, BILLING],
+  ["billing: writer bypasses RLS and sees everything", "create role billing_writer nologin noinherit nobypassrls;", "create role billing_writer nologin noinherit bypassrls superuser;", null, BILLING],
+  ["billing: events RLS off", "alter table public.billing_events enable row level security;", "", null, BILLING],
+  ["billing: any plan allowed", "check (plan in ('solo', 'family'))", "check (true)", null, BILLING],
+  ["billing: any status allowed", "check (status in ('trialing', 'active', 'past_due', 'canceled', 'refunded'))", "check (true)", null, BILLING],
+  ["billing: e-mail key not normalised", "check (email_norm = lower(email_norm) and length(email_norm) between 3 and 254 and email_norm ~ '^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$')", "check (true)", null, BILLING],
+  ["billing: events can repeat", "event_id    text primary key check", "event_id    text check", null, BILLING],
+  ["billing: negative usage allowed", "check (turns >= 0)", "check (true)", null, BILLING],
+  ["billing: event id unbounded", "check (length(event_id) between 1 and 80)", "check (true)", null, BILLING],
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";
 // Baseline: the unmutated migration must PASS, otherwise every mutant is "killed" for free.

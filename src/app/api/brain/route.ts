@@ -4,6 +4,8 @@ import { MemoryUsageStore } from "@/lib/brain/server/limits";
 import { readEnv } from "@/lib/brain/server/config";
 import { resolveParentAccess } from "@/lib/auth/parent";
 import { accountsAvailable } from "@/lib/supabase/env";
+import { pgStore } from "@/lib/billing/store";
+import { paymentsMode } from "@/lib/billing/config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,7 +15,7 @@ export const maxDuration = 20;
 // One set of in-memory tables per WARM server instance: a brake, not a ceiling (see limits.ts). The Anthropic Console spend limit is the real ceiling until public.brain_usage is wired in.
 const usage = new MemoryUsageStore();
 // `parent` resolves the signed-in parent from the session cookie (verified with getClaims) and whether their consent is on file.
-const base = makeDeps({ env: readEnv(), usage, parent: () => resolveParentAccess() });
+const base = makeDeps({ env: readEnv(), usage, parent: () => resolveParentAccess(), countTurn: (u) => (paymentsMode() === "off" ? Promise.resolve() : pgStore.addTurn(u.email, u.periodEnd)) });
 
 export async function POST(req: Request) {
   // Re-read the environment per request so the kill switch and key rotation take effect without a code change.
@@ -35,14 +37,16 @@ export async function GET() {
   if (env.testerMisconfigured) warnTesterMisconfigured();
   let signedIn = false;
   let consented = false;
+  let entitled = false;
   try {
     const p = await resolveParentAccess();
     signedIn = p !== null;
     consented = p?.consented === true;
+    entitled = p?.entitled !== false;
   } catch { /* cannot tell: treated as not signed in */ }
   const wayIn = accountsAvailable() || hasTesterAccess(env);
   return Response.json(
-    { configured: Boolean(env.apiKey) && !env.disabled && !env.testerMisconfigured && wayIn, testerRequired: hasTesterAccess(env), signedIn, consented },
+    { configured: Boolean(env.apiKey) && !env.disabled && !env.testerMisconfigured && wayIn, testerRequired: hasTesterAccess(env), signedIn, consented, entitled },
     { headers: { "cache-control": "no-store" } },
   );
 }

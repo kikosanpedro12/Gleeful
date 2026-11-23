@@ -13,7 +13,7 @@ import { BRAIN_ENDPOINT, type BrainRequest, type BrainResponse, type WireInput }
 import { skillStatus } from "@/lib/learner/profile";
 import { WORLDS } from "@/lib/worlds/registry";
 import { clearTesterCode, getTesterCode, TESTER_HEADER } from "./tester";
-import { noteAccessLost, probeBrain, probeState, refreshReach, resetReach } from "./reach";
+import { noteAccessLost, noteEntitlementLost, probeBrain, probeState, refreshReach, resetReach } from "./reach";
 
 export class BrainUnavailable extends Error {
   constructor(public code: string, public status = 0) { super(code); }
@@ -147,6 +147,7 @@ export class ClaudeBrain implements Brain {
     // No way in (not a consented signed-in parent, no passcode): don't even ask. The script answers and nothing is logged as an error.
     // (If the probe could not tell, configured is undefined: the server decides, it enforces the same rule.)
     if (this.opts.probe && p.configured !== undefined && !(p.signedIn && p.consented) && !(p.testerRequired && passcode)) throw new BrainUnavailable(p.signedIn ? "consent_required" : "sign_in_required", p.signedIn ? 403 : 401);
+    if (this.opts.probe && p.configured !== undefined && p.signedIn && p.consented && p.entitled === false && !(p.testerRequired && passcode)) throw new BrainUnavailable("subscription_required", 402);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), this.opts.timeoutMs ?? CLIENT_TIMEOUT_MS);
     try {
@@ -159,6 +160,7 @@ export class ClaudeBrain implements Brain {
         let code = "http_error";
         try { const j = (await res.json()) as { error?: unknown }; if (typeof j.error === "string") code = j.error.slice(0, 40); } catch { /* keep default */ }
         if (code === "tester_required") { clearTesterCode(); refreshReach(true); } // wrong or stale passcode: ask again on /tester; stop claiming AI
+        if (code === "subscription_required" || code === "allowance_used") { noteEntitlementLost(); refreshReach(true); }
         if (code === "sign_in_required" || code === "consent_required") { noteAccessLost(); refreshReach(true); } // signed out or consent withdrawn since the probe: stop claiming AI
         throw new BrainUnavailable(code, res.status);
       }

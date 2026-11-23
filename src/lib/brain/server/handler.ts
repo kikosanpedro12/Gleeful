@@ -26,7 +26,14 @@ import { contextFor } from "@/lib/worlds/registry";
 import { toolsFor } from "@/lib/scene/commands";
 
 /** A signed-in parent as the route sees them. `consented` = current-wording consent is on file and not withdrawn. */
-export interface ParentAccess { id: string; consented: boolean }
+export interface ParentAccess {
+  id: string; consented: boolean;
+  /** Billing: false = no trial/plan (or allowance used up). Omitted = true, so callers without billing are unchanged. */
+  entitled?: boolean;
+  denied?: string;
+  /** Where to count this parent's turns once billing is on. */
+  usage?: { email: string; periodEnd: string };
+}
 
 export interface Deps {
   /**
@@ -41,6 +48,8 @@ export interface Deps {
   ipLimiter: RateLimiter;
   sessionLimiter: RateLimiter;
   sessionTotals: SessionCounter;
+  /** Counts one answered turn against a paid period. Best effort; absent when billing is off. */
+  countTurn?: (u: { email: string; periodEnd: string }) => Promise<void>;
   /** Structured, content-free events only. */
   log: (event: string, fields: Record<string, string | number>) => void;
 }
@@ -113,6 +122,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
   // signed-in parent whose consent is on file. The budget owner is the verified identity, never a browser-chosen id.
   const given = req.headers.get(TESTER_HEADER);
   let owner: string;
+  let parentUsage: { email: string; periodEnd: string } | null = null;
   const principal = testerPrincipal(d.env, given);
   if (principal) {
     owner = principal;
@@ -123,7 +133,10 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
     }
     if (p) {
       if (!p.consented) return fail(403, "consent_required");
+      // Paid access: a trial or plan with allowance left. 402 = pay (or wait for the next period); 503 = billing could not be read, so closed.
+      if (p.entitled === false) return p.denied === "billing_unavailable" ? fail(503, "billing_unavailable") : fail(402, p.denied === "cap_reached" ? "allowance_used" : "subscription_required");
       owner = p.id;
+      parentUsage = p.usage ?? null;
     } else if (given || (hasTesterAccess(d.env) && !d.parent)) {
       return fail(403, "tester_required"); // a passcode was offered and is wrong, or this deployment is passcode-only
     } else {
@@ -206,6 +219,7 @@ export async function handleBrain(req: Request, d: Deps): Promise<Response> {
     }
   }
   if (!reply) return fail(502, "bad_model_output");
+  if (parentUsage && d.countTurn) { try { await d.countTurn(parentUsage); } catch { d.log("billing_count_error", { kind: 1 }); } }
   if (reply.dropped) d.log("dropped_parts", { count: reply.dropped });
   if (reply.moderated) d.log("moderated", { count: reply.moderated }); // a count only, never the text
   const body: BrainResponse = { segments: reply.segments, model: hard ? "hard" : "default" };
