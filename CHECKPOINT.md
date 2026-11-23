@@ -204,3 +204,6 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - Parent area: interests (fixed list, max 5) + "how to say the name"; consent version 2026-11-23.v1 (existing parents re-agree). Migration applied to live Supabase (additive). The tutor does NOT use these yet (copy says so). Pushed as 0d49f1a.
 - Paddle: account created, verification submitted by Kiko 23 Nov; waiting for Paddle's email. No payments until approved; run a sandbox trial-to-charge test before live.
 - Still open: admin side unchecked; Workspace DKIM; Supabase custom auth domain (paid, Kiko's call); lawyer review; accountant; Vercel Pro before charging.
+
+## 23 Nov 2026 (evening, Manila) — branding
+- New G mark + pink spark icon, wordmark SVGs in public/brand/, favicon unified to night/sun (src/app/icon.svg, apple-icon.png). Brand kit (tokens, voice, a11y) published as a claude.ai Design System artifact. Proposed `lagoon-ink` token (lagoon fails 4.5:1 for small text) not yet in landing.css. Logo not legally cleared.
