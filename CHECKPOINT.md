@@ -207,3 +207,5 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 
 ## 23 Nov 2026 (evening, Manila) — branding
 - New G mark + pink spark icon, wordmark SVGs in public/brand/, favicon unified to night/sun (src/app/icon.svg, apple-icon.png). Brand kit (tokens, voice, a11y) published as a claude.ai Design System artifact. Proposed `lagoon-ink` token (lagoon fails 4.5:1 for small text) not yet in landing.css. Logo not legally cleared.
+
+- Decision (Kiko, 23 Nov 2026): trial usage capped at 2 hours. Freemius product 46081 set up: Solo $29/mo, Family $79/mo, 7-day card-required trial, 7-day Flexible refund; Consumptive Usage Policy left off. No payment code until Freemius answers the 4 questions in writing. App must enforce hour caps itself.
