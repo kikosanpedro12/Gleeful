@@ -22,6 +22,8 @@ async function parent() {
   const id = await currentParentId(supabase);
   return id ? { supabase, id } : null;
 }
+/** Checkbox groups arrive as several values under one name. */
+const readLearner = (fd: FormData) => parseLearnerInput((k) => (k === "interests" ? fd.getAll(k) : fd.get(k)));
 const done = (message: string): ActionResult => { revalidatePath("/parent"); return { ok: true, message }; };
 
 export async function giveConsent(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
@@ -51,7 +53,7 @@ export async function withdrawConsent(_prev: ActionResult | null, _fd: FormData)
 export async function addLearner(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const p = await parent();
   if (!p) return NOT_SIGNED_IN;
-  const input = parseLearnerInput((k) => fd.get(k));
+  const input = readLearner(fd);
   if (!input.ok) return { ok: false, message: input.message };
   // A child's details are only collected after the parent has agreed to the current wording.
   if (!(await hasCurrentConsent(p.supabase, p.id))) return { ok: false, message: "Please give your permission first (above), then add your child." };
@@ -70,8 +72,12 @@ export async function updateLearner(_prev: ActionResult | null, fd: FormData): P
   if (!p) return NOT_SIGNED_IN;
   const id = fd.get("id");
   if (typeof id !== "string" || !UUID_RE.test(id)) return GENERIC;
-  const input = parseLearnerInput((k) => fd.get(k));
+  const input = readLearner(fd);
   if (!input.ok) return { ok: false, message: input.message };
+  // Interests and the name respelling are only stored under the current wording (clearing them is always allowed).
+  if ((input.value.interests.length > 0 || input.value.name_say !== null) && !(await hasCurrentConsent(p.supabase, p.id))) {
+    return { ok: false, message: "Please agree to the updated permission above first, then save." };
+  }
   try {
     const { data, error } = await p.supabase.from("learners").update(input.value).eq("id", id).eq("parent_id", p.id).select("id");
     if (error || !data || data.length === 0) return GENERIC;

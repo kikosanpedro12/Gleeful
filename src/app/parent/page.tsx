@@ -5,6 +5,7 @@ import { currentParentId } from "@/lib/auth/parent";
 import { loadParentData } from "@/lib/auth/parentData";
 import { MAX_LEARNERS_PER_PARENT } from "@/lib/auth/validate";
 import { gradeLabel } from "@/lib/learner/grades";
+import { interestLabel } from "@/lib/learner/interests";
 import LocalHistory from "./LocalHistory";
 import { AddLearnerForm, ConsentForm, LearnerCard, WithdrawForm } from "./ParentForms";
 
@@ -47,7 +48,11 @@ export default async function ParentPage() {
           {data.learners.map((l) => (
             <div key={l.id}>
               <h3>{l.nickname} · {gradeLabel(l.grade)}</h3>
-              <LearnerCard id={l.id} nickname={l.nickname} grade={l.grade} teacher={l.preferred_teacher} />
+              <p className="fine" data-testid="learner-summary">
+                {l.name_say ? <>Said as <b>{l.name_say}</b>. </> : null}
+                {l.interests.length > 0 ? <>Interests: {l.interests.map(interestLabel).join(", ")}.</> : "No interests chosen yet."}
+              </p>
+              <LearnerCard id={l.id} nickname={l.nickname} grade={l.grade} teacher={l.preferred_teacher} interests={l.interests} nameSay={l.name_say} />
             </div>
           ))}
           {data.learners.length < MAX_LEARNERS_PER_PARENT && <AddLearnerForm canAdd={data.consent !== null} />}

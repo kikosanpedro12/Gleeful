@@ -5,7 +5,7 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 ## Tables
 | Table | Rows | Who can do what |
 |---|---|---|
-| `learners` | One per child: nickname, grade 1–12, language, preferred teacher | Parent: read, add, edit, delete their own |
+| `learners` | One per child: nickname, grade 0–12, language, preferred teacher, `interests` (up to 5 ids from a fixed list of 17, no duplicates), `name_say` (optional respelling, ≤40 chars, ASCII letters/space/hyphen/apostrophe) | Parent: read, add, edit, delete their own |
 | `lesson_sessions` | One per lesson: teacher, scripted/model brain, worlds visited, start/end | Parent: read, add, edit, delete their own |
 | `attempts` | One per answer: skill, question, answer ids, correct, hints, context | Parent: read, add, delete their own. **No edits** (evidence). The database sets the time. |
 | `brain_usage` | Per child per day: turns, tokens | Parent: read their own. **Only the server writes.** |
@@ -42,3 +42,6 @@ Migration: `supabase/migrations/20261112051808_init_learning_schema.sql`. Local 
 
 ## Consent table (13 Nov, committed, NOT applied live)
 `20261113083000_parental_consent.sql` adds `public.parental_consents` (parent_id, consent_text_version, accepted_at, withdrawn_at). Owner-only RLS; insert + select + update(withdrawn_at) only for `authenticated`; timestamps forced by triggers (`private.force_accepted_at`, `private.guard_consent_update`, both SECURITY INVOKER); unique active row per parent per version. Apply after `20261113071456_learners_allow_kindergarten.sql`. Tested in `tests/db/consent.test.ts` and 10 mutants in `npm run mutate`.
+
+## Learner interests and name_say (23 Nov, committed, NOT applied live)
+`20261123064826_learner_interests_name_say.sql` adds `learners.interests text[] not null default '{}'` (CHECK: one-dimensional, at most 5, every item in the fixed list, no duplicates, checked pairwise without a function) and `learners.name_say text` (nullable; CHECK length 1..40 and `^[A-Za-z][A-Za-z '-]*$`). The column-scoped UPDATE grant gains exactly these two columns; RLS and policies are unchanged. Apply after `20261113083000_parental_consent.sql`: the founder pastes it into the SQL Editor, then verify with the connector (`list_tables`). The app's parent page selects both columns, so until it is applied the parent page shows the generic "not ready" state. Keep the id list in step with `src/lib/learner/interests.ts` (`tests/interests.test.ts` compares them). Tested in `tests/db/interests.test.ts` plus 10 mutants in `npm run mutate`.

@@ -106,6 +106,12 @@ Private project. Report issues to the founder directly; do not open public issue
 - Consent is a versioned record (`parental_consents`): owner-only RLS, database-set timestamps, withdraw-only for clients, no deletes, one active row per version, no SECURITY DEFINER. 28 mutation-test mutants cover it.
 - Not done: a lawyer must confirm the consent wording and flow (COPPA / PH Data Privacy Act) before real children use it.
 
+## Learner interests and name respelling (23 Nov, parent area only)
+- A parent can store up to 5 interests from a fixed list of 17 ids and an optional respelling of the child's name. Neither is ever free text from a child. The server rejects any id not in `src/lib/learner/interests.ts` (Set lookup, no object keys), duplicates and a sixth; the database repeats every rule in CHECK constraints (no function, no SECURITY DEFINER). The respelling is ASCII letters, spaces, hyphens, apostrophes, 1-40 characters, so no markup, digits or links can be stored.
+- Only the owning parent can read or write them (existing RLS; update grant extended by exactly these two columns). Tests: `tests/db/interests.test.ts`, `tests/interests.test.ts`; 10 mutants.
+- Consent wording bumped to `2026-11-23.v1` to cover them honestly; existing parents are asked again (the parent page and `/api/brain` only count consent for the current version). Saving interests or a respelling needs consent for the current version. Privacy notice updated and dated 23 November 2026. Nothing child-facing reads these yet; when the tutor uses them, they may go into a prompt only as ids/labels from the list and the respelling only for the voice. Not done: lawyer review of the new wording.
+- Migration NOT applied live.
+
 ## Anonymous landing taste: `/api/taste` (13 Nov)
 - Separate from `/api/brain` on purpose; no shared budgets, no shared code path to the lesson. It accepts no tester code and reads only its own signed `gl_taste` cookie (HMAC-SHA256, httpOnly, Secure, Path=/api/taste, no personal data; holds only the tries used). Cookie secret: `TASTE_COOKIE_SECRET`, falling back to a key derived from the API key. It is a brake, not a limit: clearing cookies gives a new count; the per-address, global and Console spend caps bound cost. A passcode or session grants nothing here.
 - Cannot reach Sonnet or tools: the model is the constant `MODELS.default`; the upstream request carries no `tools`/`tool_choice`; `max_tokens` is 600 (thinking plus the reply; the visible reply is still capped at 280 characters). Request fields `model`, `tools`, `system`, `max_tokens` are ignored (tested).
@@ -175,3 +181,5 @@ Private project. Report issues to the founder directly; do not open public issue
 - Client ID and secret live only in Supabase (Auth, Providers, Google). Nothing in this repo. Requested scopes are the basics: email and profile. Only parents sign in; children never have accounts.
 - Brake: 30 starts per 10 min per address, per warm instance (a brake, not a ceiling).
 - NOT yet verified (23 Nov): a real login round trip, in particular that the PKCE code-verifier cookie survives the redirect (the emailed-link route uses the same cookie pattern and works). Check with a real sign-in before calling it done.
+
+- Interests/name_say consent gate (23 Nov 2026): "saving needs current consent" is enforced in the server action only (`updateLearner`), like `addLearner`; RLS does not check consent, so a parent with their own JWT could write these two columns directly. They hold only fixed-list ids and a respelling, and nothing child-facing reads them yet. The array check also pins `array_lower = 1` (custom bounds like `[5:6]` skipped the duplicate checks); covered by a db test and a mutant.

@@ -2,7 +2,7 @@ import "server-only";
 import { CONSENT_VERSION } from "@/lib/consent/text";
 import type { ServerSupabase } from "@/lib/supabase/server";
 
-export interface LearnerRow { id: string; nickname: string; grade: number; preferred_teacher: "leo" | "mia" }
+export interface LearnerRow { id: string; nickname: string; grade: number; preferred_teacher: "leo" | "mia"; interests: string[]; name_say: string | null }
 export type ParentData =
   | { ok: true; learners: LearnerRow[]; consent: { acceptedAt: string } | null }
   | { ok: false };
@@ -15,7 +15,7 @@ export type ParentData =
 export async function loadParentData(supabase: ServerSupabase, parentId: string): Promise<ParentData> {
   try {
     const [learners, consent] = await Promise.all([
-      supabase.from("learners").select("id,nickname,grade,preferred_teacher").eq("parent_id", parentId).order("created_at", { ascending: true }).limit(50),
+      supabase.from("learners").select("id,nickname,grade,preferred_teacher,interests,name_say").eq("parent_id", parentId).order("created_at", { ascending: true }).limit(50),
       supabase.from("parental_consents").select("accepted_at").eq("parent_id", parentId).eq("consent_text_version", CONSENT_VERSION).is("withdrawn_at", null).limit(1),
     ]);
     if (learners.error || consent.error) return { ok: false };

@@ -35,6 +35,8 @@ Console 50/80% alerts, ElevenLabs key spend cap + training opt-out, Honor X9b re
 
 ## Personal greeting and interests (idea, 23 Nov 2026)
 - Step 1: greet by the saved nickname ("Hi, Gaddi! I'm Leo, your AI tutor") and set question level from the saved grade. Read only from the server-side profile, never from child-typed text.
+- [x] Phase 1 built (23 Nov, uncommitted until main session commits): parent-only fields `interests` + `name_say`, consent v2026-11-23.v1, privacy notice, migration `20261123064826` NOT applied live (founder pastes it into the SQL Editor). Awaiting tester/reviewer/designer and a lawyer look at the wording. Child-facing use is NOT built.
+- [ ] Phase 2: Leo/Mia read nickname, grade, interests, name_say server-side and use them (ids only into the prompt; respelling only for voice). No "remembers you" claims until measured.
 - Step 2 (founder decision first): parent picks interests from a fixed list; Leo uses them in examples. Needs a consent-text and privacy-notice update and a re-confirm.
 - Step 3: short first-session intro chat that only fills the same fixed lists.
 - Also: optional "how to say it" field for the name (voice pronunciation). No "remembers you" claims until measured.

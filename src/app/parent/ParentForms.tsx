@@ -1,9 +1,10 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { addLearner, deleteLearner, giveConsent, updateLearner, withdrawConsent, type ActionResult } from "./actions";
 import { CONSENT_CHECKBOX, CONSENT_POINTS, CONSENT_TITLE } from "@/lib/consent/text";
 import { GRADES, gradeLabel } from "@/lib/learner/grades";
 import { NICKNAME_MAX } from "@/lib/auth/validate";
+import { INTERESTS, MAX_INTERESTS, NAME_SAY_MAX } from "@/lib/learner/interests";
 
 type Act = (prev: ActionResult | null, fd: FormData) => Promise<ActionResult>;
 function Note({ r }: { r: ActionResult | null }) {
@@ -34,7 +35,33 @@ export function WithdrawForm() {
   );
 }
 
-function LearnerFields({ nickname = "", grade = 3, teacher = "leo", prefix }: { nickname?: string; grade?: number; teacher?: string; prefix: string }) {
+function InterestChips({ chosen, prefix }: { chosen: readonly string[]; prefix: string }) {
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(chosen));
+  const full = picked.size >= MAX_INTERESTS;
+  return (
+    <fieldset className="interests">
+      <legend>Interests (optional)</legend>
+      <p className="fine" id={`${prefix}-int-hint`}>Pick up to {MAX_INTERESTS} things your child likes.</p>
+      <p className={`fine int-count${full ? " full" : ""}`} aria-live="polite" data-testid="interest-count">
+        {picked.size} of {MAX_INTERESTS} chosen.{full ? " Untick one to pick a different one." : ""}
+      </p>
+      <div className="chips" role="group" aria-describedby={`${prefix}-int-hint`}>
+        {INTERESTS.map((i) => {
+          const on = picked.has(i.id);
+          return (
+            <label key={i.id} className={`int-pick${on ? " on" : ""}${!on && full ? " locked" : ""}`}>
+              <input type="checkbox" name="interests" value={i.id} checked={on} disabled={!on && full}
+                onChange={(e) => setPicked((prev) => { const n = new Set(prev); if (e.target.checked) n.add(i.id); else n.delete(i.id); return n; })} />
+              <span>{i.label}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function LearnerFields({ nickname = "", grade = 3, teacher = "leo", interests = [], nameSay = "", prefix }: { nickname?: string; grade?: number; teacher?: string; interests?: readonly string[]; nameSay?: string; prefix: string }) {
   return (
     <>
       <label htmlFor={`${prefix}-nick`}>Nickname</label>
@@ -48,6 +75,10 @@ function LearnerFields({ nickname = "", grade = 3, teacher = "leo", prefix }: { 
         <option value="leo">Leo</option>
         <option value="mia">Mia</option>
       </select>
+      <label htmlFor={`${prefix}-say`}>How to say the name (optional)</label>
+      <input id={`${prefix}-say`} name="name_say" defaultValue={nameSay} maxLength={NAME_SAY_MAX} autoComplete="off" aria-describedby={`${prefix}-say-hint`} pattern={"[A-Za-z][A-Za-z ' \\-]*"} title="Letters, spaces, hyphens and apostrophes only" />
+      <p className="fine" id={`${prefix}-say-hint`}>Respell it the way it sounds, like GAD-dee. Letters, spaces, hyphens and apostrophes only.</p>
+      <InterestChips chosen={interests} prefix={prefix} />
     </>
   );
 }
@@ -57,7 +88,7 @@ export function AddLearnerForm({ canAdd }: { canAdd: boolean }) {
   return (
     <form action={act} className="learner-form" data-testid="add-learner">
       <h3>Add a child</h3>
-      <p className="fine">A nickname is enough. Please don&apos;t use a surname.</p>
+      <p className="fine">A nickname is enough. Please don&apos;t use a surname. Interests and how to say the name are optional.</p>
       <fieldset disabled={!canAdd || pending}>
         <LearnerFields prefix="new" />
         <button className="primary" type="submit">{pending ? "Adding…" : "Add child"}</button>
@@ -68,14 +99,14 @@ export function AddLearnerForm({ canAdd }: { canAdd: boolean }) {
   );
 }
 
-export function LearnerCard({ id, nickname, grade, teacher }: { id: string; nickname: string; grade: number; teacher: string }) {
+export function LearnerCard({ id, nickname, grade, teacher, interests, nameSay }: { id: string; nickname: string; grade: number; teacher: string; interests: readonly string[]; nameSay: string | null }) {
   const [saved, save, saving] = useActionState<ActionResult | null, FormData>(updateLearner as Act, null);
   const [gone, remove, removing] = useActionState<ActionResult | null, FormData>(deleteLearner as Act, null);
   return (
     <section className="skill">
       <form action={save} className="learner-form">
         <input type="hidden" name="id" value={id} />
-        <LearnerFields prefix={id} nickname={nickname} grade={grade} teacher={teacher} />
+        <LearnerFields prefix={id} nickname={nickname} grade={grade} teacher={teacher} interests={interests} nameSay={nameSay ?? ""} />
         <button className="ghost" type="submit" disabled={saving}>{saving ? "Saving…" : "Save changes"}</button>
         <Note r={saved} />
       </form>

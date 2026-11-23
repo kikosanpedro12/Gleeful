@@ -11,6 +11,7 @@ const MIG_DIR = path.join(ROOT, "supabase/migrations");
 const INIT = "20261112051808_init_learning_schema.sql";
 const KINDERGARTEN = "20261113071456_learners_allow_kindergarten.sql";
 const CONSENT = "20261113083000_parental_consent.sql";
+const INTERESTS = "20261123064826_learner_interests_name_say.sql";
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -48,6 +49,17 @@ const MUTANTS = [
   ["consent version not checked", "check (consent_text_version ~ '^[A-Za-z0-9._-]{1,32}$')", "check (true)", null, CONSENT],
   ["duplicate active consent allowed", "create unique index parental_consents_one_active_per_version\n  on public.parental_consents (parent_id, consent_text_version) where withdrawn_at is null;", "", null, CONSENT],
   ["withdrawal can precede agreeing", "constraint parental_consents_withdrawn_after_accepted check (withdrawn_at is null or withdrawn_at >= accepted_at)", "constraint parental_consents_withdrawn_after_accepted check (true)", null, CONSENT],
+  // learner interests + name_say (20261123064826): every weakening must turn tests/db/interests.test.ts red.
+  ["interests: more than 5 allowed", "and cardinality(interests) <= 5", "and cardinality(interests) <= 6", null, INTERESTS],
+  ["interests: any text allowed", null, null, (b) => b.replace(/  and interests <@ array\[[\s\S]*?\]::text\[\]\n/, ""), INTERESTS],
+  ["interests: duplicates allowed", "  and (interests[1] is null or not (interests[1] = any (interests[2:5])))\n  and (interests[2] is null or not (interests[2] = any (interests[3:5])))\n  and (interests[3] is null or not (interests[3] = any (interests[4:5])))\n  and (interests[4] is null or interests[4] is distinct from interests[5])\n", "", null, INTERESTS],
+  ["interests: last pair may repeat", "and (interests[4] is null or interests[4] is distinct from interests[5])", "and true", null, INTERESTS],
+  ["interests: custom array bounds allowed", "  and (array_lower(interests, 1) is null or array_lower(interests, 1) = 1)\n", "", null, INTERESTS],
+  ["interests: multi-dimensional arrays allowed", "(array_ndims(interests) is null or array_ndims(interests) = 1)", "true", null, INTERESTS],
+  ["name_say: any characters allowed", "name_say ~ '^[A-Za-z][A-Za-z '' -]*$'", "true", null, INTERESTS],
+  ["name_say: no length cap", "char_length(name_say) between 1 and 40", "char_length(name_say) >= 1", null, INTERESTS],
+  ["new columns not updatable by the parent", "grant update (interests, name_say) on table public.learners to authenticated;", "", null, INTERESTS],
+  ["update grant widened to every column (new migration)", "grant update (interests, name_say) on table public.learners to authenticated;", "grant update on table public.learners to authenticated;", null, INTERESTS],
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";
 // Baseline: the unmutated migration must PASS, otherwise every mutant is "killed" for free.

@@ -4,6 +4,7 @@
  * whether an account exists.
  */
 import { isValidGrade } from "@/lib/learner/grades";
+import { cleanNameSay, INTEREST_IDS, MAX_INTERESTS, NAME_SAY_MAX } from "@/lib/learner/interests";
 
 export const PASSWORD_MIN = 10;
 /** bcrypt, which Supabase uses, only looks at the first 72 bytes. */
@@ -35,13 +36,25 @@ export const NICKNAME_MAX = 40;
 export const MAX_LEARNERS_PER_PARENT = 8;
 export const TEACHERS = ["leo", "mia"] as const;
 
-export interface LearnerInput { nickname: string; grade: number; preferred_teacher: (typeof TEACHERS)[number] }
+export interface LearnerInput { nickname: string; grade: number; preferred_teacher: (typeof TEACHERS)[number]; interests: string[]; name_say: string | null }
 
 /** Strips control characters and collapses spaces; a nickname is a label, not a name. */
 export function cleanNickname(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const n = raw.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
   return n.length >= 1 && n.length <= NICKNAME_MAX ? n : null;
+}
+
+/** Interest ids from the form: every item must be in the fixed list, no repeats, at most MAX_INTERESTS. */
+export function parseInterests(raw: unknown): string[] | null {
+  const list = raw === undefined || raw === null ? [] : Array.isArray(raw) ? raw : [raw];
+  if (list.length > MAX_INTERESTS) return null;
+  const seen = new Set<string>();
+  for (const v of list) {
+    if (typeof v !== "string" || !INTEREST_IDS.has(v) || seen.has(v)) return null;
+    seen.add(v);
+  }
+  return [...seen];
 }
 
 export function parseLearnerInput(get: (k: string) => unknown): { ok: true; value: LearnerInput } | { ok: false; message: string } {
@@ -52,5 +65,9 @@ export function parseLearnerInput(get: (k: string) => unknown): { ok: true; valu
   if (!isValidGrade(grade)) return { ok: false, message: "Choose a grade from kindergarten to 12." };
   const teacher = get("preferred_teacher");
   if (teacher !== "leo" && teacher !== "mia") return { ok: false, message: "Choose Leo or Mia." };
-  return { ok: true, value: { nickname, grade, preferred_teacher: teacher } };
+  const interests = parseInterests(get("interests"));
+  if (!interests) return { ok: false, message: `Choose up to ${MAX_INTERESTS} interests from the list.` };
+  const name_say = cleanNameSay(get("name_say"));
+  if (name_say === undefined) return { ok: false, message: `Write how to say the name using only letters, spaces, hyphens and apostrophes (up to ${NAME_SAY_MAX}), like GAD-dee.` };
+  return { ok: true, value: { nickname, grade, preferred_teacher: teacher, interests, name_say } };
 }

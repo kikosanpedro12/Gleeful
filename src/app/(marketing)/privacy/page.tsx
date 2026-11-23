@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 
 const COLLECTED = [
   "Your child's nickname, grade (kindergarten is grade 0), language and chosen teacher. Never a surname, birth date, school, photo or location.",
+  "Up to 5 interests a parent picks from a fixed list (for example animals, space or football), and, if the parent chooses to give it, how to say the child's name (a respelling the parent types, like GAD-dee). A child never types these. They are stored so the tutor can use them in future; today the tutor does not use them.",
   "What happened in a lesson: which questions were asked and answered, whether a hint helped, and when. This feeds the parent view.",
   "A parent's sign-in email (and, if they choose a password, a password that only the sign-in service can check; we never see it in plain form).",
   "The record of a parent's permission: which version of the wording they agreed to, and when they agreed or withdrew.",
@@ -24,7 +25,7 @@ export default function Privacy() {
       <main id="main" className="lp-section">
         <div className="lp-wrap lp-wrap-narrow">
           <h1 className="lp-h2">Privacy notice</h1>
-          <p className="lp-lede">Early-access version, 13 November 2026. Gleeful is a test product, so this says what is true today and what we must finish before real families use it.</p>
+          <p className="lp-lede">Early-access version, 23 November 2026. Gleeful is a test product, so this says what is true today and what we must finish before real families use it.</p>
 
           <h2>Today</h2>
           <ul>

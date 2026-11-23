@@ -250,6 +250,19 @@ html:has(.auth), body:has(.auth) { overflow:visible; height:auto; overscroll-beh
 .parent .check { display:flex; gap:10px; align-items:flex-start; min-height:44px; }
 .parent .check input { width:24px; height:24px; margin-top:2px; flex:none; }
 .parent .primary, .parent .ghost, .parent .danger { min-height:44px; }
+.parent .interests { border:0; margin:0; padding:0; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.parent .interests legend { font-weight:800; padding:0; margin-bottom:4px; }
+.parent .interests .fine { margin:0; }
+.parent .int-count { font-weight:800; color:var(--ink); }
+.parent .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.parent .int-pick { position:relative; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 16px 0 12px; border:2px solid #b9a98a; border-radius:var(--pill); background:#fff; color:var(--ink); font-weight:700; font-size:var(--t-m); cursor:pointer; }
+.parent .int-pick input { width:20px; height:20px; margin:0; flex:none; accent-color:var(--board); }
+.parent .int-pick.on { background:var(--board); border-color:var(--board-deep); color:#fff; }
+.parent .int-pick.on input { accent-color:#fff; }
+.parent .int-pick:focus-within { outline:3px solid var(--coral-deep); outline-offset:2px; }
+.parent .int-pick.locked { background:var(--paper-2); border-style:dashed; color:var(--ink-2); cursor:not-allowed; }
+.parent .interests input:focus-visible { outline:none; }
+@media (forced-colors:active) { .parent .int-pick.on { border-width:4px; } }
 .parent .ok { color:var(--board-deep); font-weight:800; }
 
 /* ------------------------------------------------------------ voice lab (private side page) */

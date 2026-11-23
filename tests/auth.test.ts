@@ -47,7 +47,7 @@ describe("input rules", () => {
   });
   it("learner form: grade 0 (kindergarten) to 12, teacher leo or mia, nothing else", () => {
     const f = (o: Record<string, unknown>) => parseLearnerInput((k) => o[k]);
-    expect(f({ nickname: "Kai", grade: "0", preferred_teacher: "mia" })).toEqual({ ok: true, value: { nickname: "Kai", grade: 0, preferred_teacher: "mia" } });
+    expect(f({ nickname: "Kai", grade: "0", preferred_teacher: "mia" })).toEqual({ ok: true, value: { nickname: "Kai", grade: 0, preferred_teacher: "mia", interests: [], name_say: null } });
     expect(f({ nickname: "Kai", grade: "12", preferred_teacher: "leo" }).ok).toBe(true);
     for (const grade of ["13", "-1", "3.5", "abc", "", "1e1", 5 as unknown as string]) expect(f({ nickname: "Kai", grade, preferred_teacher: "leo" }).ok, String(grade)).toBe(false);
     expect(f({ nickname: "Kai", grade: "3", preferred_teacher: "evil" }).ok).toBe(false);
@@ -191,6 +191,7 @@ describe("session claims and Supabase settings", () => {
 
 describe("consent wording", () => {
   const all = CONSENT_POINTS.join(" ");
+  it("the wording changed, so the version moved past the one existing parents agreed to", () => expect(CONSENT_VERSION).not.toBe("2026-11-14.v1"));
   it("the version fits the database check", () => expect(CONSENT_VERSION).toMatch(CONSENT_VERSION_RE));
   it("says what a parent needs to know to agree: who, what is stored, the AI service, voice, withdrawal and deletion", () => {
     expect(all).toMatch(/parent or legal guardian/);
@@ -203,6 +204,9 @@ describe("consent wording", () => {
   it("promises nothing the product does not do: no audio, no surname, no stored messages", () => {
     expect(all).toMatch(/does not store a surname/);
     expect(all).toMatch(/audio or recordings/);
+    expect(all).toMatch(/interests that I choose from a fixed list/);
+    expect(all).toMatch(/how to say my child's name/);
+    expect(all).toMatch(/not used yet/);
     expect(all).toMatch(/does not save those messages/);
   });
 });
