@@ -46,7 +46,7 @@
     "@types/three": "0.187.0",
     "puppeteer-core": "25.17.0",
     "typescript": "7.0.2",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   },
   "engines": {
     "node": ">=20.9"
