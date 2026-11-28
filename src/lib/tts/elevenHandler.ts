@@ -4,6 +4,7 @@ import { TESTER_CODE_MIN, type BrainEnv } from "@/lib/brain/server/config";
 import { TESTER_HEADER, testerPrincipal, hasTesterAccess, clientIp, readBody } from "@/lib/brain/server/handler";
 import type { ParentAccess } from "@/lib/brain/server/handler";
 import { crossOrigin } from "@/lib/http/request";
+import { recordEvent as countEvent } from "@/lib/admin/events";
 import { ELEVEN_MAX_CHARS, ELEVEN_RATE_HEADER, ELEVEN_SAMPLE_RATE, ELEVEN_TEACHERS, isElevenTeacher, type ElevenTeacher } from "./elevenVoices";
 
 /**
@@ -198,8 +199,8 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
     });
     clearTimeout(headerTimer);
     // Refunded only for a clean upstream refusal. A timeout, an exception or odd audio keeps the charge: the conservative choice for spend.
-    if (!r.ok || !r.body) { refund(); done(); return fail(502, "upstream_error"); }
-    if (Number(r.headers.get("content-length") ?? 0) > ELEVEN_LIMITS.maxAudioBytes) { done(); ctl.abort(); return fail(502, "upstream_error"); }
+    if (!r.ok || !r.body) { refund(); done(); countEvent("voice", "upstream_error"); return fail(502, "upstream_error"); }
+    if (Number(r.headers.get("content-length") ?? 0) > ELEVEN_LIMITS.maxAudioBytes) { done(); ctl.abort(); countEvent("voice", "upstream_error"); return fail(502, "upstream_error"); }
 
     let seen = 0;
     const limited = r.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
@@ -216,6 +217,7 @@ export async function handleVoice(req: Request, d: ElevenDeps): Promise<Response
     });
   } catch {
     done();
+    countEvent("voice", "upstream_error");
     return fail(502, "upstream_error");
   }
 }

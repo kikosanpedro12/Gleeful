@@ -9,6 +9,8 @@ import { revalidatePath } from "next/cache";
 import { CONSENT_VERSION } from "@/lib/consent/text";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { currentParentId, forgetConsentCache, hasCurrentConsent } from "@/lib/auth/parent";
+import { recordEvent } from "@/lib/events/record";
+import { later } from "@/lib/events/later";
 import { MAX_LEARNERS_PER_PARENT, parseLearnerInput } from "@/lib/auth/validate";
 
 export interface ActionResult { ok: boolean; message: string }
@@ -35,6 +37,8 @@ export async function giveConsent(_prev: ActionResult | null, fd: FormData): Pro
     if (error && error.code !== "23505") return GENERIC; // 23505 = already agreed to this wording: fine
   } catch { return GENERIC; }
   forgetConsentCache(p.id);
+  const pid = p.id;
+  later(() => recordEvent("consent_given", { parentId: pid })); // a count only; once per parent; after the response
   return done("Thank you. Your permission is recorded.");
 }
 
@@ -64,6 +68,8 @@ export async function addLearner(_prev: ActionResult | null, fd: FormData): Prom
     const { error } = await p.supabase.from("learners").insert({ parent_id: p.id, ...input.value, language: "en" });
     if (error) return GENERIC;
   } catch { return GENERIC; }
+  const pid = p.id;
+  later(() => recordEvent("learner_added", { parentId: pid })); // a count only: never the child's details; after the response
   return done("Added.");
 }
 

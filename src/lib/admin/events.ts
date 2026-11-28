@@ -1,4 +1,5 @@
 import "server-only";
+import { recordServerCounter } from "@/lib/events/record";
 /**
  * Content-free server event counters for the admin page. COUNTS ONLY: an event name (a fixed code such as
  * "upstream_error") and a number. Never a message, a question, a model reply, an address or an id.
@@ -20,17 +21,18 @@ function table(now: number): Table {
   return t;
 }
 
-export type EventSource = "brain" | "taste";
+export type EventSource = "brain" | "taste" | "voice";
 
 /** Never throws; ignores anything that is not a plain event code. New names are refused when the table is full. */
 export function recordEvent(source: EventSource, event: string, now: number = Date.now()): void {
   try {
-    if ((source !== "brain" && source !== "taste") || typeof event !== "string" || !NAME_RE.test(event)) return;
+    if ((source !== "brain" && source !== "taste" && source !== "voice") || typeof event !== "string" || !NAME_RE.test(event)) return;
     const t = table(now);
     const k = `${source}.${event}`;
     const had = t.counts.get(k);
     if (had === undefined && t.counts.size >= MAX_KEYS) return;
     t.counts.set(k, (had ?? 0) + 1);
+    recordServerCounter(source, event); // the error ones are also kept in the database (app_events), best effort
   } catch { /* counting must never break a request */ }
 }
 

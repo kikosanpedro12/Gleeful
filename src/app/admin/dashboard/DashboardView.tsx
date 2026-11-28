@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Dashboard, RangeDays } from "@/lib/billing/dashboard";
 import { ActivityChart } from "./ActivityChart";
+import { EventsPanels } from "./EventsPanels";
 import { delta, manilaDateTime, manilaUpdated, pctOf, pointsFor, type Delta } from "./format";
 
 const RANGE_OPTIONS: RangeDays[] = [7, 30, 90];
@@ -199,6 +200,7 @@ export function DashboardView({ d }: { d: Dashboard }) {
     <Kpis d={d} />
     <div className="ad-grid ad-two"><ActivityCard d={d} /><CustomersCard d={d} /></div>
     <div className="ad-grid ad-three"><FunnelCard d={d} /><UsageCard d={d} /><RecentCard d={d} /></div>
+    <EventsPanels d={d} />
     <WindowsDetails d={d} />
   </>);
 }

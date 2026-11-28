@@ -2,6 +2,7 @@ import "server-only";
 import { PLANS, isPlanId, turnsForMinutes, type PlanId } from "./plans";
 import { db, billingConfigured } from "./store";
 import { loadBillingStats, type BillingStats } from "./stats";
+import { loadEventStats, type EventStats } from "@/lib/events/stats";
 
 /** Ranges the dashboard offers. Anything else falls back to 30. */
 export const RANGES = [7, 30, 90] as const;
@@ -27,6 +28,9 @@ export interface Dashboard {
   stats: BillingStats;
   usage: { subscribersWithUsage: number; turnsThisPeriod: number; atOrAbove80Percent: number };
   recent: ActivityRow[];
+  /** First-party product events (funnel, retention, sources, health). Null when the table is missing or could not be read; see eventsNote. */
+  events: EventStats | null;
+  eventsNote: "not_applied" | "unavailable" | null;
   generatedAt: string;
 }
 
@@ -118,5 +122,10 @@ export async function loadDashboard(days: RangeDays, now: Date = new Date()): Pr
     select received_at, status, prev_status, email_norm, applied from public.billing_events order by received_at desc limit 12`;
   const recent = rec.map((r) => ({ at: r.received_at.toISOString(), label: describeChange(r.status, r.prev_status), who: maskEmail(r.email_norm), applied: r.applied }));
 
-  return { days, series, totals, previous, funnel: { trialsStarted: f?.started ?? 0, trialToPaid: f?.became_paid ?? 0 }, stats, usage: { subscribersWithUsage: u.length, turnsThisPeriod, atOrAbove80Percent: high }, recent, generatedAt: now.toISOString() };
+  // Product events: a missing table (migration not applied yet) or a slow read must not hide the billing numbers above.
+  let events: EventStats | null = null;
+  let eventsNote: Dashboard["eventsNote"] = null;
+  try { events = await loadEventStats(days, now, guard); } catch (e) { eventsNote = (e as { code?: unknown })?.code === "42P01" ? "not_applied" : "unavailable"; }
+
+  return { days, series, totals, previous, funnel: { trialsStarted: f?.started ?? 0, trialToPaid: f?.became_paid ?? 0 }, stats, usage: { subscribersWithUsage: u.length, turnsThisPeriod, atOrAbove80Percent: high }, recent, events, eventsNote, generatedAt: now.toISOString() };
 }

@@ -3,6 +3,7 @@ import "@fontsource-variable/unbounded/wght.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@/components/landing/landing.css";
+import { PublicAnalytics } from "@/components/PublicAnalytics";
 
 // The landing page is the only part of the site that may be indexed, and only
 // when SITE_INDEXING=on (robots come from the root layout and src/lib/seo/site.ts).
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <>{children}<PublicAnalytics /></>;
 }

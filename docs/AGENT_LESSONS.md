@@ -140,3 +140,15 @@ Rules for entries:
 - **Inline SVG avatars**: the global `.app svg path { fill:none }` overrides fill attributes, so use style fills. `.tag` is already a scene-label class; do not reuse it.
 - **Mutant patterns must be re-synced after any edit to the SQL they match** (a SKIP is a hole, not a pass).
 - **Admin charts/cards judged from code** → /admin has a dev-only fixture (SAMPLE data, not in src): `node scripts/admin-fixture.mjs` builds the real components and shoots 1280 and 390 (full + empty) into scripts/out/admin-*.png; read them → tests/adminDashboard.test.ts.
+
+## Product events (24 Nov 2026)
+- **`scripts/mutate-rls.mjs` had a syntax error at HEAD** (an unescaped `"` in the feedback e-mail mutant), so `npm run mutate` could not start and nothing had run it since → after editing the script run `node --check scripts/mutate-rls.mjs` first; a SKIP or a crash is a hole, not a pass.
+- **Analytics tables are a new anonymous write path** (error events come from the landing Ask box and voice) → cap in the INSERT itself (hourly per class, total by `max(id)`, which is O(1)), error codes never carry a parent id (CHECK) → `tests/db/appEvents.test.ts` "write caps".
+- **Never put a child's content or an e-mail in an event; tags are re-validated on the way in AND out** (cookie is user-controllable) → `sanitizeTag`/`sanitizeHost` + `tests/events.test.ts` hostile cases.
+- **Counts for "people" vs "events" must be labelled** (funnel mixes our distinct parents with Freemius webhook events) → the card says WEBHOOK EVENTS on those steps → `tests/adminDashboard.test.ts`.
+- **A new table makes /admin depend on a migration that may not be applied** → `loadEventStats` failure is caught (42P01 = "not applied") so billing numbers still render.
+- **Third-party analytics script placement is a privacy claim** → `PublicAnalytics` only in the marketing and sign-in layouts; a test greps `src/` for every user of it.
+- **Analytics writes held a response** (sign-in, parent page, checkout waited on a raced await) → run them with `later()` (Next `after()`) so the redirect goes first; read cookies/session BEFORE, never inside the callback → `tests/events.test.ts` "writes that must not hold a response" (greps for `await recordEvent(`); /security-check lists it.
+- **"Seen" markers set before the write** (an active-day write that failed was never retried that day) → add to the in-memory set only after the write succeeded (`tryRecord` returns a boolean) → `tests/events.test.ts` retry test.
+- **One shared cap lets one actor starve another, and `max(id)` caps drift** (`ON CONFLICT` burns ids; 2000 checkout clicks blocked all sign-ups) → a cap per code/actor, a unique index for "once per day", `count(*)` for lifetime, and an in-memory throttle in front of anonymous-reachable writes → `tests/db/appEvents.test.ts`, `tests/db/appEventsAttack.test.ts`, `cap:` mutants in `npm run mutate`.
+- **Sanitisers that "fix" input invent values** (`Summer Sale` became `summer-sale`) → drop anything outside the allowed set → `tests/events.test.ts`.

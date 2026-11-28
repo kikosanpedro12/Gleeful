@@ -12,7 +12,7 @@ describe("admin page render (guard mocked as admin)", () => {
     recordEvent("taste", "upstream_error");
     const { default: Page } = await import("@/app/admin/page");
     const html = renderToStaticMarkup(await Page());
-    for (const t of ["panel-switches", "panel-voice", "panel-events", "panel-not-tracked", "5,000", "taste.upstream_error", "Sign-ups (parent accounts): not tracked yet", "key is set"]) expect(html, t).toContain(t);
+    for (const t of ["panel-switches", "panel-voice", "panel-events", "panel-not-tracked", "5,000", "taste.upstream_error", "Trial / free-try counts: not tracked yet", "key is set"]) expect(html, t).toContain(t);
     expect(html).not.toContain("SECRET");
     expect(html).not.toMatch(/<form|<button|<input/); // read-only: nothing to submit
     delete process.env.ANTHROPIC_API_KEY; delete process.env.ELEVENLABS_API_KEY;

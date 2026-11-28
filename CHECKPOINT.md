@@ -223,3 +223,9 @@ Fresh read-only agent, verdict **PASS WITH FIXES**, no blocker. Verified: typech
 - /feedback page + /api/feedback built (noindex, rate limited, DB-side caps). Privacy page has a Feedback section. Migration 20261123150000 applied live.
 - "Choose your teacher" screen redesigned (drawn portraits, taglines, clear selected state).
 - Still awaiting Kiko: Vercel env vars, Freemius sandbox set-up and a first real webhook body, Paddle reply, live-honesty decision, lawyer.
+
+## 24 Nov 2026 (analytics Phase 1, uncommitted, migration NOT applied)
+- First-party product events (`public.app_events`, migration `20261123210909_app_events.sql`), /admin Funnel / Retention / Sources / Health, cookieless Vercel Web Analytics on the public pages and sign-in only. Details: SECURITY.md "Product events and visit analytics", docs/DATABASE.md.
+- OPEN for the lawyer / EU review: the `gl_src` first-party campaign cookie is set on landing visits without a consent prompt (httpOnly, 30 days, only utm tags + referrer host, used once at sign-up). Dropping it is a one-line change in `src/proxy.ts`.
+- Notes: a sign-up is "account created in the last 2 hours" (a later magic-link click is missed); `active_day` is recorded when a signed-in parent SENDS a message, before the model replies (a failed reply still counts); sign-ups before the table existed are not counted.
+- NOT verified: the migration and queries against the live Supabase pooler; the Vercel Analytics script (only renders when `VERCEL=1`; switch Analytics on in the Vercel dashboard); the real sign-up flow end to end.

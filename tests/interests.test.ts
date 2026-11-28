@@ -58,8 +58,8 @@ describe("parseInterests / parseLearnerInput", () => {
 
 describe("parent area copy", () => {
   const privacy = fs.readFileSync(path.join(ROOT, "src/app/(marketing)/privacy/page.tsx"), "utf8");
-  it("the privacy notice is dated 23 November 2026 and lists both new items without claiming the tutor uses them", () => {
-    expect(privacy).toMatch(/23 November 2026/);
+  it("the privacy notice is dated 24 November 2026 and lists both new items without claiming the tutor uses them", () => {
+    expect(privacy).toMatch(/24 November 2026/);
     expect(privacy).toMatch(/fixed list/);
     expect(privacy).toMatch(/how to say the child's name/);
     expect(privacy).toMatch(/today the tutor does not use them/);

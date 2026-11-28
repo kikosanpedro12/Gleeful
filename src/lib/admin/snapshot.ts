@@ -48,10 +48,8 @@ export function buildSnapshot(env: Record<string, string | undefined> = process.
 
 /** What is NOT measured, and what it would take. Shown as-is on the page. */
 export const NOT_TRACKED: { what: string; why: string; needs: string }[] = [
-  { what: "Sign-ups (parent accounts)", why: "Accounts live in Supabase Auth (auth.users). The app deliberately holds no service/secret key, and row-level security lets each parent see only their own rows.", needs: "A reviewed server-only count source: either a secret key used ONLY by an admin route, or a security-invoker view/function exposing a bare count, with RLS tests and a mutant. Founder decision." },
   { what: "Trial / free-try counts", why: "The 3 free tries are a signed cookie in the visitor's browser; the per-address and site-wide daily counters are in server memory and are not exposed.", needs: "A counter table (day, count only) written by /api/taste, or a Vercel analytics event." },
-  { what: "Consents, learners, lesson sessions, attempts", why: "Tables exist (migrations) but are parent-owned under RLS. Totals across families are not readable without the secret key. parental_consents may not be applied live yet.", needs: "Same as sign-ups. Never show child text or nicknames." },
+  { what: "Lesson sessions and attempts (totals across families)", why: "Tables exist (migrations) but are parent-owned under RLS, so totals across families are not readable without the secret key. Sign-ups, consents, children added and active days ARE counted now, from our own content-free events (see the funnel above).", needs: "A reviewed server-only count source. Never show child text or nicknames." },
   { what: "Voice usage across all instances, or across days", why: "Counters are per warm instance and in memory.", needs: "Shared storage (the planned brain_usage-style table) or the ElevenLabs usage page / account usage API." },
   { what: "Brain and taste spend (tokens, cost)", why: "Token counts are not persisted; the Anthropic Console is the source of truth for spend.", needs: "A brain_signals aggregates table (BACKLOG, needs founder OK on what is logged)." },
-  { what: "Errors across instances / history", why: "Counts are in-memory per instance and per UTC day; the full logs are in Vercel.", needs: "Vercel log drain, or the aggregates table above." },
 ];

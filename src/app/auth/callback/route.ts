@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/auth/safeNext";
+import { CAMPAIGN_COOKIE, decodeCampaign } from "@/lib/events/campaign";
+import { isFreshAccount } from "@/lib/events/signup";
+import { recordEvent } from "@/lib/events/record";
+import { later } from "@/lib/events/later";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +29,16 @@ export async function GET(req: NextRequest) {
     const tokenHash = searchParams.get("token_hash");
     const type = searchParams.get("type");
     let error: unknown = new Error("no credentials");
-    if (code && code.length <= 200) ({ error } = await supabase.auth.exchangeCodeForSession(code));
-    else if (tokenHash && tokenHash.length <= 200 && type && OTP_TYPES.includes(type)) ({ error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: tokenHash }));
+    let user: { id?: string; created_at?: string; is_anonymous?: boolean } | null = null;
+    if (code && code.length <= 200) { const r = await supabase.auth.exchangeCodeForSession(code); error = r.error; user = r.data?.user ?? null; }
+    else if (tokenHash && tokenHash.length <= 200 && type && OTP_TYPES.includes(type)) { const r = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash: tokenHash }); error = r.error; user = r.data?.user ?? null; }
     if (error) return fail();
+    // A brand-new account (created in the last 2 hours; the database keeps one signup per parent). Counts only: the id, and where they came from.
+    if (user && typeof user.id === "string" && !user.is_anonymous && isFreshAccount(user.created_at, Date.now())) {
+      const c = decodeCampaign(req.cookies.get(CAMPAIGN_COOKIE)?.value);
+      const parentId = user.id;
+      later(() => recordEvent("signup", { parentId, utmSource: c.source, utmMedium: c.medium, utmCampaign: c.campaign, referrerHost: c.refHost })); // after the redirect is sent: sign-in never waits on it
+    }
   } catch {
     return fail();
   }

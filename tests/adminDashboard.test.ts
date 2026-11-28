@@ -41,3 +41,23 @@ describe("admin dashboard (presentational, sample data)", () => {
     expect(execSync("grep -rl adminFixture src || true").toString()).toBe("");
   });
 });
+
+describe("admin: product events panels (funnel, retention, sources, health)", () => {
+  it("populated: every panel, honest labels, no e-mail, the Vercel link", () => {
+    const html = renderToStaticMarkup(createElement(DashboardView, { d: sampleDashboard(30) }));
+    for (const t of ["panel-signup-funnel", "panel-retention", "panel-sources", "panel-health", "panel-visits", "WEBHOOK EVENTS", "Sent a message to the teacher", "before the reply", "not one group followed over time", "ret-quiet", "sources-table", "health-table", "facebook", "https://vercel.com/gleeful-6f6cb38c/gleeful/analytics", "No campaign tag or referrer"]) expect(html, t).toContain(t);
+    expect(html).not.toMatch(/panel-events-note/);
+    expect(html).not.toMatch(/<form|<input/);
+  });
+  it("empty: friendly empty states, still shows the link", () => {
+    const html = renderToStaticMarkup(createElement(DashboardView, { d: emptyDashboard(30) }));
+    for (const t of ["Nothing in this period yet", "No families tracked yet", "No sign-ups in this period yet", "No errors recorded in this period", "panel-visits"]) expect(html, t).toContain(t);
+    expect(html).not.toContain("sources-table");
+  });
+  it("table missing: says which migration to apply; unreadable: says reload", () => {
+    const a = renderToStaticMarkup(createElement(DashboardView, { d: { ...sampleDashboard(30), events: null, eventsNote: "not_applied" } }));
+    expect(a).toContain("20261123210909_app_events.sql"); expect(a).toContain("panel-visits"); expect(a).not.toContain("panel-retention");
+    const b = renderToStaticMarkup(createElement(DashboardView, { d: { ...sampleDashboard(30), events: null, eventsNote: "unavailable" } }));
+    expect(b).toContain("could not be read just now");
+  });
+});

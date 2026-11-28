@@ -69,3 +69,8 @@
 @media (prefers-reduced-motion: no-preference){ .ad-fun-bar>i,.ad-bar>i{transition:width .4s ease;} }
 @media (prefers-reduced-motion: reduce){ .ad *{transition:none !important;animation:none !important;} }
 .ad .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.ad-steps { list-style:none; margin:8px 0 0; padding:0; }
+.ad-steps li { margin:10px 0; }
+.ad-legend-static { display:flex; flex-wrap:wrap; gap:6px 16px; margin:10px 0; font-size:14px; }
+.ad-swatch { vertical-align:middle; }
+.ad-linkbtn { display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:999px; border:1.5px solid var(--ad-line); background:#fff; font-weight:600; font-size:14px; text-decoration:none; color:#0b5f61; }

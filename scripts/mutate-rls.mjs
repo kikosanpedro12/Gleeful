@@ -14,6 +14,8 @@ const CONSENT = "20261113083000_parental_consent.sql";
 const INTERESTS = "20261123064826_learner_interests_name_say.sql";
 const BILLING = "20261123120000_billing.sql";
 const BSTATS = "20261123150000_billing_stats_feedback.sql";
+const APPEV = "20261123210909_app_events.sql";
+const CAP = "cap"; // not a migration: src/lib/events/cap.ts
 const OUT = path.join(ROOT, "scripts/out/mutants");
 const FILES = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
 const read = (f) => fs.readFileSync(path.join(MIG_DIR, f), "utf8");
@@ -81,9 +83,38 @@ const MUTANTS = [
   ["feedback: parents may read everyone's messages", "revoke all on table public.feedback from public, anon, authenticated;", "revoke all on table public.feedback from public, anon;", null, BSTATS],
   ["feedback: writer may edit and delete messages", "grant select, insert on table public.feedback to billing_writer;", "grant select, insert, update, delete on table public.feedback to billing_writer;\ncreate policy \"oops\" on public.feedback for all to billing_writer using (true) with check (true);", null, BSTATS],
   ["feedback: unlimited message size", "check (length(btrim(message)) between 1 and 2000)", "check (true)", null, BSTATS],
-  ["feedback: any e-mail text", "contact_email text check (contact_email is null or (length(contact_email) between 3 and 254 and contact_email ~ '^[^@[:space:],;<>"]+@[^@[:space:],;<>"]+\\.[^@[:space:],;<>"]+$'))", "contact_email text", null, BSTATS],
+  ["feedback: any e-mail text", "contact_email text check (contact_email is null or (length(contact_email) between 3 and 254 and contact_email ~ '^[^@[:space:],;<>\"]+@[^@[:space:],;<>\"]+\\.[^@[:space:],;<>\"]+$'))", "contact_email text", null, BSTATS],
   ["feedback: any page text", "page          text check (page is null or page ~ '^/[a-z0-9/_-]{0,58}$')", "page          text", null, BSTATS],
   ["billing events: any status", "add column status      text check (status is null or status in ('trialing', 'active', 'past_due', 'canceled', 'refunded')),", "add column status      text,", null, BSTATS],
+  // product events (20261123210909): every weakening must turn tests/db/appEvents.test.ts red.
+  ["events: RLS off", "alter table public.app_events enable row level security;", "", null, APPEV],
+  ["events: anon keeps default access", "revoke all on table public.app_events from public, anon, authenticated;", "revoke all on table public.app_events from public;", null, APPEV],
+  ["events: authenticated keeps default access", "revoke all on table public.app_events from public, anon, authenticated;", "revoke all on table public.app_events from public, anon;", null, APPEV],
+  ["events: parents may read everyone's events", "revoke all on table public.app_events from public, anon, authenticated;", "revoke all on table public.app_events from public, anon, authenticated;\ngrant select on public.app_events to authenticated;\ncreate policy \"oops\" on public.app_events for select to authenticated using (true);", null, APPEV],
+  ["events: writer may edit and delete events", "grant select, insert on table public.app_events to billing_writer;", "grant select, insert, update, delete, truncate on table public.app_events to billing_writer;\ncreate policy \"oops\" on public.app_events for all to billing_writer using (true) with check (true);", null, APPEV],
+  ["events: checkout clicks can repeat in a day", "create unique index app_events_checkout_once_a_day on public.app_events (parent_id, day) where code = 'checkout_clicked';", "", null, APPEV],
+  ["events: API roles keep the id sequence", "revoke all on sequence public.app_events_id_seq from public, anon, authenticated;", "", null, APPEV],
+  ["events: any code", "check (code in ('signup', 'consent_given', 'learner_added', 'active_day', 'checkout_clicked', 'brain_error', 'brain_fallback', 'voice_error')),", "check (true),", null, APPEV],
+  ["events: error codes may carry a parent id", "check ((code in ('brain_error', 'brain_fallback', 'voice_error') and parent_id is null)\n      or (code not in ('brain_error', 'brain_fallback', 'voice_error') and parent_id is not null))", "check (true)", null, APPEV],
+  ["events: parent events may lack a parent id", "or (code not in ('brain_error', 'brain_fallback', 'voice_error') and parent_id is not null))", "or (code not in ('brain_error', 'brain_fallback', 'voice_error')))", null, APPEV],
+  ["events: utm_source any text", "utm_source   text check (utm_source   is null or utm_source   ~ '^[a-z0-9_.-]{1,40}$'),", "utm_source   text,", null, APPEV],
+  ["events: utm_medium any text", "utm_medium   text check (utm_medium   is null or utm_medium   ~ '^[a-z0-9_.-]{1,40}$'),", "utm_medium   text,", null, APPEV],
+  ["events: utm_campaign any text", "utm_campaign text check (utm_campaign is null or utm_campaign ~ '^[a-z0-9_.-]{1,40}$'),", "utm_campaign text,", null, APPEV],
+  ["events: referrer any text", "referrer_host text check (referrer_host is null or (length(referrer_host) between 3 and 100 and referrer_host ~ '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$')),", "referrer_host text,", null, APPEV],
+  ["events: signup and consent can repeat", "create unique index app_events_once_per_parent on public.app_events (code, parent_id) where code in ('signup', 'consent_given');", "", null, APPEV],
+  ["events: active day can repeat", "create unique index app_events_active_day_once on public.app_events (parent_id, day) where code = 'active_day';", "", null, APPEV],
+  ["events: the app can choose the day", "day          date generated always as ((created_at at time zone 'Asia/Manila')::date) stored,", "day          date not null default current_date,", null, APPEV],
+  ["events: a SECURITY DEFINER function appears", null, null, (b) => b + "\ncreate function public.leak_events() returns bigint language sql security definer as 'select count(*) from public.app_events';\n", APPEV],
+  ["events: a trigger appears on the table", null, null, (b) => b + "\ncreate function public.noop_ev() returns trigger language plpgsql as $$ begin return new; end $$;\ncreate trigger noop_ev before insert on public.app_events for each row execute function public.noop_ev();\n", APPEV],
+  // the INSERT's own caps (src/lib/events/cap.ts, swapped in through a vitest alias): every weakening must turn tests/db red.
+  ["cap: no per-code hourly cap", null, null, (b) => b.replace(/  and \(select count\(\*\) from public\.app_events where code = \$1::text and created_at[^\n]*\n/, ""), CAP],
+  ["cap: one shared hourly bucket for all codes", "where code = $1::text and created_at > now()", "where created_at > now()", null, CAP],
+  ["cap: no lifetime cap", "  and (select count(*) from public.app_events) < ${Math.floor(lifetime)}\n", "", null, CAP],
+  ["cap: lifetime cap by max(id)", "(select count(*) from public.app_events) < ${Math.floor(lifetime)}", "(select coalesce(max(id), 0) from public.app_events) < ${Math.floor(lifetime)}", null, CAP],
+  ["cap: repeats are not looked for before inserting", null, null, (b) => b.replace(/where not exists \(select 1 from public\.app_events e[\s\S]*?'Asia\/Manila'\)::date\)\)\)\n  and/, "where true\n  and"), CAP],
+  ["cap: checkout cap huge", "checkout_clicked: 200,", "checkout_clicked: 200000,", null, CAP],
+  ["cap: signup cap huge", "signup: 500,", "signup: 500000,", null, CAP],
+  ["cap: error cap huge", "brain_error: 2000,", "brain_error: 2000000,", null, CAP],
   ["billing: any plan allowed", "check (plan in ('solo', 'family'))", "check (true)", null, BILLING],
   ["billing: any status allowed", "check (status in ('trialing', 'active', 'past_due', 'canceled', 'refunded'))", "check (true)", null, BILLING],
   ["billing: e-mail key not normalised", "check (email_norm = lower(email_norm) and length(email_norm) between 3 and 254 and email_norm ~ '^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$')", "check (true)", null, BILLING],
@@ -93,20 +124,29 @@ const MUTANTS = [
 ];
 const TESTS = process.env.RLS_TESTS || "tests/db";
 // Baseline: the unmutated migration must PASS, otherwise every mutant is "killed" for free.
-try { execSync(`npx vitest run ${TESTS}`, { cwd: ROOT, stdio: "pipe" }); }
+if (!process.env.MUTATE_DRY) try { execSync(`npx vitest run ${TESTS}`, { cwd: ROOT, stdio: "pipe" }); }
 catch { console.log(`BASELINE FAILS: ${TESTS} is red on the real migration; mutation results would be meaningless.`); process.exit(2); }
 let survived = 0;
 MUTANTS.forEach(([name, from, to, fn, file = INIT], i) => {
-  const base = read(file);
+  const isCap = file === CAP;
+  const base = isCap ? fs.readFileSync(path.join(ROOT, "src/lib/events/cap.ts"), "utf8") : read(file);
   const mutated = fn ? fn(base) : base.includes(from) ? base.replace(from, to) : null;
   if (!mutated || mutated === base) { console.log(`SKIP (pattern not found): ${name}`); survived++; return; }
+  if (process.env.MUTATE_DRY) return; // pattern check only
   const dir = path.join(OUT, String(i));
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   // Every migration runs, in order; only the target file is mutated.
   for (const f of FILES) fs.writeFileSync(path.join(dir, f), f === file ? mutated : read(f));
+  let cfg = "";
+  if (isCap) {
+    // The mutated cap.ts replaces the real one through a vitest alias (production code gets no test switch).
+    fs.writeFileSync(path.join(dir, "cap.ts"), mutated.replace('from "./codes"', 'from "@/lib/events/codes"'));
+    fs.writeFileSync(path.join(dir, "vitest.config.mjs"), `export default { test: { include: ["tests/**/*.test.ts"], environment: "node", root: ${JSON.stringify(ROOT)} }, resolve: { alias: [{ find: /^@\\/lib\\/events\\/cap$/, replacement: ${JSON.stringify(path.join(dir, "cap.ts"))} }, { find: "@", replacement: ${JSON.stringify(path.join(ROOT, "src"))} }, { find: "server-only", replacement: ${JSON.stringify(path.join(ROOT, "tests/stubs/server-only.ts"))} }] } };\n`);
+    cfg = ` --config ${path.join(dir, "vitest.config.mjs")}`;
+  }
   let killed = false;
-  try { execSync(`npx vitest run ${TESTS}`, { cwd: ROOT, env: { ...process.env, MIGRATIONS_DIR: dir }, stdio: "pipe" }); }
+  try { execSync(`npx vitest run ${TESTS}${cfg}`, { cwd: ROOT, env: { ...process.env, MIGRATIONS_DIR: dir }, stdio: "pipe" }); }
   catch { killed = true; }
   console.log(`${killed ? "KILLED  " : "SURVIVED"} ${name}`);
   if (!killed) survived++;

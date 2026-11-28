@@ -3,15 +3,7 @@ import { paymentsMode } from "@/lib/billing/config";
 import { pgStore } from "@/lib/billing/store";
 import { PLANS } from "@/lib/billing/plans";
 import { summarize } from "@/lib/billing/summary";
-
-/** Only https links to Freemius's own checkout/portal hosts are ever rendered, whatever the environment says. */
-function safeLink(v: string | undefined): string | null {
-  if (!v) return null;
-  try {
-    const u = new URL(v);
-    return u.protocol === "https:" && (u.hostname === "checkout.freemius.com" || u.hostname.endsWith(".freemius.com")) ? u.toString() : null;
-  } catch { return null; }
-}
+import { checkoutHref, checkoutLink, safeLink } from "@/lib/billing/links";
 
 /** Parent-area plan and usage. Renders nothing while PAYMENTS_MODE is off. Server component: no billing data reaches the browser except these words. */
 export default async function BillingSection({ email }: { email: string | null }) {
@@ -24,8 +16,9 @@ export default async function BillingSection({ email }: { email: string | null }
       body = summarize(sub, usedTurns, new Date());
     } catch { body = null; }
   }
-  const solo = safeLink(process.env.FREEMIUS_CHECKOUT_URL_SOLO);
-  const family = safeLink(process.env.FREEMIUS_CHECKOUT_URL_FAMILY);
+  // The buttons go through /api/checkout (same site), which counts the click and then forwards to the Freemius link.
+  const solo = checkoutLink("solo") ? checkoutHref("solo") : null;
+  const family = checkoutLink("family") ? checkoutHref("family") : null;
   const portal = safeLink(process.env.FREEMIUS_PORTAL_URL);
   return (
     <section aria-labelledby="plan-h" data-testid="billing">

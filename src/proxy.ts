@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { refreshSession } from "@/lib/supabase/refresh";
+import { CAMPAIGN_COOKIE, CAMPAIGN_MAX_AGE, CAMPAIGN_PATHS, campaignFromRequest, cookieToSet } from "@/lib/events/campaign";
 
 /**
  * Per-request Content Security Policy with a fresh nonce (Next.js "proxy",
@@ -43,7 +44,7 @@ export function buildCsp(nonce: string, opts: { dev: boolean; https: boolean }) 
 }
 
 /** Only these paths need a fresh session; every other page is public and skips the work. */
-const AUTH_PATHS = /^\/(parent|sign-in|auth|admin|api\/brain)(\/|$)/;
+const AUTH_PATHS = /^\/(parent|sign-in|auth|admin|api\/brain|api\/checkout)(\/|$)/;
 
 export async function proxy(request: NextRequest) {
   // Refresh first: it may update the request's cookies, and the headers below are copied from the request afterwards.
@@ -60,7 +61,23 @@ export async function proxy(request: NextRequest) {
     for (const c of refreshed.cookies) response.cookies.set(c.name, c.value, c.options);
     for (const [k, v] of Object.entries(refreshed.headers)) response.headers.set(k, v);
   }
+  setCampaignCookie(request, response, https);
   return response;
+}
+
+/**
+ * First-party campaign memory (see src/lib/events/campaign.ts): on a landing visit that carries utm tags or comes from another
+ * site, keep ONLY the three tags and the referrer host (re-validated, never a URL) for 30 days, so the sign-up count can say
+ * where a family came from. httpOnly: no script can read it. Not set on the lesson app, parent area or API.
+ */
+function setCampaignCookie(request: NextRequest, response: NextResponse, https: boolean) {
+  try {
+    if (request.method !== "GET" || !CAMPAIGN_PATHS.includes(request.nextUrl.pathname)) return;
+    const own = [request.nextUrl.hostname, request.headers.get("host")?.split(":")[0] ?? ""];
+    try { if (process.env.NEXT_PUBLIC_SITE_URL) own.push(new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname); } catch { /* ignore a bad site url */ }
+    const value = cookieToSet(campaignFromRequest(request.nextUrl.searchParams, request.headers.get("referer"), own.filter(Boolean)), request.cookies.get(CAMPAIGN_COOKIE)?.value);
+    if (value) response.cookies.set(CAMPAIGN_COOKIE, value, { httpOnly: true, sameSite: "lax", secure: https || process.env.NODE_ENV === "production", maxAge: CAMPAIGN_MAX_AGE, path: "/" });
+  } catch { /* measuring must never break a page */ }
 }
 
 export const config = {

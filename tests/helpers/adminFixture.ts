@@ -1,4 +1,5 @@
 import type { Dashboard } from "@/lib/billing/dashboard";
+import type { EventStats } from "@/lib/events/stats";
 import type { FeedbackRow } from "@/lib/feedback/store";
 
 /** SAMPLE data for tests and screenshots only. Never imported by src/. */
@@ -25,13 +26,27 @@ export function sampleDashboard(days: 7 | 30 | 90 = 30): Dashboard {
       { at: "2026-11-23T11:00:00.000Z", label: "Payment failed", who: "k***@example.com", applied: true },
       { at: "2026-11-23T09:00:00.000Z", label: "Cancelled", who: "z***@example.com", applied: false },
     ],
+    events: sampleEvents(days),
+    eventsNote: null,
+    generatedAt: "2026-11-24T06:05:00.000Z",
+  };
+}
+export function sampleEvents(days: 7 | 30 | 90 = 30): EventStats {
+  const health = Array.from({ length: days }, (_, i) => ({ date: new Date(Date.UTC(2026, 10, 24) - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10), brainError: i % 5 === 0 ? 2 : 0, brainFallback: i % 7 === 0 ? 3 : 0, voiceError: i % 11 === 0 ? 1 : 0 }));
+  const sum = (k: "brainError" | "brainFallback" | "voiceError") => health.reduce((n, p) => n + p[k], 0);
+  return {
+    days,
+    funnel: { signups: 58, consents: 44, learners: 39, active: 31, checkoutClicks: 12 },
+    retention: { activeToday: 6, active7: 19, active30: 33, quiet: 11, signupsEver: 74 },
+    sources: [{ name: "facebook", kind: "campaign", count: 21 }, { name: "news.ycombinator.com", kind: "referrer", count: 9 }, { name: "newsletter", kind: "campaign", count: 7 }, { name: "No campaign tag or referrer", kind: "direct", count: 21 }],
+    health, healthTotals: { brainError: sum("brainError"), brainFallback: sum("brainFallback"), voiceError: sum("voiceError") },
     generatedAt: "2026-11-24T06:05:00.000Z",
   };
 }
 export function emptyDashboard(days: 7 | 30 | 90 = 30): Dashboard {
   const s = sampleDashboard(days);
   const z = { trialsStarted: 0, paid: 0, cancelled: 0, refunds: 0, failed: 0 };
-  return { ...s, series: s.series.map((p) => ({ date: p.date, ...z })), totals: z, previous: z, funnel: { trialsStarted: 0, trialToPaid: 0 }, stats: { ...s.stats, current: [], estMonthlyUsd: 0, windows: s.stats.windows.map((w) => ({ ...w, trialsStarted: 0, cancelledTrials: 0, trialToPaid: 0, directPaid: 0, paidCancelled: 0, refunds: 0, failedPayments: 0 })) }, usage: { subscribersWithUsage: 0, turnsThisPeriod: 0, atOrAbove80Percent: 0 }, recent: [] };
+  return { ...s, series: s.series.map((p) => ({ date: p.date, ...z })), totals: z, previous: z, funnel: { trialsStarted: 0, trialToPaid: 0 }, stats: { ...s.stats, current: [], estMonthlyUsd: 0, windows: s.stats.windows.map((w) => ({ ...w, trialsStarted: 0, cancelledTrials: 0, trialToPaid: 0, directPaid: 0, paidCancelled: 0, refunds: 0, failedPayments: 0 })) }, usage: { subscribersWithUsage: 0, turnsThisPeriod: 0, atOrAbove80Percent: 0 }, recent: [], events: { ...sampleEvents(days), funnel: { signups: 0, consents: 0, learners: 0, active: 0, checkoutClicks: 0 }, retention: { activeToday: 0, active7: 0, active30: 0, quiet: 0, signupsEver: 0 }, sources: [], health: sampleEvents(days).health.map((p) => ({ ...p, brainError: 0, brainFallback: 0, voiceError: 0 })), healthTotals: { brainError: 0, brainFallback: 0, voiceError: 0 } } };
 }
 export const sampleFeedback: FeedbackRow[] = [
   { id: "1", createdAt: "2026-11-24T04:00:00.000Z", message: "My daughter loves Mia. Can there be more maths?", contactEmail: "mum@example.com", page: "/learn" },
