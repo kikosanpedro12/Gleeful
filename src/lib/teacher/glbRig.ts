@@ -18,6 +18,25 @@ export const CHARACTER_FILES = { leo: "/assets/characters/leo.glb", mia: "/asset
 
 export interface ArmBones { arm: THREE.Bone; fore: THREE.Bone; hand: THREE.Bone }
 
+export const FINGER_NAMES = ["thumb", "index", "middle", "ring", "pinky"] as const;
+export type FingerName = (typeof FINGER_NAMES)[number];
+/** One finger joint: its rest rotation and the hinge axes, all in the PARENT bone's frame, measured on the rest pose. */
+export interface FingerJoint {
+  bone: THREE.Bone;
+  rest: THREE.Quaternion;
+  /** Positive angle about this axis curls the finger toward the palm. */
+  flex: THREE.Vector3;
+  /** Positive angle about this axis fans the finger away from the middle finger (knuckle joint only; zero for the middle finger and the thumb). */
+  spread: THREE.Vector3;
+}
+export interface HandRig {
+  /** thumb, index, middle, ring, pinky; three joints each (knuckle, middle, tip). */
+  fingers: FingerJoint[][];
+  /** In the hand bone's frame: the way the palm faces, and the way the middle finger points. */
+  palm: THREE.Vector3;
+  along: THREE.Vector3;
+}
+
 export interface GlbRig {
   look: TeacherLook;
   /** Feet at y = 0, facing +Z, scaled to GLB_HEIGHT. Same contract as TeacherRig.root. */
@@ -37,6 +56,8 @@ export interface GlbRig {
     left: ArmBones; right: ArmBones;
     feet: THREE.Bone[];
   };
+  /** Finger bones and their hinge axes, for the +X hand (bones.left) and the -X hand (bones.right). */
+  hands: { left: HandRig; right: HandRig };
   /** Scale from model units to world units. */
   scale: number;
   /** Natural in-place speeds of the locomotion clips, in WORLD units per second. */
@@ -79,6 +100,60 @@ function lowestVertex(skinned: THREE.SkinnedMesh): number {
   return min;
 }
 
+const FINGER_RE = /^mixamorig(Left|Right)Hand(Thumb|Index|Middle|Ring|Pinky)\d$/;
+/** The same clips without their finger tracks (both layers). */
+export function dropFingerTracks(clips: Map<ClipId, ClipSet>): Map<ClipId, ClipSet> {
+  const keep = (c: THREE.AnimationClip) => new THREE.AnimationClip(c.name, c.duration, c.tracks.filter((t) => !FINGER_RE.test(t.name.slice(0, t.name.lastIndexOf(".")))));
+  const out = new Map<ClipId, ClipSet>();
+  for (const [id, c] of clips) out.set(id, { full: keep(c.full), upper: keep(c.upper), lower: keep(c.lower) });
+  return out;
+}
+
+/**
+ * Finger hinges for one hand, read from the rest pose (a T pose: arms out along X, palms down, fingers along X). The hinge of a finger bends it
+ * about the front-back axis (Z) so the tip goes down toward the palm; spreading fans it about the vertical axis (Y); the thumb closes across the
+ * palm about Y. Axes are stored in each bone's parent frame so they hold however the hand is turned later.
+ */
+function buildHand(model: THREE.Object3D, root: THREE.Object3D, side: "Left" | "Right"): HandRig {
+  root.updateMatrixWorld(true);
+  const pos = (n: string) => find(model, n).getWorldPosition(new THREE.Vector3());
+  const Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+  const middle = pos(`${side}HandMiddle1`);
+  const thumbSide = Math.sign(pos(`${side}HandThumb1`).z - middle.z) || 1;
+  const fingers = FINGER_NAMES.map((fname, fi) => {
+    const F = fname[0].toUpperCase() + fname.slice(1);
+    const bones = [1, 2, 3].map((j) => find(model, `${side}Hand${F}${j}`));
+    const p = bones.map((b) => b.getWorldPosition(new THREE.Vector3()));
+    const tipDir = p[2].clone().sub(p[1]);
+    const dirs = [p[1].clone().sub(p[0]), tipDir.clone(), tipDir];
+    const lateral = Math.sign(p[0].z - middle.z);
+    return bones.map((bn, j): FingerJoint => {
+      const d = dirs[j].clone().normalize();
+      // Flex axis: Z made perpendicular to the bone (thumb: Y). Sign: a positive turn moves the tip down (thumb: across the palm).
+      let flex = (fi === 0 ? Y.clone() : Z.clone().addScaledVector(d, -Z.dot(d))).normalize();
+      const want = fi === 0 ? new THREE.Vector3(0, 0, -thumbSide) : new THREE.Vector3(0, -1, 0);
+      if (new THREE.Vector3().crossVectors(flex, d).dot(want) < 0) flex.negate();
+      const spread = new THREE.Vector3();
+      if (j === 0 && fi !== 0 && lateral !== 0) {
+        spread.copy(Y);
+        if (new THREE.Vector3().crossVectors(spread, d).dot(new THREE.Vector3(0, 0, lateral)) < 0) spread.negate();
+      }
+      const inv = (bn.parent as THREE.Object3D).getWorldQuaternion(new THREE.Quaternion()).invert();
+      return { bone: bn, rest: bn.quaternion.clone(), flex: flex.applyQuaternion(inv), spread: spread.applyQuaternion(inv) };
+    });
+  });
+  const hand = find(model, `${side}Hand`);
+  const hq = hand.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const along = pos(`${side}HandMiddle3`).sub(pos(`${side}HandMiddle1`)).normalize();
+  const palmW = new THREE.Vector3().crossVectors(fingers[2][0].flex.clone().applyQuaternion(find(model, `${side}HandMiddle1`).parent!.getWorldQuaternion(new THREE.Quaternion())), along);
+  // The palm faces perpendicular to the finger line AND the knuckle row (Leo's hand is rolled about 40 degrees in the T pose, so the hinge
+  // direction alone points the palm the wrong way); the side is the one the fingers curl toward.
+  const row = pos(`${side}HandPinky1`).sub(pos(`${side}HandIndex1`));
+  const palmRow = new THREE.Vector3().crossVectors(along, row).normalize();
+  if (palmRow.dot(palmW) < 0) palmRow.negate();
+  return { fingers, palm: palmRow.applyQuaternion(hq), along: along.applyQuaternion(hq) };
+}
+
 /** Build a rig from parsed files (no network): used by loadGlbRig and by the tests. */
 export function assembleGlbRig(id: TeacherId, charScene: THREE.Group, clipsScene: THREE.Group, clipList: THREE.AnimationClip[]): GlbRig {
   const look = LOOKS[id];
@@ -96,7 +171,11 @@ export function assembleGlbRig(id: TeacherId, charScene: THREE.Group, clipsScene
   root.add(holder);
   root.updateMatrixWorld(true);
 
-  const { clips, resolvedTracks, totalTracks } = retargetClips(clipsScene, clipList, model);
+  const retargeted = retargetClips(clipsScene, clipList, model);
+  const { resolvedTracks, totalTracks } = retargeted;
+  // The clips' finger tracks are not used: they were authored on another rest pose and roll every finger base about 110 degrees on these
+  // meshes (a clenched, twisted hand in every clip). Fingers are posed by the animator from the character's own rest pose instead.
+  const clips = dropFingerTracks(retargeted.clips);
   for (const c of CLIP_IDS) if (!clips.has(c)) throw new Error(`clips.glb has no clip ${c}`);
   if (resolvedTracks < totalTracks * 0.8) throw new Error("clips do not match this skeleton");
 
@@ -132,6 +211,8 @@ export function assembleGlbRig(id: TeacherId, charScene: THREE.Group, clipsScene
   const arms = (side: "Left" | "Right"): ArmBones => ({ arm: find(model, `${side}Arm`), fore: find(model, `${side}ForeArm`), hand: find(model, `${side}Hand`) });
   const plusX = lx >= rx ? arms("Left") : arms("Right"), minusX = lx >= rx ? arms("Right") : arms("Left");
 
+  const hands = { left: buildHand(model, root, plusX.hand === find(model, "LeftHand") ? "Left" : "Right"), right: buildHand(model, root, plusX.hand === find(model, "LeftHand") ? "Right" : "Left") };
+
   // Helmet on the head bone: the procedural bubble, scaled to this head (model units).
   const hm = buildHelmet();
   const head = find(model, "Head");
@@ -154,7 +235,7 @@ export function assembleGlbRig(id: TeacherId, charScene: THREE.Group, clipsScene
       neck: find(model, "Neck"), head, left: plusX, right: minusX,
       feet: ["LeftFoot", "LeftToeBase", "LeftToe_End", "RightFoot", "RightToeBase", "RightToe_End"].map((n) => model.getObjectByName(bone(n))).filter((o): o is THREE.Bone => !!o),
     },
-    scale: k, stride, glb: true,
+    hands, scale: k, stride, glb: true,
     // Geometry, material and texture are shared by the cached file (a second rig reuses them), so only our own pieces are freed.
     dispose: () => { disposables.forEach((d) => d.dispose()); sk.skeleton.dispose(); }, // each clone has its own skeleton (and bone texture); geometry and the texture are shared
   };

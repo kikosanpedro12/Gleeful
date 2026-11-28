@@ -358,3 +358,74 @@ describe("GLB wave: the raised hand clears the head", () => {
     });
   }
 });
+
+describe("GLB hands: finger poses are drawn by the animator, from the rest pose", () => {
+  const tipOf = (rig: GlbRig, side: "left" | "right", finger: number) => rig.hands[side].fingers[finger][2].bone.getWorldPosition(new THREE.Vector3());
+  const palmWorld = (rig: GlbRig, side: "left" | "right") => rig.hands[side].palm.clone().applyQuaternion(rig.bones[side].hand.getWorldQuaternion(new THREE.Quaternion()));
+  const angleToRest = (rig: GlbRig, side: "left" | "right") => {
+    let worst = 0;
+    for (const f of rig.hands[side].fingers) for (const j of f) worst = Math.max(worst, j.bone.quaternion.angleTo(j.rest));
+    return worst;
+  };
+  for (const id of ["leo", "mia"] as const) {
+    it(`${id}: the clips carry no finger tracks (their finger rotations twist these hands)`, () => {
+      const rig = rigOf(id);
+      for (const c of rig.clips.values()) for (const t of [...c.full.tracks, ...c.upper.tracks]) expect(t.name).not.toMatch(/Hand(Thumb|Index|Middle|Ring|Pinky)\d/);
+    });
+    it(`${id}: a curl bends every finger toward the palm and a reset puts them back on the rest pose exactly`, async () => {
+      const { rig, anim, step } = harness("glb", id); const g = rig as GlbRig;
+      step({ state: "idle", turnId: 1 }, 5);
+      anim.handOverride = { L: { curl: [0, 0, 0, 0, 0], spread: 0 }, R: { curl: [0, 0, 0, 0, 0], spread: 0 } };
+      step({ state: "idle", turnId: 1 }, 120);
+      expect(angleToRest(g, "left")).toBeLessThan(0.01); // straight = the rest pose (an open T-pose hand)
+      const straight = tipOf(g, "right", 2);
+      const base = g.bones.right.hand.getWorldPosition(new THREE.Vector3());
+      anim.handOverride = { L: { curl: [1, 1, 1, 1, 1], spread: 0 }, R: { curl: [1, 1, 1, 1, 1], spread: 0 } };
+      step({ state: "idle", turnId: 1 }, 120);
+      const fist = tipOf(g, "right", 2);
+      // The middle fingertip comes toward the wrist and moves along the palm side.
+      expect(fist.distanceTo(base)).toBeLessThan(straight.distanceTo(base) * 0.75);
+      expect(fist.clone().sub(straight).dot(palmWorld(g, "right"))).toBeGreaterThan(0.01);
+      // Back to the relaxed default: no pile-up, the same pose as the first time.
+      anim.handOverride = { L: null, R: null };
+      step({ state: "idle", turnId: 1 }, 200);
+      const a = g.hands.right.fingers.flat().map((j) => j.bone.quaternion.clone());
+      step({ state: "idle", turnId: 1 }, 200);
+      g.hands.right.fingers.flat().forEach((j, i) => expect(j.bone.quaternion.angleTo(a[i])).toBeLessThan(1e-4));
+      expect(angleToRest(g, "right")).toBeLessThan(0.9); // relaxed, not a fist
+    });
+    it(`${id}: many frames of the same pose never drift, and a bad curl value is clamped`, () => {
+      const { rig, anim, step } = harness("glb", id); const g = rig as GlbRig;
+      anim.handOverride = { L: { curl: [9, Number.NaN, -3, 1, 1], spread: 5 }, R: null };
+      step({ state: "idle", turnId: 1 }, 100);
+      const a = g.hands.left.fingers.flat().map((j) => j.bone.quaternion.clone());
+      step({ state: "idle", turnId: 1 }, 1000);
+      g.hands.left.fingers.flat().forEach((j, i) => { expect(j.bone.quaternion.angleTo(a[i])).toBeLessThan(1e-4); expect(Number.isFinite(j.bone.quaternion.x)).toBe(true); });
+    });
+    it(`${id}: a wave opens the hand and turns the palm toward the child; pointAt keeps the index out and curls the rest`, () => {
+      const { rig, step, push } = harness("glb", id); const g = rig as GlbRig;
+      step({ state: "idle", turnId: 1 }, 10);
+      push(1, { name: "gesture", gesture: "wave" });
+      step({ state: "idle", turnId: 1 }, 55);
+      expect(angleToRest(g, "right")).toBeLessThan(0.45); // fingers near straight (open palm), not curled
+      const palm = palmWorld(g, "right");
+      expect(palm.z).toBeGreaterThan(0.5); // faces the child (+Z), not the ear or the floor
+      step({ state: "idle", turnId: 1 }, 200);
+      push(2, { name: "pointAt", target: "board" });
+      step({ state: "idle", turnId: 2 }, 70);
+      const side = (g.bones.left.hand.getWorldPosition(new THREE.Vector3()).y > g.bones.right.hand.getWorldPosition(new THREE.Vector3()).y) ? "left" : "right";
+      const f = g.hands[side].fingers;
+      expect(f[1][1].bone.quaternion.angleTo(f[1][1].rest)).toBeLessThan(0.2); // index straight
+      expect(f[2][1].bone.quaternion.angleTo(f[2][1].rest)).toBeGreaterThan(1.0); // middle curled
+    });
+    it(`${id}: disposing the animator leaves the fingers on the rest pose`, () => {
+      const { rig, anim, step } = harness("glb", id); const g = rig as GlbRig;
+      anim.handOverride = { L: { curl: [1, 1, 1, 1, 1], spread: 1 }, R: { curl: [1, 1, 1, 1, 1], spread: 1 } };
+      step({ state: "idle", turnId: 1 }, 100);
+      expect(angleToRest(g, "left")).toBeGreaterThan(0.5);
+      anim.dispose();
+      expect(angleToRest(g, "left")).toBeLessThan(1e-4);
+      expect(angleToRest(g, "right")).toBeLessThan(1e-4);
+    });
+  }
+});

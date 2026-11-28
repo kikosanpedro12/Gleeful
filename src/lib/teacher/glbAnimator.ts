@@ -3,7 +3,7 @@ import type { Action, Gesture, SceneCommand } from "@/lib/scene/commands";
 import { ACTION_SEC, GESTURE_SEC, type FrameInput } from "./animator";
 import type { ActorAnimator } from "./actor";
 import { actPlan, chooseLayers, fitTimeScale, gesturePlan, type Layer } from "./glbClips";
-import type { ArmBones, GlbRig } from "./glbRig";
+import { FINGER_NAMES, type ArmBones, type GlbRig, type HandRig } from "./glbRig";
 import type { TeacherState } from "./stateMachine";
 
 /**
@@ -16,6 +16,8 @@ import type { TeacherState } from "./stateMachine";
  *  - two clip layers (hips+legs, and spine-up) on one AnimationMixer, crossfaded separately, so a gesture or a talking
  *    beat can play over standing or walking;
  *  - arm IK (two-bone, analytic) for wave, think, eat, open hands, shrug, talking beats and pointAt;
+ *  - finger poses (relaxed, open palm, point, thumbs-up fist) written on the finger bones from the character's own rest pose every frame
+ *    (the clips' finger tracks are dropped in glbRig.ts), and a wrist roll that turns the palm toward the child for a wave or open hands;
  *  - small procedural head / spine offsets for look-at, listening, thinking, nodding and voice emphasis.
  * No mouth: the models have no face blendshapes. Speech is body and head emphasis, NOT lip sync.
  */
@@ -81,6 +83,41 @@ export function solveArm(a: ArmBones, target: THREE.Vector3, pole: THREE.Vector3
   a.arm.updateMatrixWorld(true);
 }
 
+/** A hand shape: how far each finger (thumb, index, middle, ring, pinky) is curled (0 straight, 1 fully curled) and how far the fingers fan out (0..1). */
+export interface HandPose { curl: number[]; spread: number }
+export const HAND_POSES = {
+  /** Hanging at the side: loose, slightly curled, never a fist. */
+  relaxed: { curl: [0.2, 0.2, 0.26, 0.32, 0.4], spread: 0.15 },
+  /** Open palm: fingers straight and fanned a little (wave). */
+  open: { curl: [0, 0.02, 0.02, 0.03, 0.05], spread: 0.75 },
+  /** Soft open hand for open_hands, shrug and talking beats. */
+  soft: { curl: [0.05, 0.1, 0.1, 0.14, 0.2], spread: 0.45 },
+  /** Index out, the others curled, thumb tucked half way. */
+  point: { curl: [0.5, 0, 0.95, 0.95, 0.95], spread: 0 },
+  /** Fist with the thumb out (thumbs_up). */
+  thumbsUp: { curl: [0, 0.95, 0.95, 0.95, 0.95], spread: 0 },
+  /** Hand at the chin or the mouth. */
+  curled: { curl: [0.3, 0.45, 0.5, 0.55, 0.6], spread: 0 },
+} as const satisfies Record<string, HandPose>;
+/** Largest bend of each finger's three joints (knuckle, middle, tip), radians; and the fan-out of each finger's knuckle. */
+const FLEX_MAX = [[0.35, 0.8, 0.9], [1.35, 1.6, 1.1], [1.4, 1.7, 1.15], [1.4, 1.7, 1.15], [1.35, 1.7, 1.1]];
+const SPREAD_MAX = [0, 0.22, 0, 0.2, 0.38];
+interface HandWant { pose: HandPose; palm: THREE.Vector3 | null; w: number }
+const clonePose = (p: HandPose): HandPose => ({ curl: [...p.curl], spread: p.spread });
+
+/** Write a hand shape onto the finger bones: absolute (rest rotation + bend), so nothing piles up from frame to frame. */
+export function applyHandPose(h: HandRig, pose: HandPose) {
+  for (let i = 0; i < FINGER_NAMES.length; i++) {
+    const c = clamp(Number.isFinite(pose.curl[i]) ? pose.curl[i] : 0, 0, 1);
+    for (let j = 0; j < 3; j++) {
+      const jt = h.fingers[i][j];
+      jt.bone.quaternion.copy(jt.rest).premultiply(pq.setFromAxisAngle(jt.flex, c * FLEX_MAX[i][j]));
+      if (j === 0 && SPREAD_MAX[i]) jt.bone.quaternion.premultiply(pq.setFromAxisAngle(jt.spread, clamp(pose.spread, 0, 1) * SPREAD_MAX[i]));
+    }
+  }
+}
+export function restHand(h: HandRig) { for (const f of h.fingers) for (const j of f) j.bone.quaternion.copy(j.rest); }
+
 /** Talking-hand variations (seeded), like BEATS in animator.ts: which hands, how far forward/out/up. */
 const BEATS: { l: number; r: number; fwd: number; out: number; up: number }[] = [
   { l: 0, r: 1, fwd: 0.15, out: 0.07, up: -0.05 },
@@ -110,6 +147,11 @@ export class GlbTeacherAnimator implements ActorAnimator {
   private modBones: THREE.Bone[];
   private base: THREE.Quaternion[];
   private armW = { L: 0, R: 0 };
+  private hand = { L: clonePose(HAND_POSES.relaxed), R: clonePose(HAND_POSES.relaxed) };
+  private palmW = { L: 0, R: 0 };
+  private palmDir = { L: new V(0, 0, 1), R: new V(0, 0, 1) };
+  /** Test and tuning hook: a hand shape that replaces the automatic one (null = automatic). */
+  handOverride: { L: HandPose | null; R: HandPose | null } = { L: null, R: null };
   private armT = { L: new V(), R: new V() };
   private hipRestY: number;
   private jointBase = 0;
@@ -123,7 +165,7 @@ export class GlbTeacherAnimator implements ActorAnimator {
     this.mixer = new THREE.AnimationMixer(rig.model);
     this.ch = { upper: new Channel(this.mixer, "upper"), lower: new Channel(this.mixer, "lower") };
     const b = rig.bones;
-    this.modBones = [b.spine1, b.neck, b.head, b.left.arm, b.left.fore, b.right.arm, b.right.fore];
+    this.modBones = [b.spine1, b.neck, b.head, b.left.arm, b.left.fore, b.left.hand, b.right.arm, b.right.fore, b.right.hand];
     this.base = this.modBones.map((o) => o.quaternion.clone());
     this.hipRestY = b.hips.position.y;
     this.applyLayers({ lower: "idle", upper: "idle", upperFrom: 0, lowerFrom: 0, loop: true, fade: 0, timeScale: 1 });
@@ -133,7 +175,10 @@ export class GlbTeacherAnimator implements ActorAnimator {
   }
 
   /** Stop every action and release the mixer's bindings so a discarded animator leaves the shared bones at rest. */
-  dispose() { this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.rig.model); }
+  dispose() {
+    this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.rig.model);
+    restHand(this.rig.hands.left); restHand(this.rig.hands.right); // the mixer does not own the fingers, so put them back by hand
+  }
 
   /** Lowest foot joint, in the root's local height (so it does not depend on where the root currently is). */
   private lowestJoint(): number {
@@ -362,6 +407,10 @@ export class GlbTeacherAnimator implements ActorAnimator {
     }
     rig.root.updateMatrixWorld(true);
 
+    // Hands: wrist roll (palm toward the child) and finger shapes.
+    this.handsUpdate(f, dt, { gesture, gestureT: this.active?.kind === "gesture" ? this.active.t : 0, act, pointArm, level });
+    rig.root.updateMatrixWorld(true);
+
     // --- ground: the feet decide the height (jumps lift the root, so root.position.y is the jump height) --------
     const ground = f.groundY ? f.groundY(rig.root.position.x, rig.root.position.z) : 0;
     const air = clamp(this.lowestJoint() - this.jointBase, -0.3, 1.5);
@@ -390,6 +439,81 @@ export class GlbTeacherAnimator implements ActorAnimator {
     this.debug.gesture = this.active?.kind === "gesture" ? this.active.gesture : null;
     this.debug.action = this.active?.kind === "act" ? this.active.action : null;
     this.debug.pointing = this.active?.kind === "point" ? this.active.target : null;
+  }
+
+  /** Which hand shape and palm direction each hand wants this frame (palm directions in the character's frame: x out from the body, y up, z forward). */
+  private handWants(f: FrameInput, c: { gesture: Gesture | null; gestureT: number; act: Action | null; pointArm: ArmSide | null; level: number }): { L: HandWant; R: HandWant } {
+    const rel = (): HandWant => ({ pose: HAND_POSES.relaxed, palm: null, w: 0 });
+    const want = { L: rel(), R: rel() };
+    const sides = ["L", "R"] as const;
+    const out = (s: ArmSide) => (s === "L" ? 1 : -1);
+    const forward = (s: ArmSide, x: number, y: number, z: number, w: number, pose: HandPose) => { want[s] = { pose, palm: new V(out(s) * x, y, z).normalize(), w }; };
+    if (c.pointArm) {
+      want[c.pointArm] = { pose: HAND_POSES.point, palm: null, w: 0 };
+      return want;
+    }
+    if (c.act === "eat") { want.R = { pose: HAND_POSES.curled, palm: null, w: 0 }; want.L = { pose: HAND_POSES.curled, palm: null, w: 0 }; return want; }
+    if (c.act === "clap") { for (const s of sides) want[s] = { pose: { curl: [0.05, 0.05, 0.05, 0.08, 0.1], spread: 0.1 }, palm: null, w: 0 }; return want; }
+    if (c.act || !c.gesture) {
+      if (!c.act && f.state === "speaking") {
+        // Talking hands (the same hands the IK lifts): open, palms turned up and a little toward the child.
+        const bt = BEATS[this.beat];
+        if (bt.l) forward("L", 0.15, 0.55, 0.8, 0.7, HAND_POSES.soft);
+        if (bt.r) forward("R", 0.15, 0.55, 0.8, 0.7, HAND_POSES.soft);
+      }
+      return want;
+    }
+    const e = smooth(Math.min(1, c.gestureT / 0.3)) * smooth(Math.min(1, (GESTURE_SEC[c.gesture] - c.gestureT) / 0.3));
+    switch (c.gesture) {
+      case "wave": forward("R", 0.35, 0.1, 1, e, HAND_POSES.open); break;
+      case "open_hands": forward("L", 0.1, 0.75, 0.65, e, HAND_POSES.soft); forward("R", 0.1, 0.75, 0.65, e, HAND_POSES.soft); break;
+      case "shrug": forward("L", 0.3, 0.8, 0.5, e, HAND_POSES.soft); forward("R", 0.3, 0.8, 0.5, e, HAND_POSES.soft); break;
+      case "think": want.R = { pose: HAND_POSES.curled, palm: null, w: 0 }; break;
+      case "thumbs_up": {
+        // The agree clip lifts one hand: the higher one makes the fist.
+        const b = this.rig.bones;
+        const s: ArmSide = b.left.hand.getWorldPosition(t1).y >= b.right.hand.getWorldPosition(t2).y ? "L" : "R";
+        want[s] = { pose: HAND_POSES.thumbsUp, palm: null, w: 0 };
+        break;
+      }
+    }
+    return want;
+  }
+
+  private handsUpdate(f: FrameInput, dt: number, c: { gesture: Gesture | null; gestureT: number; act: Action | null; pointArm: ArmSide | null; level: number }) {
+    const { rig } = this;
+    const want = this.handWants(f, c);
+    rig.root.getWorldQuaternion(rq);
+    for (const side of ["L", "R"] as const) {
+      const hr = side === "L" ? rig.hands.left : rig.hands.right;
+      const hb = side === "L" ? rig.bones.left.hand : rig.bones.right.hand;
+      const w = want[side];
+      // Wrist roll: turn the palm toward the wanted direction, blended in with the gesture.
+      const tw = w.palm ? w.w : 0;
+      this.palmW[side] += (tw - this.palmW[side]) * damp(tw > this.palmW[side] ? 14 : 9, dt);
+      if (w.palm) this.palmDir[side].copy(w.palm);
+      if (this.palmW[side] > 0.01) {
+        rig.root.updateMatrixWorld(true);
+        hb.getWorldQuaternion(pq);
+        const along = t3.copy(hr.along).applyQuaternion(pq).normalize();
+        const palm = t4.copy(hr.palm).applyQuaternion(pq);
+        const tgt = t5.copy(this.palmDir[side]).applyQuaternion(rq);
+        palm.addScaledVector(along, -palm.dot(along));
+        tgt.addScaledVector(along, -tgt.dot(along));
+        if (palm.lengthSq() > 1e-8 && tgt.lengthSq() > 1e-8) {
+          const ang = Math.atan2(along.dot(t1.crossVectors(palm, tgt)), palm.dot(tgt));
+          dq.setFromAxisAngle(along, ang * this.palmW[side]);
+          rotateWorld(hb, dq);
+        }
+      }
+      // Finger shape: ease toward the wanted shape.
+      const ov = this.handOverride[side];
+      const target = ov ?? w.pose;
+      const cur = this.hand[side], k = damp(12, dt);
+      for (let i = 0; i < cur.curl.length; i++) cur.curl[i] += (target.curl[i] - cur.curl[i]) * k;
+      cur.spread += (target.spread - cur.spread) * k;
+      applyHandPose(hr, cur);
+    }
   }
 
   private begin(d: { turnId: number; command: SceneCommand }, f: FrameInput) {
