@@ -11,6 +11,18 @@ const ORIGIN = process.env.ORIGIN || "http://localhost:3111";
 const QS = process.env.QS || "";
 const OUT = fileURLToPath(new URL("./out/", import.meta.url));
 fs.mkdirSync(OUT, { recursive: true });
+// Knobs: ORIGIN, QS, W, H, TAG, TEACHER=leo|mia (forces every pick; default keeps the usual Leo/Mia mix), RM=1 (every page with reduced motion), CHROME.
+// A knob with a value this script cannot use fails loudly instead of being ignored.
+const KNOWN = new Set(["ORIGIN", "QS", "W", "H", "TAG", "TEACHER", "RM", "CHROME"]);
+const bad = [];
+if (process.env.TEACHER && !["leo", "mia"].includes(process.env.TEACHER)) bad.push(`TEACHER=${process.env.TEACHER} (use leo or mia)`);
+if (process.env.RM && !["0", "1"].includes(process.env.RM)) bad.push(`RM=${process.env.RM} (use 0 or 1)`);
+for (const k of ["W", "H"]) if (process.env[k] && !(Number(process.env[k]) > 0)) bad.push(`${k}=${process.env[k]} (use a number)`);
+for (const k of Object.keys(process.env)) if (/^(TEACHER|RIG|FALLBACK|RM|TAG)\w+$/.test(k) && !KNOWN.has(k)) bad.push(`${k} is not a knob of this script`);
+if (bad.length) { console.error("FAIL  unusable settings: " + bad.join("; ")); process.exit(2); }
+const pickOf = (def) => process.env.TEACHER || def;
+const NAMEOF = (id) => (id === "mia" ? "Mia" : "Leo");
+const RM_ALL = process.env.RM === "1";
 const W = Number(process.env.W || 1280), H = Number(process.env.H || 800), TAG = process.env.TAG || "lp-d";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const checks = [];
@@ -45,11 +57,12 @@ async function open(path, { stub = "live", rm = false, post = null, voice = "off
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.evaluateOnNewDocument(() => document.addEventListener("securitypolicyviolation", (e) => console.error(`CSP: ${e.violatedDirective} ${e.blockedURI}`)));
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 1, isMobile: W < 700, hasTouch: W < 700 });
-  if (rm) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+  if (rm || RM_ALL) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
   await page.setRequestInterception(true);
   page.on("request", (r) => {
     const u = new URL(r.url());
     const json = (status, body) => r.respond({ status, contentType: "application/json", body: JSON.stringify(body) });
+    if (u.pathname.startsWith("/audio/")) return r.respond({ status: 404, body: "" }); // the recorded greeting is exercised by greeting-break.mjs; here a missing file proves the browser-voice fallback
     if (u.pathname === "/api/voice") {
       if (r.method() === "GET") { posts.voiceGet++; return json(200, voice === "landing" ? { configured: true, public: false, landing: true } : { configured: false, public: false, landing: false }); }
       posts.voice++; return json(429, { error: "daily_limit" });
@@ -77,10 +90,10 @@ const real = (errs) => errs.filter((e) => !/Failed to load resource/.test(e));
   check("visitor can choose Leo or Mia", !!(await page.$('[data-testid="pick-leo"]')) && !!(await page.$('[data-testid="pick-mia"]')));
   check("the 3D classroom canvas is on the page", !!(await page.$(".lp-class-stage canvas")));
   await page.screenshot({ path: `${OUT}${TAG}-choose.png` });
-  await page.click('[data-testid="pick-mia"]');
+  await page.click(`[data-testid="pick-${pickOf("mia")}"]`);
   await page.waitForSelector("#class-q");
   check("starter question chips show before the first question", !!(await page.$('[data-testid="taste-chips"]')));
-  check("the tutor opens with a line that offers the two starter questions, no try used", /Want to find out why Mars is red, or how old the pyramids are\?/.test(await page.$eval('[data-testid="taste-opener"]', (e) => e.textContent).catch(() => "")) && posts.count === 0 && (await page.$$('[data-testid="taste-chips"] .lp-chip')).length === 2);
+  check("the tutor greets by name and asks what to learn, one sample chip only, no try used", new RegExp(`Hi, I'm ${NAMEOF(pickOf("mia"))}! What do you want to learn today\\?`).test(await page.$eval('[data-testid="taste-opener"]', (e) => e.textContent).catch(() => "")) && posts.count === 0 && (await page.$$('[data-testid="taste-chips"] .lp-chip')).length === 1);
   check("the opener is not a try: counter still says 3 free tries", /3 free tries/.test(await page.$eval('[data-testid="taste-count"]', (e) => e.textContent)));
   const hasSR = await page.evaluate(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition));
   check("the mic button is there (discoverable) but the voice toggle, the mic disclosure and the gate card are not, until a grown-up asks", !hasSR || (!!(await page.$('[data-testid="taste-mic"]')) && !(await page.$('[data-testid="taste-mute"]')) && !(await page.$('[data-testid="taste-mic-disclosure"]')) && !(await page.$('[data-testid="grownup-gate"]'))), `SR=${hasSR}`);
@@ -160,7 +173,7 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
 {
   const { page, errors } = await open("/", { noMic: true });
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
-  await page.click('[data-testid="pick-leo"]');
+  await page.click(`[data-testid="pick-${pickOf("leo")}"]`);
   await page.waitForSelector("#class-q");
   check("no mic button without SpeechRecognition", !(await page.$('[data-testid="taste-mic"]')) && !(await page.$('[data-testid="taste-mic-disclosure"]')));
   check("no console errors without SpeechRecognition", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
@@ -171,11 +184,11 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
 {
   const { page, errors, posts } = await open("/", { voice: "landing", speech: "fake", grown: true });
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
-  await page.click('[data-testid="pick-leo"]');
+  await page.click(`[data-testid="pick-${pickOf("leo")}"]`);
   await page.waitForSelector("#class-q");
   await sleep(500); // the voice probe answers
   await page.waitForFunction(() => (window.__spoken || []).some((t) => /Want to find out why Mars is red/.test(t)), { timeout: 8000 }).catch(() => {}); // the voice list can take up to 1.2 s to load
-  check("the opener is spoken with the free browser voice and never calls ElevenLabs", (await page.evaluate(() => window.__spoken)).some((t) => /Want to find out why Mars is red/.test(t)) && posts.voice === 0, `voice posts=${posts.voice}`);
+  check("the opener is spoken with the free browser voice and never calls ElevenLabs", (await page.evaluate(() => window.__spoken)).some((t) => /What do you want to learn today/.test(t)) && posts.voice === 0, `voice posts=${posts.voice}`);
   await page.click('[data-testid="taste-chips"] .lp-chip');
   await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 15000 }).catch(() => {});
   await page.waitForSelector('[data-testid="taste-stop"]', { timeout: 15000 }).catch(() => {});
@@ -208,7 +221,7 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
   const spoken = () => page.evaluate(() => window.__spoken.length);
   const quiet = async () => posts.voice === 0 && posts.voiceGet === 0 && (await page.evaluate(() => window.__media + window.__srStart)) === 0 && (await spoken()) === 0;
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
-  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q"); await sleep(1500);
+  await page.click(`[data-testid="pick-${pickOf("leo")}"]`); await page.waitForSelector("#class-q"); await sleep(1500);
   check("gate: the opener is NOT spoken and nothing voice-related is requested before accept", await quiet(), `spoken=${await spoken()} voice=${posts.voice} get=${posts.voiceGet}`);
   await page.click('[data-testid="taste-chips"] .lp-chip');
   await page.waitForFunction(() => document.querySelector('[data-testid="taste-reply"]')?.textContent?.includes("answer 1"), { timeout: 15000 }).catch(() => {});
@@ -252,7 +265,7 @@ for (const [p, re] of [["/pricing", /US\$29[\s\S]*US\$79/], ["/faq", /Questions 
   await page.evaluate(() => sessionStorage.setItem("gleeful.grownup.v1", "YES"));
   await page.reload({ waitUntil: "domcontentloaded" }); await sleep(1500);
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
-  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q"); await sleep(1200);
+  await page.click(`[data-testid="pick-${pickOf("leo")}"]`); await page.waitForSelector("#class-q"); await sleep(1200);
   check("a stored value other than exactly 'yes' is ignored: opener silent", (await page.evaluate(() => window.__spoken.length)) === 0);
   await page.close();
 }
@@ -267,7 +280,7 @@ async function acts(label, body, { expectGesture = null, expectBoardChange, expe
   const { page, errors, posts } = await open("/?test=1", { post: (n) => ({ reply: `Answer ${n}.`, turnsLeft: 2, ...body }) });
   await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 });
   await page.evaluate(HOOKS);
-  await page.click('[data-testid="pick-leo"]');
+  await page.click(`[data-testid="pick-${pickOf("leo")}"]`);
   await page.waitForSelector("#class-q");
   await page.waitForFunction(() => window.__teacher?.animator, { timeout: 15000 }).catch(() => {});
   if (!(await page.evaluate(() => !!window.__teacher))) { check(`${label}: test hooks present (use npm run build:test)`, false); await page.close(); return; }

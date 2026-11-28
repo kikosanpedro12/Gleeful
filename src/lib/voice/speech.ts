@@ -16,7 +16,7 @@ export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   const now = window.speechSynthesis.getVoices();
   if (now.length) return Promise.resolve((cache = now));
   return new Promise((res) => {
-    const done = () => res((cache = window.speechSynthesis.getVoices()));
+    const done = () => res((cache = window.speechSynthesis?.getVoices?.() ?? [])); // the page may have lost speechSynthesis by now
     window.speechSynthesis.addEventListener("voiceschanged", done, { once: true });
     setTimeout(done, 1200);
   });

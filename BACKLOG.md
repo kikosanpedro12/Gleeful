@@ -40,3 +40,16 @@ Console 50/80% alerts, ElevenLabs key spend cap + training opt-out, Honor X9b re
 - Step 2 (founder decision first): parent picks interests from a fixed list; Leo uses them in examples. Needs a consent-text and privacy-notice update and a re-confirm.
 - Step 3: short first-session intro chat that only fills the same fixed lists.
 - Also: optional "how to say it" field for the name (voice pronunciation). No "remembers you" claims until measured.
+
+## Payments vendor switch (28 Nov 2026)
+- [ ] Dodo Payments: Product Information submitted (Individual, SaaS/AI software) and under review (they say ~72h). Founder still to do: ID check (Persona), bank (UnionBank PHP, name must match ID), 2FA by 7 Dec 2026.
+- [ ] Freemius is PAUSED (sandbox only, no more work on it). When Dodo approves a live account: put the payment provider behind one small interface, build the Dodo adapter (checkout + webhook + signature check, narrow `billing_writer` path unchanged), test in Dodo test mode, THEN remove every line that refers to Freemius (src/lib/billing/*, src/app/api/freemius/webhook/route.ts, env vars FREEMIUS_*, checkout links, ASSET_LICENSES.md row, privacy page, SECURITY.md, docs, tests, Vercel env). Founder's instruction, 28 Nov.
+- [ ] Polar only if Dodo declines (its policy lists AI content generation as "may not be accepted"); Paddle application still unanswered.
+
+## Marketing video tooling (idea, 14 Nov 2026)
+- [ ] OpenMontage (github.com/OpenMontageInc/OpenMontage): possible tool for marketing videos once we start marketing. AGPLv3, so keep it OUT of the Gleeful codebase; verify the real source repo first; run it isolated from our keys; follow the honesty/kids rules; add ASSET_LICENSES.md rows for anything used.
+
+## Landing page motion + field trip (28 Nov 2026)
+- [ ] Motion polish from Charles Liu's reel (ease-out entrances, 150-250ms popovers, 30ms stagger, press scale 0.97, pulse on correct, exits 20% shorter, no bounce on everyday UI) as shared motion settings; reduced motion respected.
+- [ ] "Take a field trip" scroll section below the hero: classroom -> Mars -> Fair Share market -> parent view -> ask box; reuse existing worlds and scenes, lazy-loaded, still-card fallback for reduced motion / weak phones / no 3D. No new worlds, no scroll hijacking.
+- [ ] Greeting audio: `GREETING_AUDIO` in src/lib/voice/greeting.ts is null. Two takes generated in ElevenLabs on 28 Nov (stand-in voices); files still to be added under public/audio/ + ASSET_LICENSES.md row.

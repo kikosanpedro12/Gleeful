@@ -317,7 +317,7 @@ class SessionController {
     if (this.s.status !== "disconnected" || !teacher) return;
     this.set({
       banner: null, status: "connecting", transcript: [], usage: { ...emptyUsage }, directives: [],
-      boardText: "Ask me anything!", world: "classroom", transit: null, choices: [], question: null, widget: null, scene: null,
+      boardText: "Ask me a question!", world: "classroom", transit: null, choices: [], question: null, widget: null, scene: null,
       invite: null, inspecting: null, listening: false, interim: "",
     });
     this.firstTurnDone = false;
@@ -413,7 +413,7 @@ class SessionController {
   /** The visitor picked a tutor: the classroom is "connected" so turns, the thinking nod and speaking work as in a lesson. */
   tasteOpen(teacher: TeacherId) {
     this.chooseTeacher(teacher);
-    this.set({ status: "connected", world: "classroom", boardText: "Ask me anything!" });
+    this.set({ status: "connected", world: "classroom", boardText: "Ask me a question!" });
     this.dispatch({ type: "CONNECTED" });
   }
   tasteClose() { this.tasteLevel = null; this.dispatch({ type: "DISCONNECTED" }); this.set({ status: "disconnected", teacher: null, directives: [] }); }
@@ -435,7 +435,7 @@ class SessionController {
   tasteActs(a: { gesture?: unknown; act?: unknown; board?: unknown }) {
     const turnId = this.s.conv.turnId;
     const ctx = contextFor(this.currentWorld());
-    let board = "Ask me anything!"; // no valid new phrase = back to the default, so an old answer never lingers
+    let board = "Ask me a question!"; // no valid new phrase = back to the default, so an old answer never lingers
     if (boardOk(a.board)) {
       const r = parseSceneCommand("writeOnBoard", { text: a.board }, ctx);
       if (r.ok && r.command.name === "writeOnBoard") board = r.command.text;

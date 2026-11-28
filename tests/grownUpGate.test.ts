@@ -60,20 +60,26 @@ describe("source guards: nothing voice-related before the grown-up says yes", ()
     expect(b.indexOf("voiceAllowed(gateRef.current)")).toBeGreaterThan(-1);
     expect(b.indexOf("voiceAllowed(gateRef.current)")).toBeLessThan(b.indexOf("speakTaste("));
   });
+  it("the recorded greeting is the one sound that needs no gate: a same-origin file from greeting.ts, played only from greet()", () => {
+    expect([...hero.matchAll(/playRecorded\(/g)].length).toBe(1);
+    expect(fnBody("greet")).toContain("GREETING_AUDIO[t]");
+    expect(heroCode).not.toMatch(/new Audio|fetch\([^)]*audio/);
+  });
   it("every other voice entry point is behind the gate", () => {
     expect(hero).toMatch(/voiceAllowed\(gateRef\.current\) && elevenLandingAvailable\(\)\) primeAudio\(\)/); // elevenLandingAvailable() would start the probe
     const calls = [...hero.matchAll(/\b(probeVoice|primeAudio|elevenLandingAvailable|listenOnce|speakTaste)\(/g)].map((m) => m[1]);
     expect(calls.sort()).toEqual(["elevenLandingAvailable", "listenOnce", "primeAudio", "probeVoice", "probeVoice", "speakTaste"]);
     // the two probeVoice calls: on mount only when an earlier yes is remembered, and in answerGate(true)
-    expect(hero).toContain("if (voiceAllowed(earlier)) void probeVoice()");
-    expect(fnBody("answerGate")).toContain("if (accepted) { void probeVoice()");
+    expect(hero).toContain("if (voiceAllowed(earlier)) { void probeVoice(); void loadVoices();");
+    expect(fnBody("answerGate")).toContain("if (accepted) { void probeVoice(); void loadVoices();");
     expect(hero).not.toMatch(/useEffect\(\(\) => \{[\s\S]{0,400}\n\s+void probeVoice\(\);/);
   });
   it("no direct getUserMedia / SpeechRecognition / speechSynthesis / api/voice in the hero", () => {
     expect(heroCode).not.toMatch(/getUserMedia|new (webkit)?SpeechRecognition|speechSynthesis|\/api\/voice/);
   });
   it("Mute voice renders only when voice is on; the gate card has two equal buttons", () => {
-    expect(hero).toMatch(/const voiceRow = on && /);
+    // Mute shows while a RECORDED greeting plays or after the visitor muted (a way back); after answers it still needs voice on.
+    expect(hero).toMatch(/const voiceRow = recorded \|\| muted \|\| \(on && \(speaking/);
     const yes = hero.match(/<button[^\n]*data-testid="gate-yes"/)?.[0] ?? "";
     const no = hero.match(/<button[^\n]*data-testid="gate-no"/)?.[0] ?? "";
     expect(yes).toContain("lp-btn lp-btn-main"); expect(no).toContain("lp-btn lp-btn-main");

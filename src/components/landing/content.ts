@@ -1,7 +1,7 @@
 import { AI_NOUN, NOUN } from "./copy";
 
 export const STEPS = [
-  { title: "Your child asks", body: "Out loud or typed, in their own words. Anything from volcanoes to long division." },
+  { title: "Your child asks", body: "Out loud or typed, in their own words. Questions about science, maths, reading, history and the world." },
   { title: `The ${NOUN} shows it`, body: `It walks, points and draws on the board, then takes the class somewhere to look closer.` },
   { title: "Your child explores", body: "Tap, pick up and spin things. Answer questions, and get a hint when stuck." },
   { title: "You see what stuck", body: "The parent view separates answers given with help from answers given a day later, alone. In this early version it is saved on the device you used." },

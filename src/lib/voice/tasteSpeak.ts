@@ -95,3 +95,30 @@ export function speakTaste(text: string, teacher: TeacherId, ev: TasteVoiceEvent
     },
   };
 }
+
+/**
+ * Recorded lines: files we ship ourselves (same origin, `media-src 'self'`). Free, nothing is sent anywhere, so no grown-up
+ * step and no spend. Same contract as speakTaste: callbacks only after sound really started / the line ended; stop() is silent.
+ * Call from a tap handler (autoplay rules). `onEnd(false)` when it could not play (blocked, missing file, 4 s with no sound).
+ */
+export function playRecorded(src: string, ev: TasteVoiceEvents): TasteVoice {
+  const my = ++seq;
+  let done = false, began = false;
+  const live = () => my === seq && !done;
+  let a: HTMLAudioElement | null = null;
+  const end = () => { if (!live()) return; done = true; speaking = false; clearTimeout(guard); ev.onEnd(began); };
+  const guard = setTimeout(() => { if (!began) { try { a?.pause(); } catch {} end(); } }, START_GUARD_MS);
+  try {
+    a = new Audio(src);
+    a.onplaying = () => { if (!live() || began) return; began = true; speaking = true; t0 = performance.now(); ev.onStart(); };
+    a.onended = end; a.onerror = end;
+    void a.play().catch(end);
+  } catch { queueMicrotask(end); }
+  return {
+    stop() {
+      if (my !== seq) return;
+      seq++; speaking = false; clearTimeout(guard);
+      try { a?.pause(); } catch {}
+    },
+  };
+}

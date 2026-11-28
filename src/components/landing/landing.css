@@ -364,3 +364,45 @@ html:has(.lp) { scroll-behavior: smooth; background: var(--night, #14213D); }
 .lp-mark.lp-mark-foot { padding: 0; }
 /* Nav text links meet the 44px target on desktop too. */
 .lp-nav nav a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ---- Below the hero: one centred container, one grid (checked at 1280, 1920 and 390). ----
+ * The headings were left-aligned in a narrow column with the right third empty, and the steps grid had 4 columns for 3 items. */
+.lp-how .lp-wrap, .lp-trust .lp-wrap, .lp-join .lp-wrap { max-width: 1160px; }
+.lp-how .lp-h2, .lp-trust .lp-h2, .lp-join .lp-h2 { max-width: 24ch; margin-inline: auto; text-align: center; }
+.lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 4vw, 56px); }
+.lp-steps li { text-align: left; }
+@media (max-width: 960px) { .lp-steps { grid-template-columns: minmax(0, 1fr); max-width: 560px; margin-inline: auto; gap: 28px; } }
+.lp-trust-list { list-style: none; margin: clamp(32px, 5vw, 56px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.lp-trust-list li { padding: 22px 24px; border: 2px solid rgba(245, 248, 255, .28); border-radius: 20px; background: rgba(255, 255, 255, .05); }
+.lp-trust-list strong { display: block; margin-bottom: 4px; font-family: var(--display); font-weight: 680; font-size: var(--t0); color: #fff; letter-spacing: -0.01em; }
+@media (max-width: 760px) { .lp-trust-list { grid-template-columns: minmax(0, 1fr); } }
+.lp-trust .lp-join-alt { text-align: center; max-width: 62ch; margin-inline: auto; }
+.lp-join .lp-wrap { text-align: center; }
+.lp-join .lp-ctas { justify-content: center; }
+.lp-join .lp-wrap-narrow { max-width: 760px; }
+
+/* ---- The ask box: a big greeting above a big input (checked at 1280, 1920 and 390). ---- */
+.lp-class .lp-greet { font-family: var(--display); font-weight: 700; font-size: clamp(1.15rem, 2.2vw, 1.55rem); line-height: 1.25; letter-spacing: -0.025em; color: var(--night); text-wrap: balance; overflow-wrap: anywhere; }
+.lp-class .lp-say:has(.lp-greet) { min-height: 0; }
+.lp-greet-note { margin-top: 6px; font-size: var(--t-1); font-weight: 700; color: #3b4660; }
+.lp-class .lp-taste-input { min-height: 60px; font-size: max(16px, 1.25rem); font-weight: 600; color: var(--night); }
+.lp-class .lp-taste-input::placeholder { color: #4a5368; font-weight: 500; opacity: 1; }
+/* The one sample question is a quiet text button, still a 44px target. */
+.lp-class .lp-chips-quiet { align-items: center; gap: 4px 8px; }
+.lp-try { font-size: var(--t-1); font-weight: 700; color: #3b4660; }
+.lp-class .lp-chips-quiet .lp-chip { background: transparent; box-shadow: none; border-color: transparent; padding: 8px 6px; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.lp-class .lp-chips-quiet .lp-chip:hover:not(:disabled) { background: var(--tint); transform: none; box-shadow: none; }
+.lp-class .lp-chips-quiet .lp-chip:active:not(:disabled) { transform: none; box-shadow: none; }
+@media (max-width: 560px) {
+  .lp-class .lp-greet { font-size: 1.02rem; }
+  .lp-class .lp-taste-input { min-height: 56px; font-size: 1.05rem; }
+  .lp-class .lp-chips-quiet .lp-chip { font-size: .9rem; }
+}
+@media (max-width: 560px) {
+  /* The rotating example was clipped beside the mic and Ask buttons: the box gets its own full-width row, the two buttons share the row below. */
+  .lp-taste-row { flex-wrap: wrap; }
+  .lp-class .lp-taste-input { flex: 1 1 100%; }
+  .lp-taste-row [type="submit"] { flex: 1 1 0; }
+}
+/* Muted: the control stays and says so in words, not only in an icon. */
+.lp-voice-state { font-size: var(--t-1); font-weight: 700; color: #3b4660; }

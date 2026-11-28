@@ -69,9 +69,11 @@ describe("ClassroomHero wiring", () => {
     expect(src).toMatch(/if \(busyRef\.current\) return; \/\/ a chip was tapped/);
     expect(src).toMatch(/setText\(""\); setBusyNote\(false\);/);
   });
-  it("the opener is fixed text, browser voice only, a wave, and not a model call or a try", () => {
+  it("the greeting is fixed text, a recorded file or the browser voice only, a wave unless reduced motion, and not a model call or a try", () => {
     expect(src).toMatch(/say\(openerLine\(t === "mia" \? "Mia" : "Leo"\), t, true\)/);
     expect(src).toMatch(/session\.tasteActs\(\{ gesture: "wave" \}\)/);
+    expect(src).toMatch(/prefers-reduced-motion: reduce/);
+    expect(src).toMatch(/playRecorded\(src/);
     expect(src).toMatch(/\{ browserOnly \}/);
     const pick = src.slice(src.indexOf("function pick("), src.indexOf("/** Silence the tutor"));
     expect(pick).not.toMatch(/fetch|askTaste|setUsed|setLines/);
@@ -79,11 +81,12 @@ describe("ClassroomHero wiring", () => {
 });
 
 describe("opener copy", () => {
-  it("offers exactly the two starter questions, as words and as the tap choices", () => {
+  it("greets by name, asks one open question, and offers one quiet sample question", () => {
     const line = openerLine("Leo");
-    expect(line).toBe("Hi, I'm Leo! Want to find out why Mars is red, or how old the pyramids are?");
-    expect(STARTERS.map((s) => s.ask)).toEqual(["Why is Mars red?", "How old are the pyramids?"]);
-    expect(tapChips({ used: 0, asked: 0, choices: [], ideas: STARTERS.map((s) => s.ask) }).items).toHaveLength(2);
+    expect(line).toBe("Hi, I'm Leo! What do you want to learn today?");
+    expect(openerLine("Mia")).toBe("Hi, I'm Mia! What do you want to learn today?");
+    expect(STARTERS.map((s) => s.ask)).toEqual(["Why is Mars red?"]);
+    expect(tapChips({ used: 0, asked: 0, choices: [], ideas: STARTERS.map((s) => s.ask) }).items).toHaveLength(1);
     expect(line.length).toBeLessThan(120); // short enough to speak
     expect(line).not.toMatch(/\bAI\b/); // fixed script: claims nothing the card does not already say
   });

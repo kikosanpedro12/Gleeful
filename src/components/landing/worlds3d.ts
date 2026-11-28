@@ -156,7 +156,7 @@ function classroom(k: Kit): World {
   if (ctx) {
     ctx.fillStyle = "#1E4D3A"; ctx.fillRect(0, 0, c.width, c.height);
     ctx.fillStyle = "#F5F8FF"; ctx.font = "800 120px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("Ask me anything", c.width / 2, c.height / 2);
+    ctx.fillText("Ask me a question", c.width / 2, c.height / 2);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;

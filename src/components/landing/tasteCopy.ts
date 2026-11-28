@@ -4,6 +4,7 @@
  * Hooks are curiosity only: no urgency, guilt or streaks, and nothing aimed at the child about paying.
  */
 import { choicesOk, topicOk } from "@/lib/taste/boardText";
+import { greetingLine } from "@/lib/voice/greeting";
 
 export type Chips = { kind: "ideas" | "choices" | "none"; items: string[] };
 
@@ -25,14 +26,13 @@ export function paywallCopy(name: string | null, topic: unknown): { heading: str
   };
 }
 
-/** The two starter questions. Also the opener's tap choices, so the words match what the tutor just said. */
+/** One quiet sample question for a child who would stall at an empty box. The rotating placeholder covers the rest. */
 export const STARTERS = [
   { ask: "Why is Mars red?", say: "why Mars is red" },
-  { ask: "How old are the pyramids?", say: "how old the pyramids are" },
 ] as const;
 
 /**
- * The tutor's first line, fixed text (no model call, not a try, never ElevenLabs): takes the initiative from the first
- * second. It claims nothing the page is not doing; the card already says it is a live AI tutor and can be wrong.
+ * The tutor's first line after the pick, fixed text (no model call, not a try, never ElevenLabs): a greeting and one open question.
+ * It claims nothing the page is not doing; the card already says it is a live AI tutor and can be wrong.
  */
-export const openerLine = (name: string) => `Hi, I'm ${name}! Want to find out ${STARTERS[0].say}, or ${STARTERS[1].say}?`;
+export const openerLine = (name: string) => greetingLine(name);

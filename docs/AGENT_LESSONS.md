@@ -73,6 +73,12 @@ Rules for entries:
 - `kill` only the PID of your own port (find it by `/proc/<pid>/cwd` and cmdline); `pkill -f next` or a loop over every match can hit another agent's server.
 - A fixed-width centred card and a right-hand picture overlap on 1280px desktops (the card hid the first words of the 'pretend picture' label); and a long spoken reply grew the phone card until it covered the tutor's face. -> size side panels from the card edge (`50vw - 334px`), cap phone card padding/fine print, and screenshot the LONGEST reply in the speaking state on both viewports (`scripts/cap.mjs` pattern in a /tmp copy).
 - A changing label plus `aria-pressed` reads twice ("Voice off, pressed"): use one or the other. A pink focus ring on a cream card is 2.6:1: add the night ring.
+- A section grid with more columns than items, plus a heading capped at 18ch and left-aligned, leaves a third of a 1920px screen empty (steps had 4 columns for 3 items). -> columns = item count, centre the section headings, one shared wrap width (1160px); read the 1280, 1920 and 390 shots of the sections BELOW the hero too.
+- "Ask X anything" copy (headline, chalkboard, steps) overclaimed what the landing tutor does (3 short answers, 1-2 sentences, learning topics only, may be wrong). -> say the scope ("a question about science, maths, reading, history or the world"); rotating example text must be answerable in a sentence (`tests/greeting.test.ts` bans anything/exam/all).
+- A rotating placeholder must be bounded (one loop), static under reduced motion, and never the only label (the sr-only label stays).
+- The GLB wave was IK-targeted at the ear (0.07 out, 0.17 up): it read as a salute. Hand beside the shoulder (0.15 out, 0.13 up) clears the head. The curled hand is the baked mesh pose, not the animation.
+- **Every state is designed, not defaulted** (founder standard, 28 Nov) -> walk docs/UX_STATES.md (empty, loading, error, offline, success, back button, sign-in/checkout return, focus, reduced motion, copy tone) before calling any visible change done.
+- A control that appears only while something plays vanishes when you mute it (mute removed the Mute button). -> keep the control while muted and say "Voice is off" in words; `scripts/greeting-break.mjs` and taste-break2 N cover mute then unmute.
 
 ## Ports
 3111 main session · 3222 tester · 3333/3444/3555 builders · 3199 /security-check. Start with `npx next start -p <n>`, test with `SMOKE_URL=http://localhost:<n>/learn?test=1`, stop with `npm run stop`.

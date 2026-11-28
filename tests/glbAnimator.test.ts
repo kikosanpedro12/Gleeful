@@ -339,3 +339,22 @@ describe("loading note and clean-up", () => {
     expect(r.skinned.skeleton.boneTexture).toBeNull();
   });
 });
+
+describe("GLB wave: the raised hand clears the head", () => {
+  for (const id of ["leo", "mia"] as const) {
+    it(`${id}: while waving, the waving hand stays more than 0.2 m to the side of the head and the arm is actually raised`, () => {
+      const h = harness("glb", id); const rig = h.rig as GlbRig;
+      h.step({ state: "idle", turnId: 1 }, 10);
+      h.push(1, { name: "gesture", gesture: "wave" });
+      let minSide = Infinity, maxUp = -Infinity;
+      for (let i = 0; i < 90; i++) { // the whole 1.9 s gesture, sampled each frame
+        h.step({ state: "idle", turnId: 1 }, 1);
+        if (i < 25 || i > 85) continue; // fully raised part only
+        const hand = rig.bones.right.hand.getWorldPosition(new THREE.Vector3()), head = rig.bones.head.getWorldPosition(new THREE.Vector3());
+        minSide = Math.min(minSide, Math.abs(hand.x - head.x)); maxUp = Math.max(maxUp, hand.y - rig.bones.right.arm.getWorldPosition(new THREE.Vector3()).y);
+      }
+      expect(minSide).toBeGreaterThan(0.2);
+      expect(maxUp).toBeGreaterThan(0.1);
+    });
+  }
+});

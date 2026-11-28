@@ -51,6 +51,7 @@ async function open(o = {}) {
   page.on("request", (r) => {
     const u = new URL(r.url());
     const json = (s, b) => r.respond({ status: s, contentType: "application/json", body: typeof b === "string" ? b : JSON.stringify(b) });
+    if (u.pathname.startsWith("/audio/")) return r.respond({ status: 404, body: "" }); // recorded greeting missing: the browser-voice fallback runs (the real files are exercised by greeting-break.mjs)
     if (u.pathname === "/api/voice") {
       if (r.method() === "GET") st.voiceGet++;
       if (r.method() === "GET") return json(200, o.voice === "landing" ? { configured: true, public: false, landing: true } : { configured: false, public: false, landing: false });
@@ -344,9 +345,9 @@ const ctl = (page, expr) => page.evaluate(`(() => { const c = window.__ctl; retu
   await page.waitForFunction(() => window.__spoken.length >= 1, { timeout: 8000 }).catch(() => {});
   await sleep(800);
   const spoken = await page.evaluate(() => window.__spoken);
-  check("opener: spoken in the browser voice, names the tutor and offers both starters", spoken.length === 1 && /^Hi, I.m Mia! Want to find out why Mars is red, or how old the pyramids are\?$/.test(spoken[0]), JSON.stringify(spoken));
+  check("opener: spoken in the browser voice, names the tutor and asks what to learn", spoken.length === 1 && /^Hi, I.m Mia! What do you want to learn today\?$/.test(spoken[0]), JSON.stringify(spoken));
   check("opener: no /api/voice call (ElevenLabs characters not spent) and no /api/taste call", st.voice === 0 && st.taste === 0, `voice=${st.voice} taste=${st.taste}`);
-  check("opener: not a try (counter says 3 free tries, starter chips visible, 'Stop talking' shown while it plays)", /3 free tries/.test(await text(page, '[data-testid="taste-count"]')) && (await chipsOf(page, '[data-testid="taste-chips"]')).join("|") === "Why is Mars red?|How old are the pyramids?" && !!(await page.$('[data-testid="taste-stop"]')));
+  check("opener: not a try (counter says 3 free tries, the one sample chip visible, 'Stop talking' shown while it plays)", /3 free tries/.test(await text(page, '[data-testid="taste-count"]')) && (await chipsOf(page, '[data-testid="taste-chips"]')).join("|") === "Why is Mars red?" && !!(await page.$('[data-testid="taste-stop"]')));
   check("opener: tutor waves (a gesture, not an action) and the mouth moves while it plays", (await ctl(page, "c.outputLevel()")) > 0);
   await page.screenshot({ path: `${OUT}${TAG}-opener.png` });
   check("opener: no console errors", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
@@ -442,6 +443,23 @@ const leaveVia = async (page) => { await page.evaluate(() => { window.__marker =
   await page.reload({ waitUntil: "domcontentloaded" }); await page.waitForSelector('[data-testid="choose-teacher"]', { timeout: 15000 }); await sleep(800);
   await pick(page, "mia", true); await sleep(1200);
   check("declined, then reload: still silent, still no mic start; the mic button still opens the card", (await page.evaluate(() => window.__sr + window.__spoken.length)) === 0 && (await page.click('[data-testid="taste-mic"]').then(() => true)) && !!(await page.waitForSelector('[data-testid="grownup-gate"]', { timeout: 4000 }).catch(() => null)));
+  await page.close();
+}
+
+{ // N. Mute then unmute across the greeting (browser voice, because the recorded file is 404 here): the control never vanishes
+  const { page, errors } = await open({ speech: "fake" });
+  await page.click('[data-testid="pick-leo"]'); await page.waitForSelector("#class-q");
+  await page.waitForFunction(() => window.__spoken.length >= 1, { timeout: 8000 }).catch(() => {});
+  await sleep(400); // the fake voice reports "started" 50 ms after speak()
+  const c0 = await page.evaluate(() => window.__cancels);
+  check("greeting: the voice control is there while it speaks", !!(await page.$('[data-testid="taste-mute"]')));
+  await page.click('[data-testid="taste-mute"]'); await sleep(250);
+  const m = await page.evaluate(() => ({ c: window.__cancels, p: document.querySelector('[data-testid="taste-mute"]')?.getAttribute("aria-pressed") ?? "gone", off: document.querySelector('[data-testid="voice-off"]')?.textContent ?? "", stop: !!document.querySelector('[data-testid="taste-stop"]'), n: window.__spoken.length, cap: document.querySelector('[data-testid="taste-opener"]')?.textContent ?? "" }));
+  check("mute mid-greeting: speech cancelled, Stop gone, the control STAYS (pressed) and says 'Voice is off', caption kept", m.c > c0 && !m.stop && m.p === "true" && /Voice is off/.test(m.off) && /Hi, I.m Leo!/.test(m.cap), JSON.stringify(m));
+  await page.click('[data-testid="taste-mute"]'); await sleep(250);
+  const u = await page.evaluate(() => ({ p: document.querySelector('[data-testid="taste-mute"]')?.getAttribute("aria-pressed") ?? "gone", off: !!document.querySelector('[data-testid="voice-off"]'), n: window.__spoken.length }));
+  check("unmute: pressed false, 'Voice is off' gone, nothing re-spoken by itself", (u.p === "false" || u.p === "gone") && !u.off && u.n === m.n , JSON.stringify(u));
+  check("greeting mute/unmute: no console errors", real(errors).length === 0, real(errors).slice(0, 2).join("|"));
   await page.close();
 }
 

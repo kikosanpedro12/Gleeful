@@ -36,7 +36,7 @@ const art: Record<ChapterId, React.ReactNode> = {
     <>
       <rect x="40" y="40" width="320" height="150" rx="10" fill="#B7814E" />
       <rect x="52" y="52" width="296" height="126" rx="6" fill="#1E4D3A" />
-      <text x="200" y="125" textAnchor="middle" fontSize="30" fontWeight="800" fill="#F5F8FF">Ask me anything</text>
+      <text x="200" y="125" textAnchor="middle" fontSize="30" fontWeight="800" fill="#F5F8FF">Ask me a question</text>
       <rect x="0" y="262" width="400" height="58" fill="#E7C79B" />
       <ellipse cx="220" cy="278" rx="120" ry="20" fill="#0E8A8C" />
       <Teachers x={230} y={214} />

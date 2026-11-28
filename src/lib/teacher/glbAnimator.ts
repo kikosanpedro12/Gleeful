@@ -472,7 +472,8 @@ export class GlbTeacherAnimator implements ActorAnimator {
       const e = smooth(Math.min(1, c.gestureT / 0.3)) * smooth(Math.min(1, (GESTURE_SEC[c.gesture] - c.gestureT) / 0.3));
       if (gp?.kind === "ik") {
         switch (gp.pose) {
-          case "wave": set("R", e, rel("R", 0.07 + Math.sin(c.gestureT * 11) * 0.06 * m, 0.17, 0.07)); break;
+          // Hand beside and a little above the shoulder, clear of the head (was 0.07 out / 0.17 up: it sat against the ear like a salute), so the elbow shows and the swing reads as a wave.
+          case "wave": set("R", e, rel("R", 0.15 + Math.sin(c.gestureT * 11) * 0.05 * m, 0.13, 0.08)); break;
           case "think": set("R", e, mouth().add(new V(0, -0.03 * k, 0.0).applyQuaternion(rq))); set("L", e * 0.7, rel("L", 0.04, -0.06, 0.16)); break;
           case "open_hands": set("L", e, rel("L", 0.1, -0.03, 0.17)); set("R", e, rel("R", 0.1, -0.03, 0.17)); break;
           case "shrug": set("L", e, rel("L", 0.17 * Math.max(m, 0.6), -0.07, 0.09)); set("R", e, rel("R", 0.17 * Math.max(m, 0.6), -0.07, 0.09)); break;

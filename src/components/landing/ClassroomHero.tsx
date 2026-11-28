@@ -7,8 +7,9 @@ import { session } from "@/lib/session/controller";
 import { parseFrame } from "@/lib/scene/frame";
 import { elevenLandingAvailable, probeVoice } from "@/lib/voice/elevenSpeak";
 import { primeAudio } from "@/lib/voice/elevenPlayer";
-import { listenOnce, recognitionAvailable, type Listening } from "@/lib/voice/speech";
-import { speakTaste, tasteLevel, type TasteVoice } from "@/lib/voice/tasteSpeak";
+import { listenOnce, loadVoices, recognitionAvailable, type Listening } from "@/lib/voice/speech";
+import { playRecorded, speakTaste, tasteLevel, type TasteVoice, type TasteVoiceEvents } from "@/lib/voice/tasteSpeak";
+import { GREETING_AUDIO, PLACEHOLDERS } from "@/lib/voice/greeting";
 import { TASTE_ENDPOINT, TASTE_MAX_INPUT, TASTE_MAX_TURNS, type TasteRequest } from "@/lib/taste/protocol";
 import { choicesOk, topicOk } from "@/lib/taste/boardText";
 import { decide, readGate, voiceAllowed, writeGate, type Gate } from "@/lib/taste/grownUp";
@@ -71,6 +72,7 @@ export default function ClassroomHero() {
   const alive = useRef(true);
   /** Set synchronously, so a mic result and a chip tap in the same tick cannot send two questions. */
   const busyRef = useRef(false);
+  const pickedRef = useRef(false);
   const postCtl = useRef<AbortController | null>(null);
   const flash = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,10 @@ export default function ClassroomHero() {
   /** The paywall never waits longer than this for the tutor's last line to finish. */
   const maxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busyNote, setBusyNote] = useState(false);
+  /** A recorded file is playing right now (labelled as recorded, not live voice). */
+  const [recorded, setRecorded] = useState(false);
+  /** Which example shows in the empty box. Rotates while the box is empty (a bounded loop, never with reduced motion). */
+  const [phIdx, setPhIdx] = useState(0);
 
   useEffect(() => {
     alive.current = true;
@@ -85,7 +91,7 @@ export default function ClassroomHero() {
     setMic(recognitionAvailable() ? "ok" : "none");
     const earlier = readGate(); // this browser session only; a hostile or missing value is "closed"
     gateRef.current = earlier; setGate(earlier);
-    if (voiceAllowed(earlier)) void probeVoice(); // no /api/voice request of any kind before a grown-up said yes
+    if (voiceAllowed(earlier)) { void probeVoice(); void loadVoices(); } // warm the voice list so the first spoken line is not late // no /api/voice request of any kind before a grown-up said yes
     const ctl = new AbortController();
     (async () => {
       try {
@@ -111,14 +117,40 @@ export default function ClassroomHero() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!teacher || text || busy || listening || lines.length > 0) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return; // static example, nothing moves
+    let n = 0;
+    const t = setInterval(() => { n++; setPhIdx((i) => (i + 1) % PLACEHOLDERS.length); if (n >= PLACEHOLDERS.length) clearInterval(t); }, 4200); // one full loop, then it rests on the first example
+    return () => clearInterval(t);
+  }, [teacher, text, busy, listening, lines.length]);
+
   /** Only the chosen tutor stays on stage. Status is set on the store directly: no lesson provider runs on the landing. */
   function pick(t: Teacher) {
+    if (pickedRef.current) return; // a second tap in the same tick must not start a second greeting
+    pickedRef.current = true;
     setTeacher(t);
     setTimeout(() => document.getElementById("class-q")?.focus({ preventScroll: true }), 50);
     session.setTasteLevel(tasteLevel); session.tasteOpen(t);
-    // The tutor leads from the first second: a fixed line offering the two starter questions (tap choices below), a wave,
-    // the free browser voice only (a fixed line never spends ElevenLabs characters). No model call, not a try.
-    session.tasteActs({ gesture: "wave" });
+    // The tutor leads from the first second: a fixed greeting (caption always), a wave unless the visitor asked for less motion.
+    // Sound only because of this tap (autoplay rules): a RECORDED file if we ship one (free, no gate), else the free browser voice
+    // once a grown-up has switched voice on. A fixed line never spends ElevenLabs characters. No model call, not a try.
+    if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) session.tasteActs({ gesture: "wave" });
+    greet(t);
+  }
+
+  function greet(t: Teacher) {
+    const src = GREETING_AUDIO[t];
+    if (src && !mutedRef.current && alive.current) {
+      // The file could not play (missing, blocked, no sound in 4 s): the caption stays and the browser voice takes over, once. A stopped or
+      // replaced line never reaches onEnd (stop() is silent), so a mute or a new question cannot trigger the fallback or a double voice.
+      let v: TasteVoice | null = null;
+      v = startLine((ev) => playRecorded(src, {
+        onStart: () => { setRecorded(true); ev.onStart(); },
+        onEnd: (spoke) => { const mine = voice.current === v; setRecorded(false); ev.onEnd(spoke); if (!spoke && mine && alive.current) say(openerLine(t === "mia" ? "Mia" : "Leo"), t, true); },
+      }));
+      return;
+    }
     say(openerLine(t === "mia" ? "Mia" : "Leo"), t, true);
   }
 
@@ -143,7 +175,7 @@ export default function ClassroomHero() {
     const was = voice.current;
     voice.current = null;
     was?.stop();
-    setSpeaking(false);
+    setSpeaking(false); setRecorded(false);
     if (interrupt) session.tasteStop();
     if (was) paywallSoon(1500); // Stop pressed on the last answer: the visitor has heard enough
   }
@@ -151,15 +183,21 @@ export default function ClassroomHero() {
   function say(reply: string, t: Teacher, browserOnly = false) {
     if (!alive.current) return;
     if (!voiceAllowed(gateRef.current) || mutedRef.current) { session.tasteSpeaking(false); return; } // silent until a grown-up says yes
-    const v: TasteVoice = speakTaste(reply, t, {
+    startLine((ev) => speakTaste(reply, t, ev, { browserOnly }));
+  }
+
+  /** Starts one spoken line (browser voice, ElevenLabs or a recorded file) and wires the shared callbacks. Only the latest line may change state. */
+  function startLine(make: (ev: TasteVoiceEvents) => TasteVoice): TasteVoice {
+    const v: TasteVoice = make({
       onStart: () => { if (voice.current !== v) return; setSpeaking(true); session.tasteSpeaking(true); },
       onEnd: () => {
         if (voice.current !== v) return;
         voice.current = null; setSpeaking(false); session.tasteSpeaking(false);
         paywallSoon(1500); // the tease has been heard
       },
-    }, { browserOnly });
+    });
     voice.current = v;
+    return v;
   }
 
   function toggleMute() {
@@ -174,7 +212,7 @@ export default function ClassroomHero() {
     const g = decide(accepted);
     gateRef.current = g; setGate(g); setAsking(false);
     writeGate(g);
-    if (accepted) { void probeVoice(); setMicNote(mic === "ok" ? "Voice is on. Tap the mic to talk, or keep typing." : "Voice is on. Replies will be spoken."); }
+    if (accepted) { void probeVoice(); void loadVoices(); setMicNote(mic === "ok" ? "Voice is on. Tap the mic to talk, or keep typing." : "Voice is on. Replies will be spoken."); }
     else { hush(false); setMicNote("Voice stays off. You can type, or tap the mic if a grown-up wants to switch it on."); }
     setTimeout(() => { if (alive.current) (micBtn.current ?? document.getElementById("class-q"))?.focus({ preventScroll: true }); }, 30);
   }
@@ -264,7 +302,7 @@ export default function ClassroomHero() {
       </div>
       <div className="lp-class-ui">
         <div className="lp-class-head">
-          <h1 id="class-h" className="lp-class-h">{name ? `Ask ${name} anything.` : "Meet your tutor."}</h1>
+          <h1 id="class-h" className="lp-class-h">{name ? `Ask ${name} a question.` : "Meet your tutor."}</h1>
           {!name && <p className="lp-class-sub">A real AI tutor for kids. Pick one and ask away.</p>}
         </div>
 
@@ -279,7 +317,7 @@ export default function ClassroomHero() {
         {phase === "live" && !over && !teacher && (
           <div className="lp-card" data-testid="choose-teacher">
             <p className="lp-tag lp-tag-live"><span aria-hidden className="lp-dot" /> Live AI tutor · {TASTE_MAX_TURNS} free tries</p>
-            <p>Choose who teaches you today.</p>
+            <p>Choose who teaches you today, then ask about science, maths, reading, history or the world.</p>
             <div className="lp-pick">
               <button type="button" className="lp-btn lp-btn-main" onClick={() => pick("leo")} data-testid="pick-leo">Leo</button>
               <button type="button" className="lp-btn lp-btn-main" onClick={() => pick("mia")} data-testid="pick-mia">Mia</button>
@@ -292,27 +330,30 @@ export default function ClassroomHero() {
             <div className="lp-say" aria-live="polite" aria-atomic="true">
               {busy ? <p data-testid="taste-thinking" className="lp-wait">{name} is thinking…</p>
                 : last ? <p data-testid="taste-reply"><b>{name}:</b> {last.text}</p>
-                : <p className="lp-wait" data-testid="taste-opener">{openerLine(name ?? "your tutor")}</p>}
+                : <p className="lp-greet" data-testid="taste-opener">{openerLine(name ?? "your tutor")}</p>}
+              {recorded && !busy && !last && <p className="lp-greet-note" data-testid="greeting-note">Recorded greeting, not live voice.</p>}
             </div>
             {/* One wrapping row: voice controls, then starter ideas (before the first question only) or the tutor's own 2 answers. Keeps the card short on phones. */}
             {(() => {
               const c = tapChips({ used, asked: lines.length, choices, ideas: IDEAS, last: used >= TASTE_MAX_TURNS });
               const on = voiceAllowed(gate);
-              const voiceRow = on && (speaking || (lines.length > 0 && !over)); // once the tries are done, Stop / Mute are there only while sound plays
-              const gateBtn = !on && used < TASTE_MAX_TURNS && !asking; // Mute voice exists only once voice is on; until then this button explains and asks
+              const voiceRow = recorded || muted || (on && (speaking || (lines.length > 0 && !over))); // a recording playing, or the visitor muted: the control (and its way back) stays; after the tries only while sound plays
+              const gateBtn = !on && used < TASTE_MAX_TURNS && !asking && !recorded && !muted; // Mute voice exists only once voice is on; until then this button explains and asks
               if (!c.items.length && !voiceRow && !gateBtn) return null;
               return (
                 <div className="lp-taste-actions">
                   {speaking && <button type="button" className="lp-btn lp-btn-soft" onClick={() => hush(true)} data-testid="taste-stop">Stop talking</button>}
-                  {gateBtn && <button type="button" className="lp-btn lp-btn-soft" onClick={askGate} data-testid="taste-voice-ask">Voice: for grown-ups</button>}
+                  {gateBtn && <button type="button" className="lp-btn lp-btn-soft lp-mute" onClick={askGate} data-testid="taste-voice-ask"><svg viewBox="0 0 24 24" aria-hidden width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" /><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>Turn on sound</button>}
                   {voiceRow && (
                     <button type="button" className="lp-btn lp-btn-soft lp-mute" aria-pressed={muted} onClick={toggleMute} data-testid="taste-mute">
                       <svg viewBox="0 0 24 24" aria-hidden width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />{muted ? <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /> : <path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}</svg>
                       Mute voice
                     </button>
                   )}
+                  {voiceRow && muted && <span className="lp-voice-state" data-testid="voice-off">Voice is off</span>}
                   {c.items.length > 0 && (
-                    <div className="lp-chips" role="group" aria-label={c.kind === "ideas" ? "Question ideas" : `Answer ${name}`} data-testid={c.kind === "ideas" ? "taste-chips" : "taste-choices"}>
+                    <div className={c.kind === "ideas" ? "lp-chips lp-chips-quiet" : "lp-chips"} role="group" aria-label={c.kind === "ideas" ? "Sample question" : `Answer ${name}`} data-testid={c.kind === "ideas" ? "taste-chips" : "taste-choices"}>
+                      {c.kind === "ideas" && <span className="lp-try" aria-hidden>Not sure? Try</span>}
                       {c.items.map((i) => <button key={i} type="button" className="lp-chip" disabled={busy || listening} onClick={() => void send(i)}>{i}</button>)}
                     </div>
                   )}
@@ -324,7 +365,7 @@ export default function ClassroomHero() {
               <form className="lp-taste-row" aria-busy={busy} onSubmit={(e) => { e.preventDefault(); void send(text); }}>
                 <label className="lp-sr" htmlFor="class-q">Your question</label>
                 <input id="class-q" className="lp-taste-input" type="text" autoComplete="off" enterKeyHint="send" maxLength={TASTE_MAX_INPUT}
-                  value={text} onChange={(e) => setText(e.target.value)} placeholder={listening ? "Listening…" : `Ask ${name}…`} disabled={busy || listening} />
+                  value={text} onChange={(e) => setText(e.target.value)} placeholder={listening ? "Listening…" : lines.length === 0 ? PLACEHOLDERS[phIdx] : `Ask ${name} another question…`} disabled={busy || listening} />
                 {mic === "ok" && (
                   <button type="button" ref={micBtn} className={listening ? "lp-btn lp-btn-main lp-mic lp-mic-on" : "lp-btn lp-btn-main lp-mic"} onClick={talk} disabled={busy}
                     aria-label={listening ? "Stop listening and send" : `Talk to ${name}`} data-testid="taste-mic">
@@ -335,7 +376,7 @@ export default function ClassroomHero() {
               </form>
               {asking && !voiceAllowed(gate) && (
                 <div className="lp-gate" role="group" aria-labelledby="gate-h" data-testid="grownup-gate" onKeyDown={(e) => { if (e.key === "Escape") answerGate(false); }}>
-                  <p id="gate-h" className="lp-gate-h">Voice is for grown-ups to switch on.</p>
+                  <p id="gate-h" className="lp-gate-h">Sound and the mic are for grown-ups to switch on.</p>
                   <p>Is a grown-up with you? This is a light check, not age verification. Typing works without it.</p>
                   <p className="lp-fine-print">{mic === "ok" ? "If you switch voice on, your browser sends your voice to its own speech service (Google, Microsoft or Apple) to turn it into text. " : ""}Spoken replies use our voice partner. {mic === "ok" ? "We never receive or keep a recording of your voice." : ""}</p>
                   <div className="lp-gate-btns">
@@ -356,8 +397,8 @@ export default function ClassroomHero() {
               <p className="lp-fine-print">It&apos;s an AI and can be wrong. Please don&apos;t type or say private details.</p>
               {mic === "ok" && used < TASTE_MAX_TURNS && voiceAllowed(gate) && <p className="lp-fine-print" data-testid="taste-mic-disclosure">Mic: your browser sends your voice to its maker (Google, Microsoft or Apple) to turn it into text. We only get the text.</p>}
             </div>
-            {busyNote && <p className="lp-taste-err" role="status">The tutor is busy right now. Please try again a little later.</p>}
-            {trouble && <p className="lp-taste-err" role="status">{name} didn&apos;t hear that. Wait a moment and try again.</p>}
+            {busyNote && <p className="lp-taste-err" role="status">Lots of people are asking right now. Please try again in a little while.</p>}
+            {trouble && <p className="lp-taste-err" role="status" data-testid="taste-trouble">{typeof navigator !== "undefined" && navigator.onLine === false ? "The internet seems to be off. Check it, then tap Ask again. Your question is still in the box." : `${name} couldn't answer just now. That's on us, not you. Tap Ask to try again in a moment.`}</p>}
           </div>
         )}
 

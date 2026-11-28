@@ -71,7 +71,7 @@ export const initialStore = (): SessionStore => ({
   listening: false,
   interim: "",
   directives: [],
-  boardText: "Ask me anything!",
+  boardText: "Ask me a question!",
   choices: [],
   question: null,
   widget: null,
